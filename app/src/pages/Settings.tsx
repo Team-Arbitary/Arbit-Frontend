@@ -50,8 +50,8 @@ export default function Settings() {
                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                     <Input
                       id="fullName"
-                      placeholder="Olivera Queen"
-                      defaultValue="Olivera Queen"
+                      placeholder="Hasitha Gallella"
+                      defaultValue="Hasitha Gallella"
                       className="pl-10"
                     />
                   </div>
@@ -64,8 +64,8 @@ export default function Settings() {
                     <Input
                       id="email"
                       type="email"
-                      placeholder="olivera@gmail.com"
-                      defaultValue="olivera@gmail.com"
+                      placeholder="hasitha@gmail.com"
+                      defaultValue="hasitha@gmail.com"
                       className="pl-10"
                     />
                   </div>

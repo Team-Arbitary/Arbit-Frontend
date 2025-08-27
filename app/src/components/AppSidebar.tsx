@@ -54,7 +54,7 @@ export function AppSidebar() {
           </div>
           {!isCollapsed && (
             <div>
-              <span className="text-xl font-semibold">Overwatch</span>
+              <span className="text-xl font-semibold">Arbit P1</span>
               {/* <div className="flex items-center gap-2 mt-1">
                 <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
                   <span className="text-primary-foreground text-xs font-medium">T</span>
@@ -97,8 +97,8 @@ export function AppSidebar() {
           </div>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate">Olivera Queen</div>
-              <div className="text-xs text-muted-foreground truncate">olivera@gmail.com</div>
+              <div className="text-sm font-medium truncate">Hasitha Gallella</div>
+              <div className="text-xs text-muted-foreground truncate">hasitha@gmail.com</div>
             </div>
           )}
           {/* <DropdownMenu>

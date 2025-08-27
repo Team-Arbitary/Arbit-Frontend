@@ -8,6 +8,10 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
   const statusConfig = {
+    "Not started": {
+      label: "Not Started",
+      className: "bg-muted text-muted-foreground",
+    },
     "in-progress": {
       label: "In Progress",
       className: "bg-success text-success-foreground",

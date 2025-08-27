@@ -14,7 +14,7 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="system" storageKey="Overwatch-theme">
+    <ThemeProvider defaultTheme="system" storageKey="Arbit P1-theme">
       <TooltipProvider>
         <Toaster />
         <Sonner />

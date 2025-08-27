@@ -147,14 +147,37 @@ export function AddTransformerModal({ trigger, onAdd }: AddTransformerModalProps
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="locationDetails">Location Details</Label>
-            <Textarea
+            <Label htmlFor="locationDetails">Location</Label>
+            <Input
               id="locationDetails"
-              placeholder="Location Details"
+              list="location-options"
+              placeholder="Start typing or select location"
               value={formData.locationDetails}
               onChange={(e) => setFormData(prev => ({ ...prev, locationDetails: e.target.value }))}
               disabled={submitting}
             />
+            <datalist id="location-options">
+              <option value="Colombo" />
+              <option value="Kandy" />
+              <option value="Galle" />
+              <option value="Matara" />
+              <option value="Negombo" />
+              <option value="Jaffna" />
+              <option value="Anuradhapura" />
+              <option value="Polonnaruwa" />
+              <option value="Kurunegala" />
+              <option value="Ratnapura" />
+              <option value="Badulla" />
+              <option value="Nuwara Eliya" />
+              <option value="Batticaloa" />
+              <option value="Trincomalee" />
+              <option value="Kalutara" />
+              <option value="Hambantota" />
+              <option value="Puttalam" />
+              <option value="Ampara" />
+              <option value="Monaragala" />
+              <option value="Kilinochchi" />
+            </datalist>
           </div>
 
           {error && <p className="text-sm text-destructive">{error}</p>}

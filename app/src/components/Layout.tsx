@@ -33,15 +33,15 @@ export function Layout({ children }: LayoutProps) {
 
             <div className="flex items-center gap-4">
               <Avatar>
-                <AvatarImage src="/user.png" />
+                <AvatarImage src="/user2.jpg" />
                 <AvatarFallback>
                   <User className="h-4 w-4" />
                 </AvatarFallback>
               </Avatar>
               
               <div className="text-sm">
-                <div className="font-medium">Olivera Queen</div>
-                <div className="text-muted-foreground">olivera@gmail.com</div>
+                <div className="font-medium">Hasitha Gallella</div>
+                <div className="text-muted-foreground">hasitha@gmail.com</div>
               </div>
             </div>
           </header>

@@ -38,9 +38,10 @@ export function AddInspectionModal({ trigger, onAdd }: AddInspectionModalProps) 
     const timeStr = formData.time ? (formData.time.length === 5 ? `${formData.time}:00` : formData.time) : undefined;
 
     const payload = {
-      batch: formData.batch,
+      branch: formData.batch,
       transformerNo: formData.transformerNo,
       dateOfInspection: dateStr,
+      maintenanceDate: dateStr,
       time: timeStr,
     };
 

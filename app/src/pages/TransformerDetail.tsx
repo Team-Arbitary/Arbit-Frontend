@@ -7,10 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AddInspectionModal } from "@/components/AddInspectionModal";
+import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Star, Eye, Trash2 } from "lucide-react";
 
 const INSPECTION_VIEW_URL = (id: string) => `http://localhost:5509/transformer-thermal-inspection/transformer-management/view/${id}`;
 const INSPECTION_LIST_URL = "http://localhost:5509/transformer-thermal-inspection/inspection-management/view-all";
+const DELETE_INSPECTION_URL = (id: string) => `http://localhost:5509/transformer-thermal-inspection/inspection-management/delete/${id}`;
+const IMAGE_UPLOAD_URL = `http://localhost:5509/transformer-thermal-inspection/image-inspection-management/upload`;
+const BASELINE_FETCH_URL = (transformerNo: string) => `http://localhost:5509/transformer-thermal-inspection/image-inspection-management/baseline/${encodeURIComponent(transformerNo)}`;
 
 type ApiEnvelope<T> = { responseCode?: string; responseDescription?: string; responseData?: T } | T;
 
@@ -30,6 +34,13 @@ type TransformerView = {
 const inspectionData: Array<{ id: string; inspectionNo: string; inspectedDate: string; maintenanceDate: string; status: "in-progress" | "pending" | "completed" }> = [];
 
 export default function TransformerDetail() {
+  const { toast } = useToast();
+  const [weatherCondition, setWeatherCondition] = useState<string>("Sunny");
+  const [isUploadingBaseline, setIsUploadingBaseline] = useState<boolean>(false);
+  const [isViewingBaseline, setIsViewingBaseline] = useState<boolean>(false);
+  const [baselinePreview, setBaselinePreview] = useState<string | null>(null);
+  const [isDeletingBaseline, setIsDeletingBaseline] = useState<boolean>(false);
+
   const { id } = useParams();
   const navigate = useNavigate();
   const [inspections, setInspections] = useState<typeof inspectionData>([]);
@@ -59,7 +70,7 @@ export default function TransformerDetail() {
           type: data.type,
           feeders: undefined,
           lastInspected: undefined,
-          status: "in-progress",
+          status: "Not started",
         };
         if (!cancelled) setTransformer(mapped);
       } catch (e: any) {
@@ -91,17 +102,48 @@ export default function TransformerDetail() {
         };
 
         const toDisplay = (it: any) => {
-          const iso = it.dateOfInspection && it.time ? `${it.dateOfInspection}T${it.time}` : it.dateOfInspection;
+          // Normalize date/time coming from backend
+          const rawDate = (it.dateOfInspection ?? '').toString().trim();
+          const rawTime = (it.time ?? '').toString().trim();
+
+          let iso: string | null = null;
+          if (rawDate) {
+            if (/\d{2}:\d{2}(:\d{2})?/.test(rawDate)) {
+              // dateOfInspection already contains a time e.g. "2025-08-24 14:30:00"
+              iso = rawDate.replace(' ', 'T');
+            } else if (rawTime) {
+              // separate date and time fields
+              iso = `${rawDate}T${rawTime}`;
+            } else {
+              // date only
+              iso = rawDate;
+            }
+          }
+
           let inspectedDate = "-";
           try {
             inspectedDate = iso ? new Date(iso).toLocaleString() : "-";
           } catch {}
+
+          // Maintenance date may be just a date (YYYY-MM-DD) or full timestamp
+          let maintenanceDate = "-";
+          const rawMaint = (it.maintenanceDate ?? '').toString().trim();
+          if (rawMaint) {
+            let mIso = rawMaint;
+            if (/^\d{4}-\d{2}-\d{2}$/.test(rawMaint)) {
+              mIso = `${rawMaint}T00:00:00`;
+            } else if (rawMaint.includes(' ')) {
+              mIso = rawMaint.replace(' ', 'T');
+            }
+            try { maintenanceDate = new Date(mIso).toLocaleDateString(); } catch {}
+          }
+
           return {
             id: String(it.id ?? crypto.randomUUID?.() ?? Math.random()),
-            inspectionNo: String(it.batch ?? it.id ?? "-"),
+            inspectionNo: String(it.inspectionNo ?? it.batch ?? it.id ?? "-"),
             inspectedDate,
-            maintenanceDate: "-",
-            status: "in-progress" as const,
+            maintenanceDate,
+            status: String(it.status ?? 'Not started') as any,
           };
         };
 
@@ -117,6 +159,108 @@ export default function TransformerDetail() {
       cancelled = true;
     };
   }, [transformer]);
+
+  const handleFileUploadBaseline = async (file: File) => {
+    setIsUploadingBaseline(true);
+    try {
+      const form = new FormData();
+      form.append('imageType', 'Baseline');
+      form.append('weatherCondition', weatherCondition || 'Sunny');
+      form.append('status', 'In-progress');
+      form.append('transformerNo', transformer?.transformerNo ?? "-");
+      // Use a best-effort inspectionNo from the first listed inspection if available
+      const firstInsp = inspections?.[0]?.inspectionNo ?? inspections?.[0]?.id ?? "-";
+      form.append('inspectionNo', String(firstInsp));
+      form.append('imageFile', file, "file_name");
+  
+      const res = await fetch(IMAGE_UPLOAD_URL, { method: 'POST', body: form });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  
+      toast({ title: "Baseline uploaded", description: "Baseline image uploaded successfully (status: In-progress)." });
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: "Upload failed", description: err?.message || "Unable to upload image", variant: "destructive" });
+    } finally {
+      setIsUploadingBaseline(false);
+    }
+  };
+
+  const handleUploadBaseline = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) handleFileUploadBaseline(file);
+    };
+    input.click();
+  };
+
+  // --- Baseline preview/delete helpers ---
+  const resolveImageFromResponse = async (res: Response) => {
+    const ct = res.headers.get('content-type') || '';
+    if (ct.startsWith('image/')) {
+      const blob = await res.blob();
+      return URL.createObjectURL(blob);
+    }
+    try {
+      const raw: ApiEnvelope<any> = await res.json();
+      const data: any = (raw as any)?.responseData ?? raw;
+      const possible = data?.imageBase64 || data?.url || data?.imageUrl;
+      if (typeof possible === 'string') {
+        if (/^data:|^https?:\/\//i.test(possible)) return possible;
+        try { return new URL(possible, window.location.origin).toString(); } catch { return null; }
+      }
+    } catch {
+      // ignore parse error
+    }
+    return null;
+  };
+
+  const openBaselinePreview = async () => {
+    if (!transformer?.transformerNo) {
+      toast({ title: "No transformer number", description: "Cannot fetch baseline without transformer number.", variant: "destructive" });
+      return;
+    }
+    try {
+      const res = await fetch(BASELINE_FETCH_URL(transformer.transformerNo));
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      const src = await resolveImageFromResponse(res);
+      if (!src) throw new Error("No baseline image available");
+      setBaselinePreview(src);
+      setIsViewingBaseline(true);
+    } catch (err: any) {
+      toast({ title: "Preview failed", description: err?.message || "Unable to load baseline image", variant: "destructive" });
+    }
+  };
+
+  const closeBaselinePreview = () => {
+    if (baselinePreview && baselinePreview.startsWith("blob:")) {
+      try { URL.revokeObjectURL(baselinePreview); } catch {}
+    }
+    setIsViewingBaseline(false);
+  };
+
+  const handleDeleteBaseline = async () => {
+    if (!transformer?.transformerNo) {
+      toast({ title: "No transformer number", description: "Cannot delete baseline without transformer number.", variant: "destructive" });
+      return;
+    }
+    const ok = window.confirm("Delete baseline image? This cannot be undone.");
+    if (!ok) return;
+    try {
+      setIsDeletingBaseline(true);
+      const res = await fetch(BASELINE_FETCH_URL(transformer.transformerNo), { method: "DELETE" });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      toast({ title: "Deleted", description: "Baseline image deleted successfully." });
+      // If a preview is open, close it
+      if (isViewingBaseline) closeBaselinePreview();
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err?.message || "Unable to delete baseline image", variant: "destructive" });
+    } finally {
+      setIsDeletingBaseline(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -143,6 +287,21 @@ export default function TransformerDetail() {
 
   const handleViewInspection = (inspectionId: string) => {
     navigate(`/inspection/${inspectionId}`);
+  };
+
+  const handleDeleteInspection = async (inspectionId: string) => {
+    const ok = window.confirm("Are you sure you want to delete this inspection?");
+    if (!ok) return;
+    try {
+      let res = await fetch(DELETE_INSPECTION_URL(inspectionId), { method: 'DELETE' });
+      if (!res.ok) {
+        res = await fetch(DELETE_INSPECTION_URL(inspectionId), { method: 'GET' });
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      }
+      setInspections(prev => prev.filter(i => i.id !== inspectionId));
+    } catch (e: any) {
+      alert(`Failed to delete inspection: ${e?.message || 'Unknown error'}`);
+    }
   };
 
   const addInspection = (inspection: any) => {
@@ -222,18 +381,52 @@ export default function TransformerDetail() {
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-4 flex items-center gap-3">
-              <Button className="w-full">
-                <Eye className="h-4 w-4 mr-2" />
-                Baseline Image
-                
-              </Button>
-              <Button variant="outline" size="icon">
-                <Eye className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="icon">
-                <Trash2 className="h-4 w-4" />
-              </Button>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                {/* Left: Upload */}
+                <div className="md:col-span-5">
+                  <Button
+                    className="w-full h-12 shadow-sm hover:shadow transition-shadow"
+                    onClick={handleUploadBaseline}
+                    disabled={isUploadingBaseline}
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    {isUploadingBaseline ? "Uploading…" : "Upload Baseline"}
+                  </Button>
+                </div>
+                {/* Middle: Weather */}
+                {/* <div className="md:col-span-5">
+                  <label className="text-xs font-medium text-muted-foreground">Weather</label>
+                  <div className="mt-2">
+                    <select
+                      className="w-full h-10 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      value={weatherCondition}
+                      onChange={(e) => setWeatherCondition(e.target.value)}
+                    >
+                      <option value="Sunny">Sunny</option>
+                      <option value="Cloudy">Cloudy</option>
+                      <option value="Rainy">Rainy</option>
+                    </select>
+                  </div>
+                </div> */}
+                {/* Right: Actions */}
+                <div className="md:col-span-2 flex md:justify-end items-start pl-60">
+                  <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-2">
+                    <Button variant="ghost" size="icon" onClick={openBaselinePreview} title="View baseline">
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleDeleteBaseline}
+                      disabled={isDeletingBaseline}
+                      title="Delete baseline"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -256,7 +449,7 @@ export default function TransformerDetail() {
                   <TableHead>Inspected Date</TableHead>
                   <TableHead>Maintenance Date</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead></TableHead>
+                  <TableHead className="text-right"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -271,13 +464,24 @@ export default function TransformerDetail() {
                     <TableCell>
                       <StatusBadge status={inspection.status} />
                     </TableCell>
-                    <TableCell>
-                      <Button 
-                        size="sm"
-                        onClick={() => handleViewInspection(inspection.id)}
-                      >
-                        View
-                      </Button>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button 
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleDeleteInspection(inspection.id)}
+                          title="Delete inspection"
+                          aria-label="Delete inspection"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          size="sm"
+                          onClick={() => handleViewInspection(inspection.id)}
+                        >
+                          View
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -286,6 +490,30 @@ export default function TransformerDetail() {
           </CardContent>
         </Card>
       </div>
+      {/* Baseline Image Preview Modal */}
+      {isViewingBaseline && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-white dark:bg-neutral-900 rounded-md shadow-lg max-w-5xl w-full">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-800">
+              <h3 className="text-sm font-medium">Baseline Image Preview</h3>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={handleDeleteBaseline} disabled={isDeletingBaseline}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {isDeletingBaseline ? "Deleting..." : "Delete"}
+                </Button>
+                <Button onClick={closeBaselinePreview}>Close</Button>
+              </div>
+            </div>
+            <div className="p-4">
+              {baselinePreview ? (
+                <img src={baselinePreview} alt="Baseline preview" className="w-full h-auto rounded-b-md" />
+              ) : (
+                <div className="text-center text-muted-foreground py-16">No image to display</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

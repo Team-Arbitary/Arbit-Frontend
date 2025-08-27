@@ -11,13 +11,22 @@ import { ArrowLeft, Upload, Eye, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const INSPECTION_DETAIL_URL = (id: string) => `http://localhost:5509/transformer-thermal-inspection/inspection-management/view/${id}`;
+const IMAGE_UPLOAD_URL = `http://localhost:5509/transformer-thermal-inspection/image-inspection-management/upload`;
+const BASELINE_FETCH_URL = (transformerNo: string) => `http://localhost:5509/transformer-thermal-inspection/image-inspection-management/baseline/${transformerNo}`;
+
+const THERMAL_FETCH_URL = (inspectionNo: string) => `http://localhost:5509/transformer-thermal-inspection/image-inspection-management/thermal/${inspectionNo}`;
+
+const openInNewTab = (url?: string | null) => {
+  if (!url) return;
+  try { window.open(url, '_blank', 'noopener,noreferrer'); } catch {}
+};
 
 type ApiEnvelope<T> = { responseCode?: string; responseDescription?: string; responseData?: T } | T;
 
 type InspectionView = {
   id: string;
   transformerNo?: string;
-  batch?: string;
+  branch?: string;
   lastUpdated?: string;
   status: "in-progress" | "pending" | "completed" | string;
 };
@@ -28,14 +37,15 @@ export default function InspectionDetail() {
   const { toast } = useToast();
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadLabel, setUploadLabel] = useState<string>("");
   const [baselineImage, setBaselineImage] = useState<string | null>(null);
   const [thermalImage, setThermalImage] = useState<string | null>(null);
-  const [weatherCondition, setWeatherCondition] = useState("sunny");
+  const [weatherCondition, setWeatherCondition] = useState("Sunny");
 
   const [inspection, setInspection] = useState<InspectionView>({
     id: id ?? "-",
     transformerNo: "-",
-    batch: "-",
+    branch: "-",
     lastUpdated: "-",
     status: "in-progress",
   });
@@ -55,7 +65,7 @@ export default function InspectionDetail() {
         const mapped: InspectionView = {
           id: String(data?.id ?? id),
           transformerNo: data?.transformerNo ?? "-",
-          batch: data?.batch ?? "-",
+          branch: data?.branch ?? "-",
           lastUpdated,
           status: data?.progress ?? "in-progress",
         };
@@ -68,6 +78,90 @@ export default function InspectionDetail() {
     return () => { cancelled = true; };
   }, [id]);
 
+  useEffect(() => {
+    const tfNo = inspection.transformerNo;
+    if (!tfNo || tfNo === "-") return;
+
+    const url = BASELINE_FETCH_URL(encodeURIComponent(tfNo));
+
+    (async () => {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+        const ct = res.headers.get('content-type') || '';
+
+        if (ct.startsWith('image/')) {
+          const blob = await res.blob();
+          const objUrl = URL.createObjectURL(blob);
+          setBaselineImage(objUrl);
+          return;
+        }
+
+        // Try JSON shape
+        try {
+          const raw: ApiEnvelope<any> = await res.json();
+          const data: any = (raw as any)?.responseData ?? raw;
+          const possible = data?.imageBase64;
+
+          if (typeof possible === 'string') {
+            let finalUrl = possible;
+            if (!/^https?:\/\//i.test(possible) && !possible.startsWith('data:')) {
+              // make relative -> absolute
+              try { finalUrl = new URL(possible, window.location.origin).toString(); } catch {}
+            }
+            setBaselineImage(finalUrl);
+          }
+        } catch (e) {
+          // Non-JSON response that isn't an image — ignore
+        }
+      } catch (e) {
+        console.error('Failed to fetch baseline image:', e);
+      }
+    })();
+  }, [inspection.transformerNo]);
+
+  useEffect(() => {
+    const inspNo = inspection.id;
+    if (!inspNo || inspNo === "-") return;
+
+    const url = THERMAL_FETCH_URL(encodeURIComponent(inspNo));
+
+    (async () => {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+        const ct = res.headers.get('content-type') || '';
+
+        if (ct.startsWith('image/')) {
+          const blob = await res.blob();
+          const objUrl = URL.createObjectURL(blob);
+          setThermalImage(objUrl);
+          return;
+        }
+
+        // Try JSON response with possible URL/base64 fields
+        try {
+          const raw: ApiEnvelope<any> = await res.json();
+          const data: any = (raw as any)?.responseData ?? raw;
+          const possible = data?.imageBase64 || data?.url || data?.imageUrl;
+
+          if (typeof possible === 'string') {
+            let finalUrl = possible;
+            if (!/^https?:\/\//i.test(possible) && !possible.startsWith('data:')) {
+              try { finalUrl = new URL(possible, window.location.origin).toString(); } catch {}
+            }
+            setThermalImage(finalUrl);
+          }
+        } catch (_) {
+          // Non-JSON response that isn't an image — leave thermal image unset
+        }
+      } catch (e) {
+        console.error('Failed to fetch thermal image:', e);
+        // Keep upload buttons visible by leaving thermalImage as null
+      }
+    })();
+  }, [inspection.id]);
+
   const progressSteps = [
     { title: "Thermal Image Upload", status: "pending" },
     { title: "AI Analysis", status: "pending" },
@@ -77,32 +171,69 @@ export default function InspectionDetail() {
   const handleFileUpload = async (file: File, type: 'baseline' | 'thermal') => {
     setIsUploading(true);
     setUploadProgress(0);
+    setUploadLabel(type === 'baseline' ? 'Uploading baseline image…' : 'Uploading thermal image…');
 
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsUploading(false);
-          
-          // Create a preview URL for the uploaded file
-          const previewUrl = URL.createObjectURL(file);
-          if (type === 'baseline') {
-            setBaselineImage(previewUrl);
-          } else {
-            setThermalImage(previewUrl);
-          }
-          
-          toast({
-            title: "Upload Complete",
-            description: `${type === 'baseline' ? 'Baseline' : 'Thermal'} image uploaded successfully.`,
-          });
-          
-          return 100;
-        }
-        return prev + 10;
+    try {
+      // build form data
+      const form = new FormData();
+      // API expects these exact keys based on Postman screenshot
+      form.append('imageType', type === 'baseline' ? 'Baseline' : 'Thermal');
+      form.append('weatherCondition', weatherCondition || 'Sunny');
+      form.append('status', 'In-progress');
+      form.append('transformerNo', inspection.transformerNo ?? "-");
+      form.append('inspectionNo', inspection.id ?? "-");
+      form.append('imageFile', file, "file_name");
+
+      // NOTE: fetch doesn't give native progress; keep a lightweight simulated bar
+      const prog = setInterval(() => setUploadProgress((p) => (p >= 95 ? 95 : p + 5)), 150);
+
+      const res = await fetch(IMAGE_UPLOAD_URL, {
+        method: 'POST',
+        body: form,
       });
-    }, 200);
+
+      clearInterval(prog);
+      if (!res.ok) {
+        throw new Error(`${res.status} ${res.statusText}`);
+      }
+
+      // Try to read returned JSON and find a URL if backend returns one
+      let uploadedUrl: string | null = null;
+      try {
+        const raw: ApiEnvelope<any> = await res.json();
+        const data: any = (raw as any)?.responseData ?? raw;
+        uploadedUrl = data?.url || data?.imageUrl || null;
+      } catch (_) {
+        // ignore parse errors; we'll still show a local preview
+      }
+
+      const previewUrl = uploadedUrl ?? URL.createObjectURL(file);
+      if (type === 'baseline') {
+        setBaselineImage(previewUrl);
+      } else {
+        setThermalImage(previewUrl);
+      }
+
+      setUploadProgress(100);
+      toast({
+        title: 'Upload Complete',
+        description: `${type === 'baseline' ? 'Baseline' : 'Thermal'} image uploaded successfully (status: In-progress).`,
+      });
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: 'Upload failed',
+        description: err?.message || 'Unable to upload image',
+        variant: 'destructive',
+      });
+    } finally {
+      // finish the progress UI shortly after
+      setTimeout(() => {
+        setIsUploading(false);
+        setUploadProgress(0);
+        setUploadLabel('');
+      }, 500);
+    }
   };
 
   const handleUpload = (type: 'baseline' | 'thermal') => {
@@ -116,6 +247,30 @@ export default function InspectionDetail() {
       }
     };
     input.click();
+  };
+
+  const handleDeleteImage = async (type: 'baseline' | 'thermal') => {
+    try {
+      const targetUrl = type === 'baseline'
+        ? BASELINE_FETCH_URL(encodeURIComponent(inspection.transformerNo ?? '-'))
+        : THERMAL_FETCH_URL(encodeURIComponent(inspection.id ?? '-'));
+
+      if (!window.confirm(`Delete ${type} image? This cannot be undone.`)) return;
+
+      const res = await fetch(targetUrl, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+
+      if (type === 'baseline') {
+        setBaselineImage(null);
+      } else {
+        setThermalImage(null);
+      }
+
+      toast({ title: 'Deleted', description: `${type === 'baseline' ? 'Baseline' : 'Thermal'} image deleted successfully.` });
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: 'Delete failed', description: err?.message || 'Unable to delete image', variant: 'destructive' });
+    }
   };
 
   return (
@@ -135,7 +290,7 @@ export default function InspectionDetail() {
               <span className="text-primary-foreground font-bold">T</span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold">{inspection.batch}</h1>
+              <h1 className="text-2xl font-bold">{inspection.branch}</h1>
               <p className="text-muted-foreground">
                 Last updated: {inspection.lastUpdated}
               </p>
@@ -167,13 +322,13 @@ export default function InspectionDetail() {
           <Card>
             <CardContent className="p-4 text-center">
               <div className="text-sm text-muted-foreground">Batch</div>
-              <div className="font-semibold">{inspection.batch}</div>
+              <div className="font-semibold">{inspection.branch}</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <div className="text-sm text-muted-foreground">Inspected By</div>
-              <div className="font-semibold">{inspection.inspectedBy}</div>
+              <div className="font-semibold">A-110</div>
             </CardContent>
           </Card>
         </div>
@@ -182,7 +337,7 @@ export default function InspectionDetail() {
           {/* Left Side - Details and Thermal Upload */}
           <div className="lg:col-span-2 space-y-6">
             {/* Thermal Image Upload/Comparison */}
-            {(baselineImage || thermalImage) ? (
+            {(baselineImage && thermalImage) ? (
               <Card>
                 <CardHeader>
                   <CardTitle>Thermal Image Comparison</CardTitle>
@@ -196,6 +351,16 @@ export default function InspectionDetail() {
                           <h3 className="font-medium">Current</h3>
                           {thermalImage && <Badge variant="destructive">Anomaly Detected</Badge>}
                         </div>
+                        {thermalImage && (
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="icon" onClick={() => openInNewTab(thermalImage)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="icon" onClick={() => handleDeleteImage('thermal')}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                       <div className="aspect-video bg-primary/5 rounded-lg border-2 border-dashed border-primary/20 flex items-center justify-center">
                         {thermalImage ? (
@@ -218,10 +383,10 @@ export default function InspectionDetail() {
                         <h3 className="font-medium">Baseline</h3>
                         {baselineImage && (
                           <div className="flex gap-2">
-                            <Button variant="outline" size="icon">
+                            <Button variant="outline" size="icon" onClick={() => openInNewTab(baselineImage)}>
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="icon">
+                            <Button variant="outline" size="icon" onClick={() => handleDeleteImage('baseline')}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -253,9 +418,9 @@ export default function InspectionDetail() {
                 <CardContent>
                   {isUploading ? (
                     <div className="text-center py-12">
-                      <h3 className="text-lg font-medium mb-2">Thermal image uploading.</h3>
+                      <h3 className="text-lg font-medium mb-2">{uploadLabel || 'Uploading image…'}</h3>
                       <p className="text-muted-foreground mb-4">
-                        Thermal image is being uploaded and Reviewed.
+                        Sending file to server with status "In-progress".
                       </p>
                       <Progress value={uploadProgress} className="w-full max-w-md mx-auto mb-4" />
                       <p className="text-sm text-muted-foreground">{uploadProgress}%</p>
@@ -277,9 +442,9 @@ export default function InspectionDetail() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="sunny">Sunny</SelectItem>
-                                <SelectItem value="cloudy">Cloudy</SelectItem>
-                                <SelectItem value="rainy">Rainy</SelectItem>
+                                <SelectItem value="Sunny">Sunny</SelectItem>
+                                <SelectItem value="Cloudy">Cloudy</SelectItem>
+                                <SelectItem value="Rainy">Rainy</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -342,10 +507,31 @@ export default function InspectionDetail() {
                       </div>
                     )}
                   </div>
-                  <Button onClick={() => handleUpload('baseline')} className="w-full">
-                    <Upload className="h-4 w-4 mr-2" />
-                    {baselineImage ? 'Replace Baseline' : 'Upload Baseline'}
-                  </Button>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Weather Condition</label>
+                      <Select value={weatherCondition} onValueChange={setWeatherCondition}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select weather" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Sunny">Sunny</SelectItem>
+                          <SelectItem value="Cloudy">Cloudy</SelectItem>
+                          <SelectItem value="Rainy">Rainy</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button onClick={() => handleUpload('baseline')} className="w-full">
+                      <Upload className="h-4 w-4 mr-2" />
+                      {baselineImage ? 'Replace Baseline' : 'Upload Baseline'}
+                    </Button>
+                    {baselineImage && (
+                      <Button variant="destructive" onClick={() => handleDeleteImage('baseline')} className="w-full">
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Baseline
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
