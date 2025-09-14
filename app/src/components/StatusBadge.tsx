@@ -2,13 +2,17 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface StatusBadgeProps {
-  status: "Not started" | "in-progress" | "pending" | "completed" | "Completed";
+  status: "Not started" | "Not Started" | "in-progress" | "pending" | "completed" | "Completed";
   className?: string;
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
   const statusConfig = {
     "Not started": {
+      label: "Not Started",
+      className: "bg-muted text-muted-foreground",
+    },
+    "Not Started": {
       label: "Not Started",
       className: "bg-muted text-muted-foreground",
     },

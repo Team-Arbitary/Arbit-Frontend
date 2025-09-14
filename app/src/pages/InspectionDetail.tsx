@@ -28,7 +28,7 @@ type InspectionView = {
   transformerNo?: string;
   branch?: string;
   lastUpdated?: string;
-  status: "in-progress" | "pending" | "completed" | "Not started" | "Completed" | string;
+  status: "in-progress" | "pending" | "completed" | "Not started" | "Not Started" | "Completed" | string;
 };
 
 export default function InspectionDetail() {
@@ -152,6 +152,14 @@ export default function InspectionDetail() {
               try { finalUrl = new URL(possible, window.location.origin).toString(); } catch {}
             }
             setThermalImage(finalUrl);
+          }
+
+          // Update inspection status from thermal image API response
+          if (data?.status) {
+            setInspection(prev => ({
+              ...prev,
+              status: data.status as any, // Use any to handle dynamic API response statuses
+            }));
           }
         } catch (_) {
           // Non-JSON response that isn't an image — leave thermal image unset
@@ -298,7 +306,7 @@ export default function InspectionDetail() {
             </div>
           </div>
           <div className="ml-auto flex items-center gap-4">
-            <StatusBadge status={inspection.status} />
+            <StatusBadge status={inspection.status as any} />
             <Button onClick={() => handleUpload('baseline')}>
               <Upload className="h-4 w-4 mr-2" />
               Baseline Image
