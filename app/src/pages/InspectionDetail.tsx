@@ -40,7 +40,8 @@ export default function InspectionDetail() {
   const [uploadLabel, setUploadLabel] = useState<string>("");
   const [baselineImage, setBaselineImage] = useState<string | null>(null);
   const [thermalImage, setThermalImage] = useState<string | null>(null);
-  const [weatherCondition, setWeatherCondition] = useState("Sunny");
+  const [thermalWeatherCondition, setThermalWeatherCondition] = useState("Sunny");
+  const [baselineWeatherCondition, setBaselineWeatherCondition] = useState("Sunny");
 
   const [inspection, setInspection] = useState<InspectionView>({
     id: id ?? "-",
@@ -178,7 +179,7 @@ export default function InspectionDetail() {
       const form = new FormData();
       // API expects these exact keys based on Postman screenshot
       form.append('imageType', type === 'baseline' ? 'Baseline' : 'Thermal');
-      form.append('weatherCondition', weatherCondition || 'Sunny');
+      form.append('weatherCondition', type === 'baseline' ? (baselineWeatherCondition || 'Sunny') : (thermalWeatherCondition || 'Sunny'));
       form.append('status', 'In-progress');
       form.append('transformerNo', inspection.transformerNo ?? "-");
       form.append('inspectionNo', inspection.id ?? "-");
@@ -437,7 +438,7 @@ export default function InspectionDetail() {
                         <div className="space-y-4">
                           <div>
                             <label className="block text-sm font-medium mb-2">Weather Condition</label>
-                            <Select value={weatherCondition} onValueChange={setWeatherCondition}>
+                            <Select value={thermalWeatherCondition} onValueChange={setThermalWeatherCondition}>
                               <SelectTrigger className="w-full max-w-xs mx-auto">
                                 <SelectValue />
                               </SelectTrigger>
@@ -510,7 +511,7 @@ export default function InspectionDetail() {
                   <div className="space-y-2">
                     <div>
                       <label className="block text-sm font-medium mb-1">Weather Condition</label>
-                      <Select value={weatherCondition} onValueChange={setWeatherCondition}>
+                      <Select value={baselineWeatherCondition} onValueChange={setBaselineWeatherCondition}>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select weather" />
                         </SelectTrigger>
