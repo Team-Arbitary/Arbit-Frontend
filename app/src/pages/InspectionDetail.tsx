@@ -28,7 +28,7 @@ type InspectionView = {
   transformerNo?: string;
   branch?: string;
   lastUpdated?: string;
-  status: "in-progress" | "pending" | "completed" | string;
+  status: "in-progress" | "pending" | "completed" | "Not started" | "Completed" | string;
 };
 
 export default function InspectionDetail() {
@@ -68,7 +68,7 @@ export default function InspectionDetail() {
           transformerNo: data?.transformerNo ?? "-",
           branch: data?.branch ?? "-",
           lastUpdated,
-          status: data?.progress ?? "in-progress",
+          status: (data?.status ?? "in-progress") as InspectionView["status"],
         };
         if (!cancelled) setInspection(mapped);
       } catch (e) {
