@@ -7,14 +7,19 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
-import { ArrowLeft, Upload, Eye, Trash2 } from "lucide-react";
+import { ArrowLeft, Upload, Eye, Trash2, Search, ZoomIn, MoreHorizontal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Slider } from "@/components/ui/slider";
 
 const INSPECTION_DETAIL_URL = (id: string) => `http://localhost:5509/transformer-thermal-inspection/inspection-management/view/${id}`;
 const IMAGE_UPLOAD_URL = `http://localhost:5509/transformer-thermal-inspection/image-inspection-management/upload`;
 const BASELINE_FETCH_URL = (transformerNo: string) => `http://localhost:5509/transformer-thermal-inspection/image-inspection-management/baseline/${transformerNo}`;
 
 const THERMAL_FETCH_URL = (inspectionNo: string) => `http://localhost:5509/transformer-thermal-inspection/image-inspection-management/thermal/${inspectionNo}`;
+
+// Analysis API endpoints
+const ANALYSIS_RESULT_URL = (inspectionNo: string) => `http://localhost:5509/transformer-thermal-inspection/image-analysis/result/${inspectionNo}`;
 
 const openInNewTab = (url?: string | null) => {
   if (!url) return;
@@ -31,6 +36,384 @@ type InspectionView = {
   status: "in-progress" | "pending" | "completed" | "Not started" | "Not Started" | "Completed" | string;
 };
 
+interface AnalysisModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  thermalImage: string | null;
+  analysisResult: string | null;
+  inspection: InspectionView;
+  analysisData: any;
+}
+
+function AnalysisModal({ 
+  isOpen, 
+  onClose, 
+  thermalImage, 
+  analysisResult, 
+  inspection,
+  analysisData
+}: AnalysisModalProps) {
+  const [comparisonPosition, setComparisonPosition] = useState(50);
+  const [hoveredImage, setHoveredImage] = useState<'thermal' | 'result' | null>(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
+  const [viewMode, setViewMode] = useState<'side-by-side' | 'slider'>('side-by-side');
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const img = e.currentTarget.querySelector('img');
+    if (img) {
+      const imgRect = img.getBoundingClientRect();
+      setMousePosition({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
+      setImagePosition({
+        x: e.clientX - imgRect.left,
+        y: e.clientY - imgRect.top,
+      });
+    }
+  };
+
+  const handleSliderClick = (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const newPosition = ((e.clientX - rect.left) / rect.width) * 100;
+    setComparisonPosition(Math.max(0, Math.min(100, newPosition)));
+  };
+
+  const handleSliderDrag = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const newPosition = ((e.clientX - rect.left) / rect.width) * 100;
+    setComparisonPosition(Math.max(0, Math.min(100, newPosition)));
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-6xl w-full max-h-[90vh] overflow-hidden">
+        <DialogHeader>
+          <DialogTitle className="flex items-center justify-between">
+            <div>
+              <span>Image Analysis Comparison - Inspection #{inspection.id}</span>
+              {analysisData && (
+                <div className="text-sm font-normal text-gray-600 mt-1">
+                  Analysis completed on {new Date(analysisData.analysisDate).toLocaleString()}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setViewMode(viewMode === 'side-by-side' ? 'slider' : 'side-by-side')}
+              >
+                {viewMode === 'side-by-side' ? 'Slider Compare' : 'Side by Side'}
+              </Button>
+            </div>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 overflow-y-auto max-h-[calc(90vh-120px)]">
+          {(!thermalImage || !analysisResult) && (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-4">
+                {!thermalImage ? 'No thermal image available for comparison.' : 
+                 !analysisResult ? 'No analysis result image found for this inspection.' : 
+                 'Loading images...'}
+              </p>
+            </div>
+          )}
+
+          {analysisResult && thermalImage && (
+            <>
+              {/* Analysis Summary */}
+              {analysisData && (
+                <div className="bg-gray-50 p-4 rounded-lg border">
+                  <h3 className="font-medium mb-3">Analysis Summary</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Status:</span>
+                      <div className="font-medium text-green-600">{analysisData.analysisStatus}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Date:</span>
+                      <div className="font-medium">{new Date(analysisData.analysisDate).toLocaleDateString()}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Processing Time:</span>
+                      <div className="font-medium">{analysisData.processingTimeMs}ms</div>
+                    </div>
+                    {analysisData.analysisResultJson && (() => {
+                      try {
+                        const resultJson = JSON.parse(analysisData.analysisResultJson);
+                        return (
+                          <div>
+                            <span className="text-gray-600">Anomalies:</span>
+                            <div className="font-medium text-red-600">
+                              {resultJson.summary?.total_anomalies || 0} found
+                            </div>
+                          </div>
+                        );
+                      } catch {
+                        return null;
+                      }
+                    })()}
+                  </div>
+                  
+                  {/* Anomaly Details */}
+                  {analysisData.analysisResultJson && (() => {
+                    try {
+                      const resultJson = JSON.parse(analysisData.analysisResultJson);
+                      if (resultJson.anomalies && resultJson.anomalies.length > 0) {
+                        return (
+                          <div className="mt-4">
+                            <h4 className="font-medium mb-2">Detected Anomalies:</h4>
+                            <div className="space-y-2">
+                              {resultJson.anomalies.map((anomaly: any, index: number) => (
+                                <div key={index} className="bg-white p-3 rounded border-l-4 border-red-500">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <span className="font-medium text-red-600">
+                                        {anomaly.severity_level} Severity
+                                      </span>
+                                      <p className="text-sm text-gray-600 mt-1">{anomaly.reasoning}</p>
+                                    </div>
+                                    <div className="text-right text-sm">
+                                      <div>Confidence: {(anomaly.confidence * 100).toFixed(1)}%</div>
+                                      <div>Area: {anomaly.area?.toLocaleString()}</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+                    } catch {
+                      return null;
+                    }
+                    return null;
+                  })()}
+                </div>
+              )}
+
+              {/* Usage Instructions */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs">i</span>
+                  </div>
+                  <span className="font-medium">How to use image comparison:</span>
+                </div>
+                <ul className="list-disc list-inside space-y-1 ml-6">
+                  <li>Hover over images to activate 2x magnification zoom</li>
+                  <li>Use "Side by Side" view for detailed comparison</li>
+                  <li>Use "Slider Compare" view to overlay images with adjustable slider</li>
+                  <li>Click "View Full Size" buttons to open images in new tabs</li>
+                </ul>
+              </div>
+
+              {viewMode === 'side-by-side' ? (
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Thermal Image */}
+                  <div className="space-y-2">
+                    <h3 className="font-medium text-center">Thermal Image (Original)</h3>
+                    <div 
+                      className="relative bg-gray-100 rounded-lg overflow-hidden group cursor-crosshair border-2 border-gray-200 hover:border-blue-400 transition-colors flex items-center justify-center min-h-[300px]"
+                      onMouseMove={handleMouseMove}
+                      onMouseEnter={() => setHoveredImage('thermal')}
+                      onMouseLeave={() => setHoveredImage(null)}
+                    >
+                      <img 
+                        src={thermalImage} 
+                        alt="Thermal image" 
+                        className="max-w-full max-h-[500px] object-contain rounded"
+                      />
+                      {hoveredImage === 'thermal' && (
+                        <>
+                          <div 
+                            className="absolute pointer-events-none border-2 border-blue-500 shadow-lg z-10 rounded-lg"
+                            style={{
+                              left: Math.max(5, Math.min(mousePosition.x - 75, 400)),
+                              top: Math.max(5, Math.min(mousePosition.y - 75, 300)),
+                              width: 150,
+                              height: 150,
+                              backgroundImage: `url(${thermalImage})`,
+                              backgroundPosition: `-${imagePosition.x * 2 - 75}px -${imagePosition.y * 2 - 75}px`,
+                              backgroundSize: '200% 200%',
+                              backgroundRepeat: 'no-repeat',
+                              backgroundColor: 'white',
+                              border: '3px solid #3b82f6',
+                              boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+                            }}
+                          />
+                          <div 
+                            className="absolute pointer-events-none bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium z-20"
+                            style={{
+                              left: Math.max(5, Math.min(mousePosition.x - 25, 400)),
+                              top: Math.max(160, Math.min(mousePosition.y + 85, 400)),
+                            }}
+                          >
+                            2x Zoom
+                          </div>
+                        </>
+                      )}
+                      <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium">
+                        Original
+                      </div>
+                      {/* Magnification hint */}
+                      <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                        🔍 Hover to zoom
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Analysis Result */}
+                  <div className="space-y-2">
+                    <h3 className="font-medium text-center">Analysis Result</h3>
+                    <div 
+                      className="relative bg-gray-100 rounded-lg overflow-hidden group cursor-crosshair border-2 border-gray-200 hover:border-green-400 transition-colors flex items-center justify-center min-h-[300px]"
+                      onMouseMove={handleMouseMove}
+                      onMouseEnter={() => setHoveredImage('result')}
+                      onMouseLeave={() => setHoveredImage(null)}
+                    >
+                      <img 
+                        src={analysisResult} 
+                        alt="Analysis result" 
+                        className="max-w-full max-h-[500px] object-contain rounded"
+                      />
+                      {hoveredImage === 'result' && (
+                        <>
+                          <div 
+                            className="absolute pointer-events-none border-2 border-green-500 shadow-lg z-10 rounded-lg"
+                            style={{
+                              left: Math.max(5, Math.min(mousePosition.x - 75, 400)),
+                              top: Math.max(5, Math.min(mousePosition.y - 75, 300)),
+                              width: 150,
+                              height: 150,
+                              backgroundImage: `url(${analysisResult})`,
+                              backgroundPosition: `-${imagePosition.x * 2 - 75}px -${imagePosition.y * 2 - 75}px`,
+                              backgroundSize: '200% 200%',
+                              backgroundRepeat: 'no-repeat',
+                              backgroundColor: 'white',
+                              border: '3px solid #10b981',
+                              boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+                            }}
+                          />
+                          <div 
+                            className="absolute pointer-events-none bg-green-600 text-white px-2 py-1 rounded text-xs font-medium z-20"
+                            style={{
+                              left: Math.max(5, Math.min(mousePosition.x - 25, 400)),
+                              top: Math.max(160, Math.min(mousePosition.y + 85, 400)),
+                            }}
+                          >
+                            2x Zoom
+                          </div>
+                        </>
+                      )}
+                      <div className="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-xs font-medium">
+                        Result
+                      </div>
+                      {/* Magnification hint */}
+                      <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                        🔍 Hover to zoom
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Slider Comparison View */
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-lg">
+                    <label className="text-sm font-medium whitespace-nowrap">Comparison Slider:</label>
+                    <Slider
+                      value={[comparisonPosition]}
+                      onValueChange={(value) => setComparisonPosition(value[0])}
+                      max={100}
+                      step={1}
+                      className="flex-1"
+                    />
+                    <span className="text-sm text-muted-foreground font-mono">{comparisonPosition}%</span>
+                  </div>
+                  
+                  <div 
+                    className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 cursor-col-resize flex items-center justify-center min-h-[400px]"
+                    onClick={handleSliderClick}
+                    onMouseDown={() => setIsDragging(true)}
+                    onMouseUp={() => setIsDragging(false)}
+                    onMouseLeave={() => setIsDragging(false)}
+                    onMouseMove={handleSliderDrag}
+                  >
+                    {/* Base image (analysis result) */}
+                    <img 
+                      src={analysisResult} 
+                      alt="Analysis result" 
+                      className="max-w-full max-h-[600px] object-contain"
+                    />
+                    
+                    {/* Overlay image (thermal) with clip */}
+                    <div 
+                      className="absolute inset-0 overflow-hidden flex items-center justify-center"
+                      style={{ clipPath: `inset(0 ${100 - comparisonPosition}% 0 0)` }}
+                    >
+                      <img 
+                        src={thermalImage} 
+                        alt="Thermal image" 
+                        className="max-w-full max-h-[600px] object-contain"
+                      />
+                    </div>
+                    
+                    {/* Divider line with handle */}
+                    <div 
+                      className="absolute top-0 bottom-0 w-1 bg-white shadow-lg cursor-col-resize"
+                      style={{ left: `${comparisonPosition}%` }}
+                    >
+                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white border-2 border-gray-300 rounded-full shadow-lg flex items-center justify-center">
+                        <div className="w-1 h-4 bg-gray-400 rounded"></div>
+                      </div>
+                    </div>
+                    
+                    {/* Labels */}
+                    <div className="absolute top-3 left-3 bg-blue-600/90 text-white px-3 py-1 rounded-full text-sm font-medium">
+                      Thermal Original
+                    </div>
+                    <div className="absolute top-3 right-3 bg-green-600/90 text-white px-3 py-1 rounded-full text-sm font-medium">
+                      Analysis Result
+                    </div>
+                    
+                    {/* Instructions */}
+                    <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded text-xs">
+                      Drag slider or click to compare
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Enhanced Action buttons */}
+              <div className="flex justify-between items-center pt-4 border-t bg-gray-50 p-4 rounded-lg">
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => openInNewTab(thermalImage)}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Thermal Full Size
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => openInNewTab(analysisResult)}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Result Full Size
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={onClose}>Close</Button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function InspectionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -42,6 +425,12 @@ export default function InspectionDetail() {
   const [thermalImage, setThermalImage] = useState<string | null>(null);
   const [thermalWeatherCondition, setThermalWeatherCondition] = useState("Sunny");
   const [baselineWeatherCondition, setBaselineWeatherCondition] = useState("Sunny");
+  
+  // Analysis state
+  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const [analysisData, setAnalysisData] = useState<any>(null);
+  const [statusPolling, setStatusPolling] = useState<boolean>(false);
 
   const [inspection, setInspection] = useState<InspectionView>({
     id: id ?? "-",
@@ -68,9 +457,21 @@ export default function InspectionDetail() {
           transformerNo: data?.transformerNo ?? "-",
           branch: data?.branch ?? "-",
           lastUpdated,
-          status: (data?.status ?? "in-progress") as InspectionView["status"],
+          status: "in-progress", // Set a default status, will be updated by thermal API
         };
-        if (!cancelled) setInspection(mapped);
+        console.log('Initial inspection data loaded:', mapped); // Debug log
+        if (!cancelled) {
+          setInspection(mapped);
+          
+          // Auto-start polling if inspection is in progress
+          if (mapped.status === 'in-progress' || mapped.status === 'In progress' || mapped.status === 'In Progress') {
+            console.log('Auto-starting status polling for in-progress inspection');
+            setStatusPolling(true);
+          }
+          
+          // Check thermal status immediately to get real status
+          checkThermalStatus();
+        }
       } catch (e) {
         console.error(e);
       }
@@ -78,6 +479,31 @@ export default function InspectionDetail() {
     run();
     return () => { cancelled = true; };
   }, [id]);
+
+  // Status polling effect
+  useEffect(() => {
+    if (!statusPolling || !inspection || inspection.status === 'Completed' || inspection.status === 'completed') {
+      return;
+    }
+
+    console.log('Starting status polling for inspection:', id);
+    
+    const pollInterval = setInterval(async () => {
+      const status = await checkThermalStatus();
+      console.log('Poll result - status:', status);
+      
+      // Stop polling if completed
+      if (status === 'Completed' || status === 'completed') {
+        setStatusPolling(false);
+        console.log('Status polling stopped - inspection completed');
+      }
+    }, 5000); // Check every 5 seconds
+
+    return () => {
+      clearInterval(pollInterval);
+      console.log('Status polling cleanup');
+    };
+  }, [statusPolling, inspection?.status, id]);
 
   useEffect(() => {
     const tfNo = inspection.transformerNo;
@@ -122,8 +548,8 @@ export default function InspectionDetail() {
   }, [inspection.transformerNo]);
 
   useEffect(() => {
-    const inspNo = inspection.id;
-    if (!inspNo || inspNo === "-") return;
+    const inspNo = id; // Use ID from URL params directly
+    if (!inspNo) return;
 
     const url = THERMAL_FETCH_URL(encodeURIComponent(inspNo));
 
@@ -154,12 +580,18 @@ export default function InspectionDetail() {
             setThermalImage(finalUrl);
           }
 
-          // Update inspection status from thermal image API response
+          // Update inspection status from thermal image API response - this is the primary status source
           if (data?.status) {
+            console.log('Updating status from thermal API:', data.status); // Debug log
             setInspection(prev => ({
               ...prev,
-              status: data.status as any, // Use any to handle dynamic API response statuses
+              status: data.status as any,
             }));
+            
+            // If status is completed, automatically fetch analysis result
+            if (data.status === 'Completed' || data.status === 'completed') {
+              fetchAnalysisResult();
+            }
           }
         } catch (_) {
           // Non-JSON response that isn't an image — leave thermal image unset
@@ -169,7 +601,7 @@ export default function InspectionDetail() {
         // Keep upload buttons visible by leaving thermalImage as null
       }
     })();
-  }, [inspection.id]);
+  }, [id]); // Use id from URL params directly
 
   const progressSteps = [
     { title: "Thermal Image Upload", status: "pending" },
@@ -282,6 +714,101 @@ export default function InspectionDetail() {
     }
   };
 
+  // Function to check thermal status and update inspection
+  const checkThermalStatus = async () => {
+    const inspNo = id;
+    if (!inspNo) return null;
+
+    try {
+      const res = await fetch(THERMAL_FETCH_URL(encodeURIComponent(inspNo)));
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      
+      const raw: ApiEnvelope<any> = await res.json();
+      const data: any = (raw as any)?.responseData ?? raw;
+      
+      if (data?.status) {
+        console.log('Status check - thermal API status:', data.status);
+        setInspection(prev => ({
+          ...prev,
+          status: data.status as any,
+        }));
+        
+        // If status is completed, fetch analysis result
+        if (data.status === 'Completed' || data.status === 'completed') {
+          fetchAnalysisResult();
+          return 'completed';
+        }
+        
+        return data.status;
+      }
+    } catch (err: any) {
+      console.error('Failed to check thermal status:', err);
+    }
+    
+    return null;
+  };
+
+  const fetchAnalysisResult = async () => {
+    if (!inspection.id) return;
+    
+    try {
+      const res = await fetch(ANALYSIS_RESULT_URL(inspection.id));
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      
+      const ct = res.headers.get('content-type') || '';
+      
+      if (ct.startsWith('image/')) {
+        const blob = await res.blob();
+        const objUrl = URL.createObjectURL(blob);
+        setAnalysisResult(objUrl);
+        return;
+      }
+      
+      // Try JSON response
+      try {
+        const raw: ApiEnvelope<any> = await res.json();
+        const data: any = (raw as any)?.responseData ?? raw;
+        
+        // Handle the new API response format with annotatedImageData
+        const annotatedImageData = data?.annotatedImageData;
+        if (annotatedImageData) {
+          // If it's base64 data without data URL prefix, add it
+          let imageUrl = annotatedImageData;
+          if (!imageUrl.startsWith('data:')) {
+            imageUrl = `data:image/png;base64,${annotatedImageData}`;
+          }
+          setAnalysisResult(imageUrl);
+          
+          // Store the analysis data for display
+          setAnalysisData(data);
+          console.log('Analysis data loaded:', data); // Debug log
+          return;
+        }
+        
+        // Fallback to other possible fields
+        const possible = data?.imageBase64 || data?.url || data?.imageUrl || data?.resultImage;
+        if (typeof possible === 'string') {
+          let finalUrl = possible;
+          if (!/^https?:\/\//i.test(possible) && !possible.startsWith('data:')) {
+            try { finalUrl = new URL(possible, window.location.origin).toString(); } catch {}
+          }
+          setAnalysisResult(finalUrl);
+        }
+      } catch (_) {
+        // Non-JSON response that isn't an image
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch analysis result:', err);
+      setAnalysisResult(null);
+    }
+  };
+
+  const openAnalysisModal = () => {
+    // Always try to fetch analysis result when opening modal
+    fetchAnalysisResult();
+    setShowAnalysisModal(true);
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -307,6 +834,27 @@ export default function InspectionDetail() {
           </div>
           <div className="ml-auto flex items-center gap-4">
             <StatusBadge status={inspection.status as any} />
+            {(inspection.status === 'in-progress' || inspection.status === 'In progress' || inspection.status === 'In Progress') && (
+              <Button 
+                onClick={() => {
+                  console.log('Manual status sync started');
+                  setStatusPolling(true);
+                }}
+                disabled={statusPolling}
+                variant="outline"
+                size="sm"
+              >
+                {statusPolling ? 'Syncing...' : 'Sync Status'}
+              </Button>
+            )}
+            <Button 
+              onClick={openAnalysisModal}
+              disabled={inspection.status !== 'Completed' && inspection.status !== 'completed'}
+              variant={inspection.status === 'Completed' || inspection.status === 'completed' ? 'default' : 'secondary'}
+            >
+              <Search className="h-4 w-4 mr-2" />
+              View Analysis
+            </Button>
             <Button onClick={() => handleUpload('baseline')}>
               <Upload className="h-4 w-4 mr-2" />
               Baseline Image
@@ -371,12 +919,12 @@ export default function InspectionDetail() {
                           </div>
                         )}
                       </div>
-                      <div className="aspect-video bg-primary/5 rounded-lg border-2 border-dashed border-primary/20 flex items-center justify-center">
+                      <div className="bg-primary/5 rounded-lg border-2 border-dashed border-primary/20 flex items-center justify-center min-h-[300px] p-4">
                         {thermalImage ? (
                           <img 
                             src={thermalImage} 
                             alt="Current thermal image" 
-                            className="w-full h-full object-cover rounded-lg"
+                            className="max-w-full max-h-[500px] object-contain rounded-lg"
                           />
                         ) : (
                           <div className="text-center text-muted-foreground">
@@ -401,12 +949,12 @@ export default function InspectionDetail() {
                           </div>
                         )}
                       </div>
-                      <div className="aspect-video bg-primary/5 rounded-lg border-2 border-dashed border-primary/20 flex items-center justify-center">
+                      <div className="bg-primary/5 rounded-lg border-2 border-dashed border-primary/20 flex items-center justify-center min-h-[300px] p-4">
                         {baselineImage ? (
                           <img 
                             src={baselineImage} 
                             alt="Baseline thermal image" 
-                            className="w-full h-full object-cover rounded-lg"
+                            className="max-w-full max-h-[500px] object-contain rounded-lg"
                           />
                         ) : (
                           <div className="text-center text-muted-foreground">
@@ -490,6 +1038,68 @@ export default function InspectionDetail() {
                   </div>
                 </CardTitle>
               </CardHeader>
+              <CardContent>
+                {(inspection.status === 'Completed' || inspection.status === 'completed') && analysisResult ? (
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium mb-2 flex items-center gap-2">
+                        <svg className="h-4 w-4 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path d="M9 12l2 2 4-4"/>
+                          <circle cx="12" cy="12" r="10"/>
+                        </svg>
+                        Analysis Result Image
+                      </h4>
+                      <div className="bg-green-50 rounded-lg border-2 border-green-200 flex items-center justify-center min-h-[300px] p-4">
+                        <img 
+                          src={analysisResult} 
+                          alt="Analysis result with annotations" 
+                          className="max-w-full max-h-[400px] object-contain rounded-lg"
+                        />
+                      </div>
+                      <div className="flex gap-2 mt-2">
+                        <Button variant="outline" size="sm" onClick={() => openInNewTab(analysisResult)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Full Size
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={openAnalysisModal}
+                        >
+                          <Search className="h-4 w-4 mr-2" />
+                          Compare Images
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="border-t pt-4">
+                      <p className="text-sm text-muted-foreground">
+                        The analysis result image shows detected anomalies and annotations. 
+                        Use the annotation tools above to add your own notes and markings.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center text-muted-foreground py-8">
+                    <svg className="h-12 w-12 mx-auto mb-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path d="M14.828 14.828a4 4 0 0 1-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
+                    </svg>
+                    <div className="text-sm">
+                      {inspection.status === 'Completed' || inspection.status === 'completed' 
+                        ? (!analysisResult 
+                            ? 'Loading analysis result image...' 
+                            : 'Analysis result image will appear here'
+                          )
+                        : 'Annotation tools will be available when analysis is completed'
+                      }
+                    </div>
+                    {(inspection.status === 'Completed' || inspection.status === 'completed') && !analysisResult && (
+                      <div className="mt-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mx-auto"></div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
             </Card>
           </div>
 
@@ -502,12 +1112,12 @@ export default function InspectionDetail() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="aspect-video bg-primary/5 rounded-lg border-2 border-dashed border-primary/20 flex items-center justify-center">
+                  <div className="bg-primary/5 rounded-lg border-2 border-dashed border-primary/20 flex items-center justify-center min-h-[300px] p-4">
                     {baselineImage ? (
                       <img 
                         src={baselineImage} 
                         alt="Baseline thermal image" 
-                        className="w-full h-full object-cover rounded-lg"
+                        className="max-w-full max-h-[500px] object-contain rounded-lg"
                       />
                     ) : (
                       <div className="text-center text-muted-foreground">
@@ -569,6 +1179,16 @@ export default function InspectionDetail() {
           </div>
         </div>
       </div>
+
+      {/* Analysis Results Modal */}
+      <AnalysisModal 
+        isOpen={showAnalysisModal}
+        onClose={() => setShowAnalysisModal(false)}
+        thermalImage={thermalImage}
+        analysisResult={analysisResult}
+        inspection={inspection}
+        analysisData={analysisData}
+      />
     </Layout>
   );
 }
