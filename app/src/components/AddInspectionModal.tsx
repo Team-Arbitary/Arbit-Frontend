@@ -15,13 +15,14 @@ type ApiEnvelope<T> = { responseCode?: string; responseDescription?: string; res
 interface AddInspectionModalProps {
   trigger?: React.ReactNode;
   onAdd?: (inspection: any) => void;
+  defaultTransformerNo?: string; // Pre-fill transformer number
 }
 
-export function AddInspectionModal({ trigger, onAdd }: AddInspectionModalProps) {
+export function AddInspectionModal({ trigger, onAdd, defaultTransformerNo }: AddInspectionModalProps) {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     batch: "",
-    transformerNo: "",
+    transformerNo: defaultTransformerNo || "",
     date: undefined as Date | undefined,
     time: "",
   });
@@ -69,7 +70,7 @@ export function AddInspectionModal({ trigger, onAdd }: AddInspectionModalProps) 
       onAdd?.(uiItem);
 
       setOpen(false);
-      setFormData({ batch: "", transformerNo: "", date: undefined, time: "" });
+      setFormData({ batch: "", transformerNo: defaultTransformerNo || "", date: undefined, time: "" });
     } catch (err: any) {
       setError(err?.message || "Failed to save inspection");
     } finally {
@@ -77,8 +78,23 @@ export function AddInspectionModal({ trigger, onAdd }: AddInspectionModalProps) 
     }
   };
 
+  // Reset form when modal opens with default transformer number
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (newOpen) {
+      // Reset form with default transformer number when opening
+      setFormData({ 
+        batch: "", 
+        transformerNo: defaultTransformerNo || "", 
+        date: undefined, 
+        time: "" 
+      });
+      setError(null);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger || <Button>New Inspection</Button>}
       </DialogTrigger>
@@ -136,13 +152,53 @@ export function AddInspectionModal({ trigger, onAdd }: AddInspectionModalProps) 
 
             <div className="space-y-2">
               <Label htmlFor="time">Time</Label>
-              <Input
-                id="time"
-                type="time"
-                value={formData.time}
-                onChange={(e) => setFormData(prev => ({ ...prev, time: e.target.value }))}
-                disabled={submitting}
-              />
+              <div className="flex gap-2">
+                <Select
+                  value={formData.time.split(':')[0] || ''}
+                  onValueChange={(hour) => {
+                    const minute = formData.time.split(':')[1] || '00';
+                    setFormData(prev => ({ ...prev, time: `${hour}:${minute}` }));
+                  }}
+                  disabled={submitting}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Hour" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 24 }, (_, i) => {
+                      const hour = i.toString().padStart(2, '0');
+                      return (
+                        <SelectItem key={hour} value={hour}>
+                          {hour}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <span className="flex items-center">:</span>
+                <Select
+                  value={formData.time.split(':')[1] || ''}
+                  onValueChange={(minute) => {
+                    const hour = formData.time.split(':')[0] || '00';
+                    setFormData(prev => ({ ...prev, time: `${hour}:${minute}` }));
+                  }}
+                  disabled={submitting}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Min" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 60 }, (_, i) => {
+                      const minute = i.toString().padStart(2, '0');
+                      return (
+                        <SelectItem key={minute} value={minute}>
+                          {minute}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 

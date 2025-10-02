@@ -11,6 +11,7 @@ import { ArrowLeft, Upload, Eye, Trash2, Search, ZoomIn, MoreHorizontal } from "
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const INSPECTION_DETAIL_URL = (id: string) => `http://localhost:5509/transformer-thermal-inspection/inspection-management/view/${id}`;
 const IMAGE_UPLOAD_URL = `http://localhost:5509/transformer-thermal-inspection/image-inspection-management/upload`;
@@ -489,9 +490,15 @@ export default function InspectionDetail() {
     return () => { cancelled = true; };
   }, [id]);
 
-  // Status polling effect
+  // Status polling effect - check both thermal status AND analysis result
   useEffect(() => {
-    if (!statusPolling || !inspection || inspection.status === 'Completed' || inspection.status === 'completed') {
+    if (!statusPolling || !inspection) {
+      return;
+    }
+
+    // Stop polling if we have analysis result
+    if (analysisResult) {
+      setStatusPolling(false);
       return;
     }
 
@@ -501,10 +508,20 @@ export default function InspectionDetail() {
       const status = await checkThermalStatus();
       console.log('Poll result - status:', status);
       
-      // Stop polling if completed
-      if (status === 'Completed' || status === 'completed') {
+      // Always try to fetch analysis result during polling
+      const hasResult = await fetchAnalysisResult();
+      
+      // Stop polling if we got the analysis result
+      if (hasResult) {
         setStatusPolling(false);
-        console.log('Status polling stopped - inspection completed');
+        console.log('Status polling stopped - analysis result available');
+        return;
+      }
+      
+      // Also stop polling if status shows completed
+      if (status === 'Completed' || status === 'completed') {
+        // But keep trying to get the result a few more times
+        console.log('Status shows completed, will check for result');
       }
     }, 5000); // Check every 5 seconds
 
@@ -512,7 +529,7 @@ export default function InspectionDetail() {
       clearInterval(pollInterval);
       console.log('Status polling cleanup');
     };
-  }, [statusPolling, inspection?.status, id]);
+  }, [statusPolling, inspection?.status, id, analysisResult]);
 
   useEffect(() => {
     const tfNo = inspection.transformerNo;
@@ -598,7 +615,7 @@ export default function InspectionDetail() {
             }));
             
             // If status is completed, automatically fetch analysis result
-            if (data.status === 'Completed' || data.status === 'completed') {
+            if (data.status === 'Completed' || data.status === 'completed' || data.status === 'Complete') {
               fetchAnalysisResult();
             }
           }
@@ -612,11 +629,32 @@ export default function InspectionDetail() {
     })();
   }, [id]); // Use id from URL params directly
 
-  const progressSteps = [
-    { title: "Thermal Image Upload", status: "pending" },
-    { title: "AI Analysis", status: "pending" },
-    { title: "Thermal Image Review", status: "pending" },
-  ];
+  // Dynamic progress steps based on current state
+  const getProgressSteps = () => {
+    // Step 1: Thermal Image Upload
+    const thermalUploadStatus = thermalImage ? "completed" : "waiting";
+    
+    // Step 2: AI Analysis
+    let aiAnalysisStatus = "not-ready";
+    if (baselineImage && thermalImage && (inspection.status === 'Completed' || inspection.status === 'completed')) {
+      aiAnalysisStatus = "completed";
+    } else if (baselineImage && thermalImage && (inspection.status === 'in-progress' || inspection.status === 'In progress' || inspection.status === 'In Progress')) {
+      aiAnalysisStatus = "in-progress";
+    } else if (baselineImage && thermalImage) {
+      aiAnalysisStatus = "ready";
+    }
+    
+    // Step 3: Thermal Image Review
+    const reviewStatus = analysisResult ? "completed" : "not-ready";
+    
+    return [
+      { title: "Thermal Image Upload", status: thermalUploadStatus },
+      { title: "AI Analysis", status: aiAnalysisStatus },
+      { title: "Thermal Image Review", status: reviewStatus },
+    ];
+  };
+
+  const progressSteps = getProgressSteps();
 
   const handleFileUpload = async (file: File, type: 'baseline' | 'thermal') => {
     setIsUploading(true);
@@ -757,12 +795,19 @@ export default function InspectionDetail() {
     return null;
   };
 
-  const fetchAnalysisResult = async () => {
-    if (!inspection.id) return;
+  const fetchAnalysisResult = async (): Promise<boolean> => {
+    if (!inspection.id) return false;
     
     try {
       const res = await fetch(ANALYSIS_RESULT_URL(inspection.id));
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      if (!res.ok) {
+        // If 404, analysis not ready yet
+        if (res.status === 404) {
+          console.log('Analysis result not yet available (404)');
+          return false;
+        }
+        throw new Error(`${res.status} ${res.statusText}`);
+      }
       
       const ct = res.headers.get('content-type') || '';
       
@@ -770,7 +815,15 @@ export default function InspectionDetail() {
         const blob = await res.blob();
         const objUrl = URL.createObjectURL(blob);
         setAnalysisResult(objUrl);
-        return;
+        console.log('Analysis result image loaded successfully');
+        
+        // Update inspection status to completed when we get the result
+        setInspection(prev => ({
+          ...prev,
+          status: 'completed'
+        }));
+        
+        return true;
       }
       
       // Try JSON response
@@ -791,7 +844,14 @@ export default function InspectionDetail() {
           // Store the analysis data for display
           setAnalysisData(data);
           console.log('Analysis data loaded:', data); // Debug log
-          return;
+          
+          // Update inspection status to completed when we get the result
+          setInspection(prev => ({
+            ...prev,
+            status: 'completed'
+          }));
+          
+          return true;
         }
         
         // Fallback to other possible fields
@@ -802,13 +862,25 @@ export default function InspectionDetail() {
             try { finalUrl = new URL(possible, window.location.origin).toString(); } catch {}
           }
           setAnalysisResult(finalUrl);
+          
+          // Update inspection status to completed when we get the result
+          setInspection(prev => ({
+            ...prev,
+            status: 'completed'
+          }));
+          
+          console.log('Analysis result loaded from JSON');
+          return true;
         }
       } catch (_) {
         // Non-JSON response that isn't an image
       }
+      
+      return false;
     } catch (err: any) {
       console.error('Failed to fetch analysis result:', err);
       setAnalysisResult(null);
+      return false;
     }
   };
 
@@ -889,15 +961,27 @@ export default function InspectionDetail() {
 
       toast({
         title: 'Analysis Started',
-        description: 'Image analysis has been initiated. The results will be available shortly.',
+        description: 'Image analysis has been initiated. Checking for results...',
       });
 
-      // Start polling for status updates
+      // Update status to in-progress
+      setInspection(prev => ({
+        ...prev,
+        status: 'in-progress'
+      }));
+
+      // Start polling for status updates and analysis results
       setStatusPolling(true);
 
-      // Optionally fetch analysis result after a delay
-      setTimeout(() => {
-        fetchAnalysisResult();
+      // Try to fetch analysis result after a short delay
+      setTimeout(async () => {
+        const hasResult = await fetchAnalysisResult();
+        if (hasResult) {
+          toast({
+            title: 'Analysis Complete',
+            description: 'Analysis results are now available.',
+          });
+        }
       }, 3000);
 
     } catch (err: any) {
@@ -935,10 +1019,10 @@ export default function InspectionDetail() {
           </Button>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold">T</span>
+              <span className="text-primary-foreground font-bold">I</span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold">{inspection.branch}</h1>
+              <h1 className="text-2xl font-bold">Inspection #{inspection.id}</h1>
               <p className="text-muted-foreground">
                 Last updated: {inspection.lastUpdated}
               </p>
@@ -1045,8 +1129,16 @@ export default function InspectionDetail() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Side - Details and Thermal Upload */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Thermal Image Upload/Comparison */}
-            {(baselineImage && thermalImage) ? (
+            {/* Tabs for Thermal Comparison and Annotation Tools */}
+            <Tabs defaultValue="comparison" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="comparison">Thermal Image Comparison</TabsTrigger>
+                <TabsTrigger value="annotation">Annotation Tools</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="comparison" className="mt-6">
+                {/* Thermal Image Upload/Comparison */}
+                {(baselineImage && thermalImage) ? (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
@@ -1191,9 +1283,11 @@ export default function InspectionDetail() {
                 </CardContent>
               </Card>
             )}
+              </TabsContent>
 
-            {/* Annotation Tools */}
-            <Card>
+              <TabsContent value="annotation" className="mt-6">
+                {/* Annotation Tools */}
+                <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   Annotation Tools
@@ -1316,6 +1410,8 @@ export default function InspectionDetail() {
                 )}
               </CardContent>
             </Card>
+              </TabsContent>
+            </Tabs>
           </div>
 
           {/* Right Side - Progress and Baseline Upload */}
@@ -1377,17 +1473,68 @@ export default function InspectionDetail() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {progressSteps.map((step, index) => (
-                    <div key={index} className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-warning rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-medium">!</span>
+                  {progressSteps.map((step, index) => {
+                    const getIconAndColor = (status: string) => {
+                      switch (status) {
+                        case "completed":
+                          return { 
+                            icon: "✓", 
+                            bgColor: "bg-green-500", 
+                            textColor: "text-white" 
+                          };
+                        case "in-progress":
+                          return { 
+                            icon: "↻", 
+                            bgColor: "bg-blue-500", 
+                            textColor: "text-white" 
+                          };
+                        case "ready":
+                          return { 
+                            icon: "✓", 
+                            bgColor: "bg-green-100", 
+                            textColor: "text-green-700" 
+                          };
+                        case "waiting":
+                          return { 
+                            icon: "⋯", 
+                            bgColor: "bg-yellow-500", 
+                            textColor: "text-white" 
+                          };
+                        case "not-ready":
+                        default:
+                          return { 
+                            icon: "○", 
+                            bgColor: "bg-gray-300", 
+                            textColor: "text-gray-600" 
+                          };
+                      }
+                    };
+
+                    const { icon, bgColor, textColor } = getIconAndColor(step.status);
+                    
+                    const getStatusLabel = (status: string) => {
+                      switch (status) {
+                        case "completed": return "Completed";
+                        case "in-progress": return "In Progress";
+                        case "ready": return "Ready";
+                        case "waiting": return "Waiting";
+                        case "not-ready": return "Not Ready";
+                        default: return "Pending";
+                      }
+                    };
+
+                    return (
+                      <div key={index} className="flex items-center gap-3">
+                        <div className={`w-8 h-8 ${bgColor} rounded-full flex items-center justify-center flex-shrink-0`}>
+                          <span className={`text-sm font-medium ${textColor}`}>{icon}</span>
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">{step.title}</div>
+                          <div className="text-xs text-muted-foreground mt-1">{getStatusLabel(step.status)}</div>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <div className="font-medium text-sm">{step.title}</div>
-                        <StatusBadge status="pending" />
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

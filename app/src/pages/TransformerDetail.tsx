@@ -141,7 +141,7 @@ export default function TransformerDetail() {
 
           return {
             id: String(it.id ?? crypto.randomUUID?.() ?? Math.random()),
-            inspectionNo: String(it.inspectionNo ?? it.batch ?? it.id ?? "-"),
+            inspectionNo: String(it.id ?? it.inspectionNo ?? it.batch ?? "-"),
             inspectedDate,
             maintenanceDate,
             status: String(it.status ?? 'Not started') as any,
@@ -345,8 +345,69 @@ export default function TransformerDetail() {
     }
   };
 
-  const addInspection = (inspection: any) => {
+  const addInspection = async (inspection: any) => {
+    // Optimistically add to UI
     setInspections([...inspections, { ...inspection, id: Date.now().toString() }]);
+    
+    // Refetch the inspections list to get the actual data from server
+    try {
+      const res = await fetch(INSPECTION_LIST_URL);
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      const raw: ApiEnvelope<any> = await res.json();
+      const data: any[] = (raw as any)?.responseData ?? (Array.isArray(raw) ? raw : []);
+
+      const sameTx = (item: any) => {
+        if (item.transformerId && transformer.id) return item.transformerId === transformer.id;
+        return item.transformerNo && transformer.transformerNo && item.transformerNo === transformer.transformerNo;
+      };
+
+      const toDisplay = (it: any) => {
+        const rawDate = (it.dateOfInspection ?? '').toString().trim();
+        const rawTime = (it.time ?? '').toString().trim();
+
+        let iso: string | null = null;
+        if (rawDate) {
+          if (/\d{2}:\d{2}(:\d{2})?/.test(rawDate)) {
+            iso = rawDate.replace(' ', 'T');
+          } else if (rawTime) {
+            iso = `${rawDate}T${rawTime}`;
+          } else {
+            iso = rawDate;
+          }
+        }
+
+        let inspectedDate = "-";
+        try {
+          inspectedDate = iso ? new Date(iso).toLocaleString() : "-";
+        } catch {}
+
+        let maintenanceDate = "-";
+        const rawMaint = (it.maintenanceDate ?? '').toString().trim();
+        if (rawMaint) {
+          let mIso = rawMaint;
+          if (/^\d{4}-\d{2}-\d{2}$/.test(rawMaint)) {
+            mIso = `${rawMaint}T00:00:00`;
+          } else if (rawMaint.includes(' ')) {
+            mIso = rawMaint.replace(' ', 'T');
+          }
+          try { maintenanceDate = new Date(mIso).toLocaleDateString(); } catch {}
+        }
+
+        return {
+          id: String(it.id ?? crypto.randomUUID?.() ?? Math.random()),
+          inspectionNo: String(it.id ?? it.inspectionNo ?? it.batch ?? "-"),
+          inspectedDate,
+          maintenanceDate,
+          status: String(it.status ?? 'Not started') as any,
+        };
+      };
+
+      const filtered = (data || []).filter(sameTx).map(toDisplay);
+      setInspections(filtered);
+    } catch (e) {
+      console.error('Failed to refresh inspections:', e);
+      // Keep the optimistically added inspection if refresh fails
+    }
   };
 
   return (
@@ -366,7 +427,7 @@ export default function TransformerDetail() {
               <span className="text-primary-foreground font-bold">T</span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold">{transformer.transformerNo ?? "-"}</h1>
+              <h1 className="text-2xl font-bold">Transformer {transformer.transformerNo ?? "-"}</h1>
               <p className="text-muted-foreground">
                 Last updated: {transformer.lastInspected ?? "-"}
               </p>
@@ -492,6 +553,7 @@ export default function TransformerDetail() {
             <AddInspectionModal 
               trigger={<Button>Add Inspection</Button>}
               onAdd={addInspection}
+              defaultTransformerNo={transformer?.transformerNo}
             />
           </CardHeader>
           <CardContent>
