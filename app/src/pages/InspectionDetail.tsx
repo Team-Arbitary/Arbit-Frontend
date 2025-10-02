@@ -20,6 +20,7 @@ const THERMAL_FETCH_URL = (inspectionNo: string) => `http://localhost:5509/trans
 
 // Analysis API endpoints
 const ANALYSIS_RESULT_URL = (inspectionNo: string) => `http://localhost:5509/transformer-thermal-inspection/image-analysis/result/${inspectionNo}`;
+const ANALYZE_URL = (inspectionNo: string) => `http://localhost:5509/transformer-thermal-inspection/image-analysis/analyze/${inspectionNo}`;
 
 const openInNewTab = (url?: string | null) => {
   if (!url) return;
@@ -127,93 +128,6 @@ function AnalysisModal({
 
           {analysisResult && thermalImage && (
             <>
-              {/* Analysis Summary */}
-              {analysisData && (
-                <div className="bg-gray-50 p-4 rounded-lg border">
-                  <h3 className="font-medium mb-3">Analysis Summary</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Status:</span>
-                      <div className="font-medium text-green-600">{analysisData.analysisStatus}</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Date:</span>
-                      <div className="font-medium">{new Date(analysisData.analysisDate).toLocaleDateString()}</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Processing Time:</span>
-                      <div className="font-medium">{analysisData.processingTimeMs}ms</div>
-                    </div>
-                    {analysisData.analysisResultJson && (() => {
-                      try {
-                        const resultJson = JSON.parse(analysisData.analysisResultJson);
-                        return (
-                          <div>
-                            <span className="text-gray-600">Anomalies:</span>
-                            <div className="font-medium text-red-600">
-                              {resultJson.summary?.total_anomalies || 0} found
-                            </div>
-                          </div>
-                        );
-                      } catch {
-                        return null;
-                      }
-                    })()}
-                  </div>
-                  
-                  {/* Anomaly Details */}
-                  {analysisData.analysisResultJson && (() => {
-                    try {
-                      const resultJson = JSON.parse(analysisData.analysisResultJson);
-                      if (resultJson.anomalies && resultJson.anomalies.length > 0) {
-                        return (
-                          <div className="mt-4">
-                            <h4 className="font-medium mb-2">Detected Anomalies:</h4>
-                            <div className="space-y-2">
-                              {resultJson.anomalies.map((anomaly: any, index: number) => (
-                                <div key={index} className="bg-white p-3 rounded border-l-4 border-red-500">
-                                  <div className="flex justify-between items-start">
-                                    <div>
-                                      <span className="font-medium text-red-600">
-                                        {anomaly.severity_level} Severity
-                                      </span>
-                                      <p className="text-sm text-gray-600 mt-1">{anomaly.reasoning}</p>
-                                    </div>
-                                    <div className="text-right text-sm">
-                                      <div>Confidence: {(anomaly.confidence * 100).toFixed(1)}%</div>
-                                      <div>Area: {anomaly.area?.toLocaleString()}</div>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      }
-                    } catch {
-                      return null;
-                    }
-                    return null;
-                  })()}
-                </div>
-              )}
-
-              {/* Usage Instructions */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs">i</span>
-                  </div>
-                  <span className="font-medium">How to use image comparison:</span>
-                </div>
-                <ul className="list-disc list-inside space-y-1 ml-6">
-                  <li>Hover over images to activate 2x magnification zoom</li>
-                  <li>Use "Side by Side" view for detailed comparison</li>
-                  <li>Use "Slider Compare" view to overlay images with adjustable slider</li>
-                  <li>Click "View Full Size" buttons to open images in new tabs</li>
-                </ul>
-              </div>
-
               {viewMode === 'side-by-side' ? (
                 <div className="grid grid-cols-2 gap-4">
                   {/* Thermal Image */}
@@ -390,6 +304,93 @@ function AnalysisModal({
                 </div>
               )}
 
+              {/* Usage Instructions */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 mt-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs">i</span>
+                  </div>
+                  <span className="font-medium">How to use image comparison:</span>
+                </div>
+                <ul className="list-disc list-inside space-y-1 ml-6">
+                  <li>Hover over images to activate 2x magnification zoom</li>
+                  <li>Use "Side by Side" view for detailed comparison</li>
+                  <li>Use "Slider Compare" view to overlay images with adjustable slider</li>
+                  <li>Click "View Full Size" buttons to open images in new tabs</li>
+                </ul>
+              </div>
+
+              {/* Analysis Summary */}
+              {analysisData && (
+                <div className="bg-gray-50 p-4 rounded-lg border">
+                  <h3 className="font-medium mb-3">Analysis Summary</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Status:</span>
+                      <div className="font-medium text-green-600">{analysisData.analysisStatus}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Date:</span>
+                      <div className="font-medium">{new Date(analysisData.analysisDate).toLocaleDateString()}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Processing Time:</span>
+                      <div className="font-medium">{analysisData.processingTimeMs}ms</div>
+                    </div>
+                    {analysisData.analysisResultJson && (() => {
+                      try {
+                        const resultJson = JSON.parse(analysisData.analysisResultJson);
+                        return (
+                          <div>
+                            <span className="text-gray-600">Anomalies:</span>
+                            <div className="font-medium text-red-600">
+                              {resultJson.summary?.total_anomalies || 0} found
+                            </div>
+                          </div>
+                        );
+                      } catch {
+                        return null;
+                      }
+                    })()}
+                  </div>
+                  
+                  {/* Anomaly Details */}
+                  {analysisData.analysisResultJson && (() => {
+                    try {
+                      const resultJson = JSON.parse(analysisData.analysisResultJson);
+                      if (resultJson.anomalies && resultJson.anomalies.length > 0) {
+                        return (
+                          <div className="mt-4">
+                            <h4 className="font-medium mb-2">Detected Anomalies:</h4>
+                            <div className="space-y-2">
+                              {resultJson.anomalies.map((anomaly: any, index: number) => (
+                                <div key={index} className="bg-white p-3 rounded border-l-4 border-red-500">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <span className="font-medium text-red-600">
+                                        {anomaly.severity_level} Severity
+                                      </span>
+                                      <p className="text-sm text-gray-600 mt-1">{anomaly.reasoning}</p>
+                                    </div>
+                                    <div className="text-right text-sm">
+                                      <div>Confidence: {(anomaly.confidence * 100).toFixed(1)}%</div>
+                                      <div>Area: {anomaly.area?.toLocaleString()}</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+                    } catch {
+                      return null;
+                    }
+                    return null;
+                  })()}
+                </div>
+              )}
+
               {/* Enhanced Action buttons */}
               <div className="flex justify-between items-center pt-4 border-t bg-gray-50 p-4 rounded-lg">
                 <div className="flex gap-2">
@@ -431,6 +432,14 @@ export default function InspectionDetail() {
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [statusPolling, setStatusPolling] = useState<boolean>(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  
+  // Annotation tools zoom state
+  const [annotationZoom, setAnnotationZoom] = useState(1);
+  const [annotationPosition, setAnnotationPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   const [inspection, setInspection] = useState<InspectionView>({
     id: id ?? "-",
@@ -803,6 +812,109 @@ export default function InspectionDetail() {
     }
   };
 
+  // Annotation zoom controls
+  const handleZoomIn = () => {
+    setAnnotationZoom(prev => Math.min(prev + 0.25, 3));
+  };
+
+  const handleZoomOut = () => {
+    setAnnotationZoom(prev => Math.max(prev - 0.25, 0.5));
+  };
+
+  const handleResetZoom = () => {
+    setAnnotationZoom(1);
+    setAnnotationPosition({ x: 0, y: 0 });
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (annotationZoom > 1) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.clientX - annotationPosition.x,
+        y: e.clientY - annotationPosition.y
+      });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging && annotationZoom > 1) {
+      setAnnotationPosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleAnalyze = async () => {
+    if (!inspection.id) {
+      toast({
+        title: 'Error',
+        description: 'Inspection ID not available',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalyzeError(null);
+
+    try {
+      const res = await fetch(ANALYZE_URL(inspection.id), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        let errorMessage = `${res.status} ${res.statusText}`;
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.responseDescription || errorData.message || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const result = await res.json();
+      const data = result?.responseData ?? result;
+
+      toast({
+        title: 'Analysis Started',
+        description: 'Image analysis has been initiated. The results will be available shortly.',
+      });
+
+      // Start polling for status updates
+      setStatusPolling(true);
+
+      // Optionally fetch analysis result after a delay
+      setTimeout(() => {
+        fetchAnalysisResult();
+      }, 3000);
+
+    } catch (err: any) {
+      console.error('Analysis error:', err);
+      const errorMsg = err?.message || 'Failed to start analysis';
+      setAnalyzeError(errorMsg);
+      
+      toast({
+        title: 'Analysis Failed',
+        description: errorMsg,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const openAnalysisModal = () => {
     // Always try to fetch analysis result when opening modal
     fetchAnalysisResult();
@@ -862,6 +974,46 @@ export default function InspectionDetail() {
           </div>
         </div>
 
+        {/* Error Alert for Analysis */}
+        {analyzeError && (
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-5 h-5 rounded-full bg-destructive flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-white text-xs font-bold">!</span>
+              </div>
+              <div className="flex-1">
+                <h4 className="font-medium text-destructive mb-1">Analysis Error</h4>
+                <p className="text-sm text-destructive/90">{analyzeError}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={() => setAnalyzeError(null)}
+                >
+                  Dismiss
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Info when both images are available but not analyzed */}
+        {thermalImage && baselineImage && !analyzeError && (inspection.status !== 'Completed' && inspection.status !== 'completed') && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-white text-xs font-bold">i</span>
+              </div>
+              <div className="flex-1">
+                <h4 className="font-medium text-blue-900 mb-1">Ready for Analysis</h4>
+                <p className="text-sm text-blue-800">
+                  Both thermal and baseline images are uploaded. Click "Analyze Images" to start the AI analysis and detect anomalies.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Info Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
@@ -897,7 +1049,28 @@ export default function InspectionDetail() {
             {(baselineImage && thermalImage) ? (
               <Card>
                 <CardHeader>
-                  <CardTitle>Thermal Image Comparison</CardTitle>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Thermal Image Comparison</span>
+                    {(inspection.status !== 'Completed' && inspection.status !== 'completed') && (
+                      <Button 
+                        onClick={handleAnalyze}
+                        disabled={isAnalyzing}
+                        size="sm"
+                      >
+                        {isAnalyzing ? (
+                          <>
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                            Analyzing...
+                          </>
+                        ) : (
+                          <>
+                            <ZoomIn className="h-4 w-4 mr-2" />
+                            Analyze Images
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4">
@@ -1042,20 +1215,62 @@ export default function InspectionDetail() {
                 {(inspection.status === 'Completed' || inspection.status === 'completed') && analysisResult ? (
                   <div className="space-y-4">
                     <div>
-                      <h4 className="font-medium mb-2 flex items-center gap-2">
-                        <svg className="h-4 w-4 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                          <path d="M9 12l2 2 4-4"/>
-                          <circle cx="12" cy="12" r="10"/>
-                        </svg>
-                        Analysis Result Image
-                      </h4>
-                      <div className="bg-green-50 rounded-lg border-2 border-green-200 flex items-center justify-center min-h-[300px] p-4">
-                        <img 
-                          src={analysisResult} 
-                          alt="Analysis result with annotations" 
-                          className="max-w-full max-h-[400px] object-contain rounded-lg"
-                        />
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium flex items-center gap-2">
+                          <svg className="h-4 w-4 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M9 12l2 2 4-4"/>
+                            <circle cx="12" cy="12" r="10"/>
+                          </svg>
+                          Analysis Result Image
+                        </h4>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" onClick={handleZoomIn}>
+                            <ZoomIn className="h-4 w-4 mr-1" />
+                            Zoom In
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={handleZoomOut}>
+                            <ZoomIn className="h-4 w-4 mr-1 rotate-180" />
+                            Zoom Out
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={handleResetZoom}>
+                            <svg className="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                              <path d="M21 3v5h-5"/>
+                              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                              <path d="M3 21v-5h5"/>
+                            </svg>
+                            Reset
+                          </Button>
+                        </div>
                       </div>
+                      <div 
+                        className="bg-green-50 rounded-lg border-2 border-green-200 overflow-hidden min-h-[400px] relative"
+                        style={{ cursor: annotationZoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                      >
+                        <div 
+                          className="flex items-center justify-center p-4"
+                          style={{
+                            transform: `translate(${annotationPosition.x}px, ${annotationPosition.y}px) scale(${annotationZoom})`,
+                            transition: isDragging ? 'none' : 'transform 0.2s ease-out',
+                          }}
+                        >
+                          <img 
+                            src={analysisResult} 
+                            alt="Analysis result with annotations" 
+                            className="max-w-full max-h-[400px] object-contain rounded-lg select-none"
+                            draggable={false}
+                          />
+                        </div>
+                      </div>
+                      {annotationZoom > 1 && (
+                        <p className="text-xs text-muted-foreground text-center mt-2">
+                          Drag the image to pan • Zoom: {(annotationZoom * 100).toFixed(0)}%
+                        </p>
+                      )}
                       <div className="flex gap-2 mt-2">
                         <Button variant="outline" size="sm" onClick={() => openInNewTab(analysisResult)}>
                           <Eye className="h-4 w-4 mr-2" />

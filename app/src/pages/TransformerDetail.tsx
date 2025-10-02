@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/StatusBadge";
 import { AddInspectionModal } from "@/components/AddInspectionModal";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Star, Eye, Trash2 } from "lucide-react";
+import { ArrowLeft, Star, Eye, Trash2, Upload } from "lucide-react";
 
 const INSPECTION_VIEW_URL = (id: string) => `http://localhost:5509/transformer-thermal-inspection/transformer-management/view/${id}`;
 const INSPECTION_LIST_URL = "http://localhost:5509/transformer-thermal-inspection/inspection-management/view-all";
@@ -40,6 +40,7 @@ export default function TransformerDetail() {
   const [isViewingBaseline, setIsViewingBaseline] = useState<boolean>(false);
   const [baselinePreview, setBaselinePreview] = useState<string | null>(null);
   const [isDeletingBaseline, setIsDeletingBaseline] = useState<boolean>(false);
+  const [hasBaseline, setHasBaseline] = useState<boolean>(false);
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -160,6 +161,44 @@ export default function TransformerDetail() {
     };
   }, [transformer]);
 
+  // Check if baseline image exists
+  useEffect(() => {
+    let cancelled = false;
+    const checkBaseline = async () => {
+      if (!transformer?.transformerNo) return;
+      try {
+        const res = await fetch(BASELINE_FETCH_URL(transformer.transformerNo));
+        if (res.ok) {
+          const ct = res.headers.get('content-type') || '';
+          if (ct.startsWith('image/')) {
+            if (!cancelled) setHasBaseline(true);
+          } else {
+            try {
+              const raw: ApiEnvelope<any> = await res.json();
+              const data: any = (raw as any)?.responseData ?? raw;
+              const possible = data?.imageBase64 || data?.url || data?.imageUrl;
+              if (possible && typeof possible === 'string') {
+                if (!cancelled) setHasBaseline(true);
+              } else {
+                if (!cancelled) setHasBaseline(false);
+              }
+            } catch {
+              if (!cancelled) setHasBaseline(false);
+            }
+          }
+        } else {
+          if (!cancelled) setHasBaseline(false);
+        }
+      } catch {
+        if (!cancelled) setHasBaseline(false);
+      }
+    };
+    checkBaseline();
+    return () => {
+      cancelled = true;
+    };
+  }, [transformer?.transformerNo]);
+
   const handleFileUploadBaseline = async (file: File) => {
     setIsUploadingBaseline(true);
     try {
@@ -176,6 +215,7 @@ export default function TransformerDetail() {
       const res = await fetch(IMAGE_UPLOAD_URL, { method: 'POST', body: form });
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   
+      setHasBaseline(true);
       toast({ title: "Baseline uploaded", description: "Baseline image uploaded successfully (status: In-progress)." });
     } catch (err: any) {
       console.error(err);
@@ -252,6 +292,7 @@ export default function TransformerDetail() {
       setIsDeletingBaseline(true);
       const res = await fetch(BASELINE_FETCH_URL(transformer.transformerNo), { method: "DELETE" });
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      setHasBaseline(false);
       toast({ title: "Deleted", description: "Baseline image deleted successfully." });
       // If a preview is open, close it
       if (isViewingBaseline) closeBaselinePreview();
@@ -332,7 +373,7 @@ export default function TransformerDetail() {
             </div>
           </div>
           <div className="ml-auto">
-            <StatusBadge status={transformer.status} />
+            <StatusBadge status={transformer.status as any} />
           </div>
         </div>
 
@@ -381,52 +422,65 @@ export default function TransformerDetail() {
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                {/* Left: Upload */}
-                <div className="md:col-span-5">
+            <CardContent className="p-6">
+              {hasBaseline ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-sm font-medium text-green-700">Baseline Image Available</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={openBaselinePreview}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        View
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDeleteBaseline}
+                        disabled={isDeletingBaseline}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        {isDeletingBaseline ? "Deleting..." : "Delete"}
+                      </Button>
+                    </div>
+                  </div>
                   <Button
-                    className="w-full h-12 shadow-sm hover:shadow transition-shadow"
+                    className="w-full"
+                    variant="secondary"
                     onClick={handleUploadBaseline}
                     disabled={isUploadingBaseline}
                   >
-                    <Eye className="h-4 w-4 mr-2" />
+                    <Upload className="h-4 w-4 mr-2" />
+                    {isUploadingBaseline ? "Uploading…" : "Replace Baseline"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-center py-4">
+                    <div className="text-center">
+                      {/* <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-2">
+                        <Eye className="h-6 w-6 text-muted-foreground" />
+                      </div> */}
+                      {/* <p className="text-sm font-medium text-muted-foreground mb-1">No Baseline Image</p> */}
+                      <p className="text-xs text-muted-foreground">Upload a baseline image to compare with inspections</p>
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full"
+                    onClick={handleUploadBaseline}
+                    disabled={isUploadingBaseline}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
                     {isUploadingBaseline ? "Uploading…" : "Upload Baseline"}
                   </Button>
                 </div>
-                {/* Middle: Weather */}
-                {/* <div className="md:col-span-5">
-                  <label className="text-xs font-medium text-muted-foreground">Weather</label>
-                  <div className="mt-2">
-                    <select
-                      className="w-full h-10 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      value={weatherCondition}
-                      onChange={(e) => setWeatherCondition(e.target.value)}
-                    >
-                      <option value="Sunny">Sunny</option>
-                      <option value="Cloudy">Cloudy</option>
-                      <option value="Rainy">Rainy</option>
-                    </select>
-                  </div>
-                </div> */}
-                {/* Right: Actions */}
-                <div className="md:col-span-2 flex md:justify-end items-start pl-60">
-                  <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-2">
-                    <Button variant="ghost" size="icon" onClick={openBaselinePreview} title="View baseline">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleDeleteBaseline}
-                      disabled={isDeletingBaseline}
-                      title="Delete baseline"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -492,21 +546,25 @@ export default function TransformerDetail() {
       </div>
       {/* Baseline Image Preview Modal */}
       {isViewingBaseline && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white dark:bg-neutral-900 rounded-md shadow-lg max-w-5xl w-full">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-800">
-              <h3 className="text-sm font-medium">Baseline Image Preview</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={closeBaselinePreview}>
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-800">
+              <h3 className="text-lg font-semibold">Baseline Image Preview</h3>
               <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={handleDeleteBaseline} disabled={isDeletingBaseline}>
+                <Button variant="outline" size="sm" onClick={handleDeleteBaseline} disabled={isDeletingBaseline}>
                   <Trash2 className="h-4 w-4 mr-2" />
                   {isDeletingBaseline ? "Deleting..." : "Delete"}
                 </Button>
-                <Button onClick={closeBaselinePreview}>Close</Button>
+                <Button variant="ghost" size="icon" onClick={closeBaselinePreview}>
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                  </svg>
+                </Button>
               </div>
             </div>
-            <div className="p-4">
+            <div className="p-6 overflow-auto max-h-[calc(90vh-80px)] bg-gray-50 dark:bg-neutral-950 flex items-center justify-center">
               {baselinePreview ? (
-                <img src={baselinePreview} alt="Baseline preview" className="w-full h-auto rounded-b-md" />
+                <img src={baselinePreview} alt="Baseline preview" className="max-w-full max-h-full object-contain rounded-lg shadow-lg" />
               ) : (
                 <div className="text-center text-muted-foreground py-16">No image to display</div>
               )}
