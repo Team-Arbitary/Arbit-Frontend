@@ -59,23 +59,38 @@ function AnalysisModal({
   const [hoveredImage, setHoveredImage] = useState<'thermal' | 'result' | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
+  const [containerSize, setContainerSize] = useState({ width: 600, height: 500 });
+  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [viewMode, setViewMode] = useState<'side-by-side' | 'slider'>('side-by-side');
   const [isDragging, setIsDragging] = useState(false);
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const img = e.currentTarget.querySelector('img');
-    if (img) {
-      const imgRect = img.getBoundingClientRect();
-      setMousePosition({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      });
-      setImagePosition({
-        x: e.clientX - imgRect.left,
-        y: e.clientY - imgRect.top,
-      });
-    }
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    const img = container.querySelector('img') as HTMLImageElement;
+    
+    if (!img) return;
+    
+    const containerRect = container.getBoundingClientRect();
+    const imgRect = img.getBoundingClientRect();
+    
+    // Store container and image sizes for positioning and zoom calculations
+    setContainerSize({ width: containerRect.width, height: containerRect.height });
+    setImageSize({ width: imgRect.width, height: imgRect.height });
+    
+    // Mouse position relative to container
+    const mouseX = e.clientX - containerRect.left;
+    const mouseY = e.clientY - containerRect.top;
+    
+    // Mouse position relative to the actual image (not the container)
+    const imgMouseX = e.clientX - imgRect.left;
+    const imgMouseY = e.clientY - imgRect.top;
+    
+    // Calculate the percentage position on the image
+    const xPercent = (imgMouseX / imgRect.width) * 100;
+    const yPercent = (imgMouseY / imgRect.height) * 100;
+    
+    setMousePosition({ x: mouseX, y: mouseY });
+    setImagePosition({ x: xPercent, y: yPercent });
   };
 
   const handleSliderClick = (e: React.MouseEvent) => {
@@ -145,18 +160,18 @@ function AnalysisModal({
                         alt="Thermal image" 
                         className="max-w-full max-h-[500px] object-contain rounded"
                       />
-                      {hoveredImage === 'thermal' && (
+                      {hoveredImage === 'thermal' && imageSize.width > 0 && (
                         <>
                           <div 
-                            className="absolute pointer-events-none border-2 border-blue-500 shadow-lg z-10 rounded-lg"
+                            className="absolute pointer-events-none shadow-lg z-10 rounded-lg overflow-hidden"
                             style={{
-                              left: Math.max(5, Math.min(mousePosition.x - 75, 400)),
-                              top: Math.max(5, Math.min(mousePosition.y - 75, 300)),
+                              left: Math.max(10, Math.min(mousePosition.x - 75, containerSize.width - 160)),
+                              top: Math.max(10, Math.min(mousePosition.y - 75, containerSize.height - 160)),
                               width: 150,
                               height: 150,
                               backgroundImage: `url(${thermalImage})`,
-                              backgroundPosition: `-${imagePosition.x * 2 - 75}px -${imagePosition.y * 2 - 75}px`,
-                              backgroundSize: '200% 200%',
+                              backgroundPosition: `${imagePosition.x}% ${imagePosition.y}%`,
+                              backgroundSize: `${imageSize.width * 3}px ${imageSize.height * 3}px`,
                               backgroundRepeat: 'no-repeat',
                               backgroundColor: 'white',
                               border: '3px solid #3b82f6',
@@ -166,11 +181,11 @@ function AnalysisModal({
                           <div 
                             className="absolute pointer-events-none bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium z-20"
                             style={{
-                              left: Math.max(5, Math.min(mousePosition.x - 25, 400)),
-                              top: Math.max(160, Math.min(mousePosition.y + 85, 400)),
+                              left: Math.max(10, Math.min(mousePosition.x - 20, containerSize.width - 70)),
+                              top: Math.max(165, Math.min(mousePosition.y + 80, containerSize.height - 40)),
                             }}
                           >
-                            2x Zoom
+                            3x Zoom
                           </div>
                         </>
                       )}
@@ -198,18 +213,18 @@ function AnalysisModal({
                         alt="Analysis result" 
                         className="max-w-full max-h-[500px] object-contain rounded"
                       />
-                      {hoveredImage === 'result' && (
+                      {hoveredImage === 'result' && imageSize.width > 0 && (
                         <>
                           <div 
-                            className="absolute pointer-events-none border-2 border-green-500 shadow-lg z-10 rounded-lg"
+                            className="absolute pointer-events-none shadow-lg z-10 rounded-lg overflow-hidden"
                             style={{
-                              left: Math.max(5, Math.min(mousePosition.x - 75, 400)),
-                              top: Math.max(5, Math.min(mousePosition.y - 75, 300)),
+                              left: Math.max(10, Math.min(mousePosition.x - 75, containerSize.width - 160)),
+                              top: Math.max(10, Math.min(mousePosition.y - 75, containerSize.height - 160)),
                               width: 150,
                               height: 150,
                               backgroundImage: `url(${analysisResult})`,
-                              backgroundPosition: `-${imagePosition.x * 2 - 75}px -${imagePosition.y * 2 - 75}px`,
-                              backgroundSize: '200% 200%',
+                              backgroundPosition: `${imagePosition.x}% ${imagePosition.y}%`,
+                              backgroundSize: `${imageSize.width * 3}px ${imageSize.height * 3}px`,
                               backgroundRepeat: 'no-repeat',
                               backgroundColor: 'white',
                               border: '3px solid #10b981',
@@ -219,11 +234,11 @@ function AnalysisModal({
                           <div 
                             className="absolute pointer-events-none bg-green-600 text-white px-2 py-1 rounded text-xs font-medium z-20"
                             style={{
-                              left: Math.max(5, Math.min(mousePosition.x - 25, 400)),
-                              top: Math.max(160, Math.min(mousePosition.y + 85, 400)),
+                              left: Math.max(10, Math.min(mousePosition.x - 20, containerSize.width - 70)),
+                              top: Math.max(165, Math.min(mousePosition.y + 80, containerSize.height - 40)),
                             }}
                           >
-                            2x Zoom
+                            3x Zoom
                           </div>
                         </>
                       )}
