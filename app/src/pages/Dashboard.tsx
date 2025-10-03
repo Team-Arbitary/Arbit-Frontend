@@ -68,16 +68,43 @@ type ApiItem = {
   type?: string;
   status?: string;
   location?: string;
+  maintenanceDate?: string;
 };
 
-const toInspection = (x: ApiItem): Inspection => ({
-  id: x.id,
-  transformerNo: x.transformerNo,
-  inspectionNo: undefined,
-  inspectedDate: x.dateOfInspection && x.time ? `${x.dateOfInspection} ${x.time}` : x.dateOfInspection ?? undefined,
-  maintenanceDate: undefined,
-  status: x.status,
-});
+const toInspection = (x: ApiItem): Inspection => {
+  // Parse maintenance date from various possible formats
+  let maintenanceDate: string | undefined = undefined;
+  if (x.maintenanceDate) {
+    try {
+      // If it looks like a date string, parse it
+      if (typeof x.maintenanceDate === "string") {
+        const parsed = new Date(x.maintenanceDate);
+        if (!isNaN(parsed.getTime())) {
+          maintenanceDate = parsed.toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric"
+          });
+        } else {
+          // Use as-is if can't parse
+          maintenanceDate = x.maintenanceDate;
+        }
+      }
+    } catch {
+      // If parsing fails, leave undefined
+      maintenanceDate = undefined;
+    }
+  }
+
+  return {
+    id: x.id,
+    transformerNo: x.transformerNo,
+    inspectionNo: x.id, // Use the actual inspection ID
+    inspectedDate: x.dateOfInspection && x.time ? `${x.dateOfInspection} ${x.time}` : x.dateOfInspection ?? undefined,
+    maintenanceDate,
+    status: x.status,
+  };
+};
 
 const toTransformer = (x: ApiItem): Transformer => ({
   id: x.id,
@@ -100,6 +127,12 @@ export default function Dashboard() {
 
   const [selectedRegion, setSelectedRegion] = useState<string>("all-regions");
   const [selectedType, setSelectedType] = useState<string>("all-types");
+
+  // --- Inspection search and pagination state ---
+  const [inspectionSearchQuery, setInspectionSearchQuery] = useState<string>("");
+  const [inspectionStatusFilter, setInspectionStatusFilter] = useState<string>("all-statuses");
+  const [currentInspectionPage, setCurrentInspectionPage] = useState<number>(1);
+  const inspectionsPerPage = 10;
 
   // --- Edit dialog state ---
   const [editingTransformer, setEditingTransformer] = useState<Transformer | null>(null);
@@ -297,6 +330,18 @@ export default function Dashboard() {
     }
   };
 
+  // Calculate stats (case-insensitive status comparison)
+  const activeInspectionsCount = inspections.filter(
+    (i) => {
+      const status = i.status?.toLowerCase();
+      return status === "in-progress" || status === "pending" || status === "in progress" || status === "Not started" || status === "not started" || status === "not started";
+    }
+  ).length;
+  
+  const completedInspectionsCount = inspections.filter(
+    (i) => i.status?.toLowerCase() === "completed"
+  ).length;
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -309,7 +354,17 @@ export default function Dashboard() {
                   <div className="text-2xl font-bold text-primary">{transformers.length}</div>
                 </div>
                 <div className="text-sm text-muted-foreground">Total Transformers</div>
-                <div className="text-xs text-muted-foreground mt-1">Count: 1428</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <div className="text-2xl font-bold text-blue-600">{activeInspectionsCount}</div>
+                </div>
+                <div className="text-sm text-muted-foreground">Active Inspections</div>
               </div>
             </CardContent>
           </Card>
@@ -318,20 +373,9 @@ export default function Dashboard() {
             <CardContent className="p-6">
               <div className="text-center">
                 <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <div className="text-2xl font-bold text-success">8</div>
+                  <div className="text-2xl font-bold text-success">{completedInspectionsCount}</div>
                 </div>
-                <div className="text-sm text-muted-foreground">Currently Operating</div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-warning/10 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <div className="text-2xl font-bold text-warning">6</div>
-                </div>
-                <div className="text-sm text-muted-foreground">Maintenance Required</div>
+                <div className="text-sm text-muted-foreground">Completed Inspections</div>
               </div>
             </CardContent>
           </Card>
@@ -474,11 +518,45 @@ export default function Dashboard() {
                   />
                 </div>
 
+                {/* Search and Filter Tools */}
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by Inspection ID or Transformer No..."
+                      value={inspectionSearchQuery}
+                      onChange={(e) => {
+                        setInspectionSearchQuery(e.target.value);
+                        setCurrentInspectionPage(1); // Reset to first page on search
+                      }}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select
+                    value={inspectionStatusFilter}
+                    onValueChange={(value) => {
+                      setInspectionStatusFilter(value);
+                      setCurrentInspectionPage(1); // Reset to first page on filter
+                    }}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <Filter className="h-4 w-4 mr-2" />
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all-statuses">All Statuses</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="in-progress">In Progress</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Transformer No.</TableHead>
                       <TableHead>Inspection No</TableHead>
+                      <TableHead>Transformer No.</TableHead>
                       <TableHead>Inspected Date</TableHead>
                       <TableHead>Maintenance Date</TableHead>
                       <TableHead>Status</TableHead>
@@ -486,38 +564,158 @@ export default function Dashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {inspections.map((inspection) => (
-                      <TableRow key={inspection.id}>
-                        <TableCell className="font-medium">{inspection.transformerNo}</TableCell>
-                        <TableCell>{12378}</TableCell>
-                        <TableCell>{inspection.inspectedDate}</TableCell>
-                        <TableCell>-</TableCell>
-                        <TableCell>
-                          <StatusBadge status={inspection.status} />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button 
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => handleDeleteInspection(inspection.id)}
-                              title="Delete inspection"
-                              aria-label="Delete inspection"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              size="sm"
-                              onClick={() => handleViewInspection(inspection.id)}
-                            >
-                              View
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {(() => {
+                      // Filter inspections
+                      let filtered = inspections.filter((inspection) => {
+                        // Search filter
+                        const searchLower = inspectionSearchQuery.toLowerCase();
+                        const matchesSearch = !inspectionSearchQuery || 
+                          (inspection.inspectionNo || inspection.id).toLowerCase().includes(searchLower) ||
+                          inspection.transformerNo.toLowerCase().includes(searchLower);
+
+                        // Status filter
+                        const matchesStatus = inspectionStatusFilter === "all-statuses" ||
+                          inspection.status?.toLowerCase() === inspectionStatusFilter.toLowerCase() ||
+                          (inspectionStatusFilter === "in-progress" && inspection.status?.toLowerCase().includes("progress"));
+
+                        return matchesSearch && matchesStatus;
+                      });
+
+                      // Pagination
+                      const startIndex = (currentInspectionPage - 1) * inspectionsPerPage;
+                      const endIndex = startIndex + inspectionsPerPage;
+                      const paginatedInspections = filtered.slice(startIndex, endIndex);
+
+                      if (paginatedInspections.length === 0) {
+                        return (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                              No inspections found matching your criteria.
+                            </TableCell>
+                          </TableRow>
+                        );
+                      }
+
+                      return paginatedInspections.map((inspection) => (
+                        <TableRow key={inspection.id}>
+                          <TableCell className="font-medium">{inspection.inspectionNo || inspection.id}</TableCell>
+                          <TableCell>{inspection.transformerNo}</TableCell>
+                          <TableCell>{inspection.inspectedDate}</TableCell>
+                          <TableCell>{inspection.maintenanceDate || "-"}</TableCell>
+                          <TableCell>
+                            <StatusBadge status={inspection.status as any} />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button 
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => handleDeleteInspection(inspection.id)}
+                                title="Delete inspection"
+                                aria-label="Delete inspection"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                size="sm"
+                                onClick={() => handleViewInspection(inspection.id)}
+                              >
+                                View
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ));
+                    })()}
                   </TableBody>
                 </Table>
+
+                {/* Pagination Controls */}
+                {(() => {
+                  // Calculate filtered count for pagination
+                  const filtered = inspections.filter((inspection) => {
+                    const searchLower = inspectionSearchQuery.toLowerCase();
+                    const matchesSearch = !inspectionSearchQuery || 
+                      (inspection.inspectionNo || inspection.id).toLowerCase().includes(searchLower) ||
+                      inspection.transformerNo.toLowerCase().includes(searchLower);
+                    const matchesStatus = inspectionStatusFilter === "all-statuses" ||
+                      inspection.status?.toLowerCase() === inspectionStatusFilter.toLowerCase() ||
+                      (inspectionStatusFilter === "in-progress" && inspection.status?.toLowerCase().includes("progress"));
+                    return matchesSearch && matchesStatus;
+                  });
+
+                  const totalPages = Math.ceil(filtered.length / inspectionsPerPage);
+
+                  if (totalPages <= 1) return null;
+
+                  return (
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                      <div className="text-sm text-muted-foreground">
+                        Showing {((currentInspectionPage - 1) * inspectionsPerPage) + 1} to {Math.min(currentInspectionPage * inspectionsPerPage, filtered.length)} of {filtered.length} inspections
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentInspectionPage(1)}
+                          disabled={currentInspectionPage === 1}
+                        >
+                          First
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentInspectionPage(prev => Math.max(1, prev - 1))}
+                          disabled={currentInspectionPage === 1}
+                        >
+                          Previous
+                        </Button>
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                            let pageNum;
+                            if (totalPages <= 5) {
+                              pageNum = i + 1;
+                            } else if (currentInspectionPage <= 3) {
+                              pageNum = i + 1;
+                            } else if (currentInspectionPage >= totalPages - 2) {
+                              pageNum = totalPages - 4 + i;
+                            } else {
+                              pageNum = currentInspectionPage - 2 + i;
+                            }
+
+                            return (
+                              <Button
+                                key={pageNum}
+                                variant={currentInspectionPage === pageNum ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setCurrentInspectionPage(pageNum)}
+                                className="w-10"
+                              >
+                                {pageNum}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentInspectionPage(prev => Math.min(totalPages, prev + 1))}
+                          disabled={currentInspectionPage === totalPages}
+                        >
+                          Next
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentInspectionPage(totalPages)}
+                          disabled={currentInspectionPage === totalPages}
+                        >
+                          Last
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           </TabsContent>
