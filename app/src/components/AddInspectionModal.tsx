@@ -21,7 +21,8 @@ interface AddInspectionModalProps {
 export function AddInspectionModal({ trigger, onAdd, defaultTransformerNo }: AddInspectionModalProps) {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
-    batch: "",
+    batchPrefix: "",
+    batchNumber: "",
     transformerNo: defaultTransformerNo || "",
     date: undefined as Date | undefined,
     time: "",
@@ -29,17 +30,21 @@ export function AddInspectionModal({ trigger, onAdd, defaultTransformerNo }: Add
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [existingTransformers, setExistingTransformers] = useState<string[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
 
+    // Merge batch prefix + number
+    const batch = `${formData.batchPrefix}${formData.batchNumber}`;
+
     const dateStr = formData.date ? format(formData.date, "yyyy-MM-dd") : undefined;
     const timeStr = formData.time ? (formData.time.length === 5 ? `${formData.time}:00` : formData.time) : undefined;
 
     const payload = {
-      branch: formData.batch,
+      branch: batch,
       transformerNo: formData.transformerNo,
       dateOfInspection: dateStr,
       maintenanceDate: dateStr,
@@ -70,7 +75,13 @@ export function AddInspectionModal({ trigger, onAdd, defaultTransformerNo }: Add
       onAdd?.(uiItem);
 
       setOpen(false);
-      setFormData({ batch: "", transformerNo: defaultTransformerNo || "", date: undefined, time: "" });
+      setFormData({ 
+        batchPrefix: "", 
+        batchNumber: "", 
+        transformerNo: defaultTransformerNo || "", 
+        date: undefined, 
+        time: "" 
+      });
     } catch (err: any) {
       setError(err?.message || "Failed to save inspection");
     } finally {
@@ -78,13 +89,30 @@ export function AddInspectionModal({ trigger, onAdd, defaultTransformerNo }: Add
     }
   };
 
+  // Fetch existing transformers
+  const fetchTransformers = async () => {
+    try {
+      const res = await fetch("http://localhost:5509/transformer-thermal-inspection/transformer-management/view-all");
+      if (!res.ok) throw new Error("Failed to fetch transformers");
+      const data = await res.json();
+      const transformers = (data?.responseData ?? data) || [];
+      const transformerNos = transformers.map((t: any) => t.transformerNo).filter(Boolean);
+      setExistingTransformers(transformerNos);
+    } catch (err) {
+      console.error("Failed to fetch transformers:", err);
+    }
+  };
+
   // Reset form when modal opens with default transformer number
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
     if (newOpen) {
+      // Fetch transformers when opening
+      fetchTransformers();
       // Reset form with default transformer number when opening
       setFormData({ 
-        batch: "", 
+        batchPrefix: "", 
+        batchNumber: "", 
         transformerNo: defaultTransformerNo || "", 
         date: undefined, 
         time: "" 
@@ -106,23 +134,59 @@ export function AddInspectionModal({ trigger, onAdd, defaultTransformerNo }: Add
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="batch">Batch</Label>
-            <Input
-              id="batch"
-              placeholder="e.g., Batch-2025-B"
-              value={formData.batch}
-              onChange={(e) => setFormData(prev => ({ ...prev, batch: e.target.value }))}
-            />
+            <div className="flex gap-2">
+              <Select 
+                value={formData.batchPrefix} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, batchPrefix: value }))}
+              >
+                <SelectTrigger className="w-[140px]" disabled={submitting}>
+                  <SelectValue placeholder="Prefix" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="B-">B-</SelectItem>
+                  <SelectItem value="BATCH-">BATCH-</SelectItem>
+                  <SelectItem value="BA-">BA-</SelectItem>
+                  <SelectItem value="BT-">BT-</SelectItem>
+                  <SelectItem value="INS-">INS-</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Number"
+                value={formData.batchNumber}
+                onChange={(e) => setFormData(prev => ({ ...prev, batchNumber: e.target.value }))}
+                disabled={submitting}
+                className="flex-1"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="transformerNo">Transformer No</Label>
-            <Input
-              id="transformerNo"
-              placeholder="Transformer No"
-              value={formData.transformerNo}
-              onChange={(e) => setFormData(prev => ({ ...prev, transformerNo: e.target.value }))}
-              disabled={submitting}
-            />
+            {existingTransformers.length > 0 ? (
+              <Select
+                value={formData.transformerNo}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, transformerNo: value }))}
+              >
+                <SelectTrigger disabled={submitting}>
+                  <SelectValue placeholder="Select transformer" />
+                </SelectTrigger>
+                <SelectContent>
+                  {existingTransformers.map((transformerNo) => (
+                    <SelectItem key={transformerNo} value={transformerNo}>
+                      {transformerNo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                id="transformerNo"
+                placeholder="Transformer No"
+                value={formData.transformerNo}
+                onChange={(e) => setFormData(prev => ({ ...prev, transformerNo: e.target.value }))}
+                disabled={submitting}
+              />
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

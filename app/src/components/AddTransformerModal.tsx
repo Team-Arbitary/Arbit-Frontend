@@ -21,8 +21,10 @@ export function AddTransformerModal({ trigger, onAdd }: AddTransformerModalProps
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     region: "",
-    transformerNo: "",
-    poleNo: "",
+    transformerNoPrefix: "",
+    transformerNoNumber: "",
+    poleNoPrefix: "",
+    poleNoNumber: "",
     type: "",
     locationDetails: "",
   });
@@ -32,11 +34,15 @@ export function AddTransformerModal({ trigger, onAdd }: AddTransformerModalProps
     setError(null);
     setSubmitting(true);
 
+    // Merge prefix + number for transformer and pole
+    const transformerNo = `${formData.transformerNoPrefix}${formData.transformerNoNumber}`;
+    const poleNo = `${formData.poleNoPrefix}${formData.poleNoNumber}`;
+
     // Map UI fields -> API payload
     const payload = {
       regions: formData.region, // API expects plural key
-      poleNo: formData.poleNo,
-      transformerNo: formData.transformerNo,
+      poleNo: poleNo,
+      transformerNo: transformerNo,
       type: formData.type,
       location: formData.locationDetails,
     };
@@ -59,8 +65,8 @@ export function AddTransformerModal({ trigger, onAdd }: AddTransformerModalProps
       const newTransformer = {
         id: created?.id ?? Math.random().toString(36).substr(2, 9),
         region: formData.region,
-        transformerNo: formData.transformerNo,
-        poleNo: formData.poleNo,
+        transformerNo: transformerNo,
+        poleNo: poleNo,
         type: formData.type,
         locationDetails: formData.locationDetails,
         ...created, // prefer server-returned fields
@@ -70,7 +76,15 @@ export function AddTransformerModal({ trigger, onAdd }: AddTransformerModalProps
 
       // reset & close
       setOpen(false);
-      setFormData({ region: "", transformerNo: "", poleNo: "", type: "", locationDetails: "" });
+      setFormData({ 
+        region: "", 
+        transformerNoPrefix: "", 
+        transformerNoNumber: "", 
+        poleNoPrefix: "", 
+        poleNoNumber: "", 
+        type: "", 
+        locationDetails: "" 
+      });
     } catch (err: any) {
       setError(err?.message || "Failed to save transformer");
     } finally {
@@ -98,39 +112,89 @@ export function AddTransformerModal({ trigger, onAdd }: AddTransformerModalProps
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="region">Regions</Label>
+            <Label htmlFor="region">Region</Label>
             <Select value={formData.region} onValueChange={(value) => setFormData(prev => ({ ...prev, region: value }))}>
               <SelectTrigger disabled={submitting}>
-                <SelectValue placeholder="Region" />
+                <SelectValue placeholder="Select region" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="nugegoda">Nugegoda</SelectItem>
-                <SelectItem value="maharagama">Maharagama</SelectItem>
-                <SelectItem value="colombo">Colombo</SelectItem>
+                <SelectItem value="Colombo">Colombo</SelectItem>
+                <SelectItem value="Nugegoda">Nugegoda</SelectItem>
+                <SelectItem value="Maharagama">Maharagama</SelectItem>
+                <SelectItem value="Kotte">Kotte</SelectItem>
+                <SelectItem value="Dehiwala">Dehiwala</SelectItem>
+                <SelectItem value="Moratuwa">Moratuwa</SelectItem>
+                <SelectItem value="Panadura">Panadura</SelectItem>
+                <SelectItem value="Kalutara">Kalutara</SelectItem>
+                <SelectItem value="Galle">Galle</SelectItem>
+                <SelectItem value="Matara">Matara</SelectItem>
+                <SelectItem value="Kandy">Kandy</SelectItem>
+                <SelectItem value="Gampaha">Gampaha</SelectItem>
+                <SelectItem value="Negombo">Negombo</SelectItem>
+                <SelectItem value="Kurunegala">Kurunegala</SelectItem>
+                <SelectItem value="Anuradhapura">Anuradhapura</SelectItem>
+                <SelectItem value="Jaffna">Jaffna</SelectItem>
+                <SelectItem value="Batticaloa">Batticaloa</SelectItem>
+                <SelectItem value="Trincomalee">Trincomalee</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="transformerNo">Transformer No</Label>
-            <Input
-              id="transformerNo"
-              placeholder="Transformer No"
-              value={formData.transformerNo}
-              onChange={(e) => setFormData(prev => ({ ...prev, transformerNo: e.target.value }))}
-              disabled={submitting}
-            />
+            <div className="flex gap-2">
+              <Select 
+                value={formData.transformerNoPrefix} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, transformerNoPrefix: value }))}
+              >
+                <SelectTrigger className="w-[140px]" disabled={submitting}>
+                  <SelectValue placeholder="Prefix" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TRF-">TRF-</SelectItem>
+                  <SelectItem value="TX-">TX-</SelectItem>
+                  <SelectItem value="T-">T-</SelectItem>
+                  <SelectItem value="TR-">TR-</SelectItem>
+                  <SelectItem value="DIST-">DIST-</SelectItem>
+                  <SelectItem value="SUB-">SUB-</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Number"
+                value={formData.transformerNoNumber}
+                onChange={(e) => setFormData(prev => ({ ...prev, transformerNoNumber: e.target.value }))}
+                disabled={submitting}
+                className="flex-1"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="poleNo">Pole No</Label>
-            <Input
-              id="poleNo"
-              placeholder="Pole No"
-              value={formData.poleNo}
-              onChange={(e) => setFormData(prev => ({ ...prev, poleNo: e.target.value }))}
-              disabled={submitting}
-            />
+            <div className="flex gap-2">
+              <Select 
+                value={formData.poleNoPrefix} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, poleNoPrefix: value }))}
+              >
+                <SelectTrigger className="w-[140px]" disabled={submitting}>
+                  <SelectValue placeholder="Prefix" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="P-">P-</SelectItem>
+                  <SelectItem value="POLE-">POLE-</SelectItem>
+                  <SelectItem value="PL-">PL-</SelectItem>
+                  <SelectItem value="EN-">EN-</SelectItem>
+                  <SelectItem value="EP-">EP-</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Number"
+                value={formData.poleNoNumber}
+                onChange={(e) => setFormData(prev => ({ ...prev, poleNoNumber: e.target.value }))}
+                disabled={submitting}
+                className="flex-1"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
