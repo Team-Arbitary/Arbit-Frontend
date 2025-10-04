@@ -54,7 +54,7 @@ export function AppSidebar() {
           </div>
           {!isCollapsed && (
             <div>
-              <span className="text-xl font-semibold">Arbit P1</span>
+              <span className="text-xl font-semibold">Arbit V1</span>
               {/* <div className="flex items-center gap-2 mt-1">
                 <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
                   <span className="text-primary-foreground text-xs font-medium">T</span>
