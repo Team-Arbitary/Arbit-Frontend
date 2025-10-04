@@ -23,7 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 const navItems = [
-  { title: "Transformers", url: "/", icon: Box },
+  { title: "Transformers", url: "/dashboard", icon: Box },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
@@ -36,7 +36,7 @@ export function AppSidebar() {
   const isCollapsed = state === "collapsed";
 
   const isActive = (path: string) => {
-    if (path === "/") return currentPath === "/";
+    if (path === "/dashboard") return currentPath === "/dashboard";
     return currentPath.startsWith(path);
   };
 
@@ -76,7 +76,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink 
                       to={item.url} 
-                      end={item.url === "/"}
+                      end={item.url === "/dashboard"}
                       className={getNavClassName(item.url)}
                     >
                       <item.icon className="h-4 w-4" />
