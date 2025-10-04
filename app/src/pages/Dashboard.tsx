@@ -33,12 +33,12 @@ type Inspection = {
 };
 
 // --- API endpoints ---
-const TRANSFORMERS_URL = "http://localhost:5509/transformer-thermal-inspection/transformer-management/view-all";
-const INSPECTIONS_URL = "http://localhost:5509/transformer-thermal-inspection/inspection-management/view-all";
-const TRANSFORMERS_FILTER_URL = "http://localhost:5509/transformer-thermal-inspection/transformer-management/filter";
-const DELETE_TRANSFORMER_URL = (id: string) => `http://localhost:5509/transformer-thermal-inspection/transformer-management/delete/${id}`;
-const DELETE_INSPECTION_URL = (id: string) => `http://localhost:5509/transformer-thermal-inspection/inspection-management/delete/${id}`;
-const UPDATE_TRANSFORMER_URL = "http://localhost:5509/transformer-thermal-inspection/transformer-management/update";
+const TRANSFORMERS_URL = "https://arbit-backend-1.onrender.com/transformer-thermal-inspection/transformer-management/view-all";
+const INSPECTIONS_URL = "https://arbit-backend-1.onrender.com/transformer-thermal-inspection/inspection-management/view-all";
+const TRANSFORMERS_FILTER_URL = "https://arbit-backend-1.onrender.com/transformer-thermal-inspection/transformer-management/filter";
+const DELETE_TRANSFORMER_URL = (id: string) => `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/transformer-management/delete/${id}`;
+const DELETE_INSPECTION_URL = (id: string) => `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/inspection-management/delete/${id}`;
+const UPDATE_TRANSFORMER_URL = "https://arbit-backend-1.onrender.com/transformer-thermal-inspection/transformer-management/update";
 
 // Helper to safely unwrap ApiResponse<T> or return the raw payload if it's already a list
 async function fetchUnwrap<T>(url: string): Promise<T> {

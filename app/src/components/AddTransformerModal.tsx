@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { X } from "lucide-react";
 
-const TRANSFORMER_CREATE_URL = "http://localhost:5509/transformer-thermal-inspection/transformer-management/create";
+const TRANSFORMER_CREATE_URL = "https://arbit-backend-1.onrender.com/transformer-thermal-inspection/transformer-management/create";
 type ApiEnvelope<T> = { responseCode?: string; responseDescription?: string; responseData?: T } | T;
 
 interface AddTransformerModalProps {

@@ -32,7 +32,7 @@ Ensure the following are installed on your system before proceeding with the set
     ```
 2. Access the application at:
     * **Frontend Port**: `http://localhost:8080`
-    * **Backend API Port**: `http://localhost:5509` (for data)
+    * **Backend API Port**: `https://arbit-backend-1.onrender.com` (for data)
 
 
 ## Configuration Details

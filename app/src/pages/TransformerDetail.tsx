@@ -12,11 +12,11 @@ import { AddInspectionModal } from "@/components/AddInspectionModal";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Star, Eye, Trash2, Upload, Search, Filter } from "lucide-react";
 
-const INSPECTION_VIEW_URL = (id: string) => `http://localhost:5509/transformer-thermal-inspection/transformer-management/view/${id}`;
-const INSPECTION_LIST_URL = "http://localhost:5509/transformer-thermal-inspection/inspection-management/view-all";
-const DELETE_INSPECTION_URL = (id: string) => `http://localhost:5509/transformer-thermal-inspection/inspection-management/delete/${id}`;
-const IMAGE_UPLOAD_URL = `http://localhost:5509/transformer-thermal-inspection/image-inspection-management/upload`;
-const BASELINE_FETCH_URL = (transformerNo: string) => `http://localhost:5509/transformer-thermal-inspection/image-inspection-management/baseline/${encodeURIComponent(transformerNo)}`;
+const INSPECTION_VIEW_URL = (id: string) => `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/transformer-management/view/${id}`;
+const INSPECTION_LIST_URL = "https://arbit-backend-1.onrender.com/transformer-thermal-inspection/inspection-management/view-all";
+const DELETE_INSPECTION_URL = (id: string) => `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/inspection-management/delete/${id}`;
+const IMAGE_UPLOAD_URL = `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/image-inspection-management/upload`;
+const BASELINE_FETCH_URL = (transformerNo: string) => `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/image-inspection-management/baseline/${encodeURIComponent(transformerNo)}`;
 
 type ApiEnvelope<T> = { responseCode?: string; responseDescription?: string; responseData?: T } | T;
 

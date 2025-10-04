@@ -13,15 +13,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const INSPECTION_DETAIL_URL = (id: string) => `http://localhost:5509/transformer-thermal-inspection/inspection-management/view/${id}`;
-const IMAGE_UPLOAD_URL = `http://localhost:5509/transformer-thermal-inspection/image-inspection-management/upload`;
-const BASELINE_FETCH_URL = (transformerNo: string) => `http://localhost:5509/transformer-thermal-inspection/image-inspection-management/baseline/${transformerNo}`;
+const INSPECTION_DETAIL_URL = (id: string) => `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/inspection-management/view/${id}`;
+const IMAGE_UPLOAD_URL = `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/image-inspection-management/upload`;
+const BASELINE_FETCH_URL = (transformerNo: string) => `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/image-inspection-management/baseline/${transformerNo}`;
 
-const THERMAL_FETCH_URL = (inspectionNo: string) => `http://localhost:5509/transformer-thermal-inspection/image-inspection-management/thermal/${inspectionNo}`;
+const THERMAL_FETCH_URL = (inspectionNo: string) => `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/image-inspection-management/thermal/${inspectionNo}`;
 
 // Analysis API endpoints
-const ANALYSIS_RESULT_URL = (inspectionNo: string) => `http://localhost:5509/transformer-thermal-inspection/image-analysis/result/${inspectionNo}`;
-const ANALYZE_URL = (inspectionNo: string) => `http://localhost:5509/transformer-thermal-inspection/image-analysis/analyze/${inspectionNo}`;
+const ANALYSIS_RESULT_URL = (inspectionNo: string) => `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/image-analysis/result/${inspectionNo}`;
+const ANALYZE_URL = (inspectionNo: string) => `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/image-analysis/analyze/${inspectionNo}`;
 
 const openInNewTab = (url?: string | null) => {
   if (!url) return;

@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, X } from "lucide-react";
 import { format } from "date-fns";
 
-const INSPECTION_CREATE_URL = "http://localhost:5509/transformer-thermal-inspection/inspection-management/create";
+const INSPECTION_CREATE_URL = "https://arbit-backend-1.onrender.com/transformer-thermal-inspection/inspection-management/create";
 type ApiEnvelope<T> = { responseCode?: string; responseDescription?: string; responseData?: T } | T;
 
 interface AddInspectionModalProps {
@@ -92,7 +92,7 @@ export function AddInspectionModal({ trigger, onAdd, defaultTransformerNo }: Add
   // Fetch existing transformers
   const fetchTransformers = async () => {
     try {
-      const res = await fetch("http://localhost:5509/transformer-thermal-inspection/transformer-management/view-all");
+      const res = await fetch("https://arbit-backend-1.onrender.com/transformer-thermal-inspection/transformer-management/view-all");
       if (!res.ok) throw new Error("Failed to fetch transformers");
       const data = await res.json();
       const transformers = (data?.responseData ?? data) || [];
