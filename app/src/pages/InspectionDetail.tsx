@@ -12,16 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-const INSPECTION_DETAIL_URL = (id: string) => `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/inspection-management/view/${id}`;
-const IMAGE_UPLOAD_URL = `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/image-inspection-management/upload`;
-const BASELINE_FETCH_URL = (transformerNo: string) => `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/image-inspection-management/baseline/${transformerNo}`;
-
-const THERMAL_FETCH_URL = (inspectionNo: string) => `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/image-inspection-management/thermal/${inspectionNo}`;
-
-// Analysis API endpoints
-const ANALYSIS_RESULT_URL = (inspectionNo: string) => `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/image-analysis/result/${inspectionNo}`;
-const ANALYZE_URL = (inspectionNo: string) => `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/image-analysis/analyze/${inspectionNo}`;
+import { API_ENDPOINTS } from "@/lib/api";
 
 const openInNewTab = (url?: string | null) => {
   if (!url) return;
@@ -470,7 +461,7 @@ export default function InspectionDetail() {
     const run = async () => {
       if (!id) return;
       try {
-        const res = await fetch(INSPECTION_DETAIL_URL(id));
+        const res = await fetch(API_ENDPOINTS.INSPECTION_DETAIL(id));
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
         const raw: ApiEnvelope<any> = await res.json();
         const data: any = (raw as any)?.responseData ?? raw;
@@ -550,7 +541,7 @@ export default function InspectionDetail() {
     const tfNo = inspection.transformerNo;
     if (!tfNo || tfNo === "-") return;
 
-    const url = BASELINE_FETCH_URL(encodeURIComponent(tfNo));
+    const url = API_ENDPOINTS.IMAGE_BASELINE(encodeURIComponent(tfNo));
 
     (async () => {
       try {
@@ -592,7 +583,7 @@ export default function InspectionDetail() {
     const inspNo = id; // Use ID from URL params directly
     if (!inspNo) return;
 
-    const url = THERMAL_FETCH_URL(encodeURIComponent(inspNo));
+    const url = API_ENDPOINTS.IMAGE_THERMAL(encodeURIComponent(inspNo));
 
     (async () => {
       try {
@@ -690,7 +681,7 @@ export default function InspectionDetail() {
       // NOTE: fetch doesn't give native progress; keep a lightweight simulated bar
       const prog = setInterval(() => setUploadProgress((p) => (p >= 95 ? 95 : p + 5)), 150);
 
-      const res = await fetch(IMAGE_UPLOAD_URL, {
+      const res = await fetch(API_ENDPOINTS.IMAGE_UPLOAD, {
         method: 'POST',
         body: form,
       });
@@ -767,8 +758,8 @@ export default function InspectionDetail() {
   const handleDeleteImage = async (type: 'baseline' | 'thermal') => {
     try {
       const targetUrl = type === 'baseline'
-        ? BASELINE_FETCH_URL(encodeURIComponent(inspection.transformerNo ?? '-'))
-        : THERMAL_FETCH_URL(encodeURIComponent(inspection.id ?? '-'));
+        ? API_ENDPOINTS.IMAGE_BASELINE(encodeURIComponent(inspection.transformerNo ?? '-'))
+        : API_ENDPOINTS.IMAGE_THERMAL(encodeURIComponent(inspection.id ?? '-'));
 
       if (!window.confirm(`Delete ${type} image? This cannot be undone.`)) return;
 
@@ -794,7 +785,7 @@ export default function InspectionDetail() {
     if (!inspNo) return null;
 
     try {
-      const res = await fetch(THERMAL_FETCH_URL(encodeURIComponent(inspNo)));
+      const res = await fetch(API_ENDPOINTS.IMAGE_THERMAL(encodeURIComponent(inspNo)));
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       
       const raw: ApiEnvelope<any> = await res.json();
@@ -826,7 +817,7 @@ export default function InspectionDetail() {
     if (!inspection.id) return false;
     
     try {
-      const res = await fetch(ANALYSIS_RESULT_URL(inspection.id));
+      const res = await fetch(API_ENDPOINTS.ANALYSIS_RESULT(inspection.id));
       if (!res.ok) {
         // If 404, analysis not ready yet
         if (res.status === 404) {
@@ -962,7 +953,7 @@ export default function InspectionDetail() {
     setAnalyzeError(null);
 
     try {
-      const res = await fetch(ANALYZE_URL(inspection.id), {
+      const res = await fetch(API_ENDPOINTS.ANALYSIS_ANALYZE(inspection.id), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

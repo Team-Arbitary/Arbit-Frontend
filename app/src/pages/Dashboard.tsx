@@ -12,6 +12,7 @@ import { AddInspectionModal } from "@/components/AddInspectionModal";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Search, Filter, Star, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { API_ENDPOINTS } from "@/lib/api";
 
 // --- Types for API data ---
 type Transformer = {
@@ -31,14 +32,6 @@ type Inspection = {
   maintenanceDate?: string;
   status?: "in-progress" | "pending" | "completed" | string;
 };
-
-// --- API endpoints ---
-const TRANSFORMERS_URL = "https://arbit-backend-1.onrender.com/transformer-thermal-inspection/transformer-management/view-all";
-const INSPECTIONS_URL = "https://arbit-backend-1.onrender.com/transformer-thermal-inspection/inspection-management/view-all";
-const TRANSFORMERS_FILTER_URL = "https://arbit-backend-1.onrender.com/transformer-thermal-inspection/transformer-management/filter";
-const DELETE_TRANSFORMER_URL = (id: string) => `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/transformer-management/delete/${id}`;
-const DELETE_INSPECTION_URL = (id: string) => `https://arbit-backend-1.onrender.com/transformer-thermal-inspection/inspection-management/delete/${id}`;
-const UPDATE_TRANSFORMER_URL = "https://arbit-backend-1.onrender.com/transformer-thermal-inspection/transformer-management/update";
 
 // Helper to safely unwrap ApiResponse<T> or return the raw payload if it's already a list
 async function fetchUnwrap<T>(url: string): Promise<T> {
@@ -147,7 +140,7 @@ export default function Dashboard() {
     // decide whether to call /filter or /view-all
     const useFilter = region !== "all-regions" || type !== "all-types";
     if (!useFilter) {
-      const txRaw = await fetchUnwrap<ApiItem[]>(TRANSFORMERS_URL);
+      const txRaw = await fetchUnwrap<ApiItem[]>(API_ENDPOINTS.TRANSFORMER_VIEW_ALL);
       setTransformers((txRaw || []).map(toTransformer));
       return;
     }
@@ -166,7 +159,7 @@ export default function Dashboard() {
       offset: 0,
     };
 
-    const res = await fetch(TRANSFORMERS_FILTER_URL, {
+    const res = await fetch(API_ENDPOINTS.TRANSFORMER_FILTER, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -182,7 +175,7 @@ export default function Dashboard() {
       setLoading(true);
       setError(null);
       const [insRaw] = await Promise.all([
-        fetchUnwrap<ApiItem[]>(INSPECTIONS_URL),
+        fetchUnwrap<ApiItem[]>(API_ENDPOINTS.INSPECTION_VIEW_ALL),
       ]);
       setInspections((insRaw || []).map(toInspection));
       await loadTransformers(selectedRegion, selectedType);
@@ -239,10 +232,10 @@ export default function Dashboard() {
     if (!ok) return;
     try {
       // Try DELETE first
-      let res = await fetch(DELETE_TRANSFORMER_URL(transformerId), { method: 'DELETE' });
+      let res = await fetch(API_ENDPOINTS.TRANSFORMER_DELETE(transformerId), { method: 'DELETE' });
       if (!res.ok) {
         // Fallback to GET in case backend maps deletion to GET
-        res = await fetch(DELETE_TRANSFORMER_URL(transformerId), { method: 'GET' });
+        res = await fetch(API_ENDPOINTS.TRANSFORMER_DELETE(transformerId), { method: 'GET' });
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       }
       // Remove from local state on success
@@ -260,9 +253,9 @@ export default function Dashboard() {
     const ok = window.confirm("Are you sure you want to delete this inspection?");
     if (!ok) return;
     try {
-      let res = await fetch(DELETE_INSPECTION_URL(inspectionId), { method: 'DELETE' });
+      let res = await fetch(API_ENDPOINTS.INSPECTION_DELETE(inspectionId), { method: 'DELETE' });
       if (!res.ok) {
-        res = await fetch(DELETE_INSPECTION_URL(inspectionId), { method: 'GET' });
+        res = await fetch(API_ENDPOINTS.INSPECTION_DELETE(inspectionId), { method: 'GET' });
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       }
       setInspections(prev => prev.filter(i => i.id !== inspectionId));
@@ -312,7 +305,7 @@ export default function Dashboard() {
         location: editLocation,
       };
 
-      const res = await fetch(UPDATE_TRANSFORMER_URL, {
+      const res = await fetch(API_ENDPOINTS.TRANSFORMER_UPDATE, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

@@ -6,9 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { X } from "lucide-react";
-
-const TRANSFORMER_CREATE_URL = "https://arbit-backend-1.onrender.com/transformer-thermal-inspection/transformer-management/create";
-type ApiEnvelope<T> = { responseCode?: string; responseDescription?: string; responseData?: T } | T;
+import { API_ENDPOINTS, type ApiEnvelope } from "@/lib/api";
 
 interface AddTransformerModalProps {
   trigger?: React.ReactNode;
@@ -48,7 +46,7 @@ export function AddTransformerModal({ trigger, onAdd }: AddTransformerModalProps
     };
 
     try {
-      const res = await fetch(TRANSFORMER_CREATE_URL, {
+      const res = await fetch(API_ENDPOINTS.TRANSFORMER_CREATE, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
