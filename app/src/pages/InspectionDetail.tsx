@@ -7,12 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
-import { ArrowLeft, Upload, Eye, Trash2, Search, ZoomIn, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, Upload, Eye, Trash2, Search, ZoomIn, MoreHorizontal, Square, X, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { API_ENDPOINTS } from "@/lib/api";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 const openInNewTab = (url?: string | null) => {
   if (!url) return;
@@ -28,6 +31,27 @@ type InspectionView = {
   lastUpdated?: string;
   status: "in-progress" | "pending" | "completed" | "Not started" | "Not Started" | "Completed" | string;
 };
+
+// Bounding Box Annotation Types
+interface BoundingBox {
+  id: string;
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  anomalyState: "Faulty" | "Potentially Faulty" | "Normal" | "";
+  confidenceScore: number;
+  riskType: "Point fault" | "Full wire overload" | "Transformer overload" | "";
+  description: string;
+  imageType: "thermal" | "result";
+}
+
+interface AnnotationMetadata {
+  anomalyState: "Faulty" | "Potentially Faulty" | "Normal" | "";
+  confidenceScore: number;
+  riskType: "Point fault" | "Full wire overload" | "Transformer overload" | "";
+  description: string;
+}
 
 interface AnalysisModalProps {
   isOpen: boolean;
@@ -54,6 +78,24 @@ function AnalysisModal({
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [viewMode, setViewMode] = useState<'side-by-side' | 'slider'>('side-by-side');
   const [isDragging, setIsDragging] = useState(false);
+  
+  // Bounding box annotation states
+  const [annotationMode, setAnnotationMode] = useState(false);
+  const [boundingBoxes, setBoundingBoxes] = useState<BoundingBox[]>([]);
+  const [currentBox, setCurrentBox] = useState<Partial<BoundingBox> | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
+  const [showMetadataForm, setShowMetadataForm] = useState(false);
+  const [pendingBoxId, setPendingBoxId] = useState<string | null>(null);
+  const { toast } = useToast();
+  
+  // Metadata form state
+  const [metadata, setMetadata] = useState<AnnotationMetadata>({
+    anomalyState: "",
+    confidenceScore: 0,
+    riskType: "",
+    description: ""
+  });
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const container = e.currentTarget;
@@ -97,6 +139,159 @@ function AnalysisModal({
     setComparisonPosition(Math.max(0, Math.min(100, newPosition)));
   };
 
+  // Bounding box annotation handlers
+  const handleImageClick = (e: React.MouseEvent<HTMLDivElement>, imageType: 'thermal' | 'result') => {
+    if (!annotationMode) return;
+    
+    const img = e.currentTarget.querySelector('img') as HTMLImageElement;
+    if (!img) return;
+    
+    const imgRect = img.getBoundingClientRect();
+    const x = ((e.clientX - imgRect.left) / imgRect.width) * 100;
+    const y = ((e.clientY - imgRect.top) / imgRect.height) * 100;
+    
+    if (!isDrawing) {
+      // Start drawing
+      const newBox: Partial<BoundingBox> = {
+        id: `box-${Date.now()}`,
+        startX: x,
+        startY: y,
+        endX: x,
+        endY: y,
+        imageType,
+        anomalyState: "",
+        confidenceScore: 0,
+        riskType: "",
+        description: ""
+      };
+      setCurrentBox(newBox);
+      setIsDrawing(true);
+    } else {
+      // Finish drawing
+      if (currentBox) {
+        const finishedBox = {
+          ...currentBox,
+          endX: x,
+          endY: y
+        } as BoundingBox;
+        
+        // Check if box has valid size (not just a click)
+        const width = Math.abs(finishedBox.endX - finishedBox.startX);
+        const height = Math.abs(finishedBox.endY - finishedBox.startY);
+        
+        if (width > 1 && height > 1) {
+          setPendingBoxId(finishedBox.id);
+          setShowMetadataForm(true);
+          // Temporarily add box to array (will be updated with metadata)
+          setBoundingBoxes(prev => [...prev, finishedBox]);
+        }
+      }
+      setCurrentBox(null);
+      setIsDrawing(false);
+    }
+  };
+
+  const handleImageMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!annotationMode || !isDrawing || !currentBox) return;
+    
+    const img = e.currentTarget.querySelector('img') as HTMLImageElement;
+    if (!img) return;
+    
+    const imgRect = img.getBoundingClientRect();
+    const x = ((e.clientX - imgRect.left) / imgRect.width) * 100;
+    const y = ((e.clientY - imgRect.top) / imgRect.height) * 100;
+    
+    setCurrentBox(prev => prev ? { ...prev, endX: x, endY: y } : null);
+  };
+
+  const handleSaveMetadata = () => {
+    if (!pendingBoxId) return;
+    
+    // Validate required fields
+    if (!metadata.anomalyState || !metadata.riskType) {
+      toast({
+        title: "Missing Information",
+        description: "Please select anomaly state and risk type",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Update the box with metadata
+    setBoundingBoxes(prev => prev.map(box => 
+      box.id === pendingBoxId 
+        ? { ...box, ...metadata }
+        : box
+    ));
+    
+    // Reset form
+    setShowMetadataForm(false);
+    setPendingBoxId(null);
+    setMetadata({
+      anomalyState: "",
+      confidenceScore: 0,
+      riskType: "",
+      description: ""
+    });
+    
+    toast({
+      title: "Annotation Saved",
+      description: "Bounding box annotation has been saved successfully",
+    });
+  };
+
+  const handleCancelMetadata = () => {
+    // Remove the pending box
+    if (pendingBoxId) {
+      setBoundingBoxes(prev => prev.filter(box => box.id !== pendingBoxId));
+    }
+    setShowMetadataForm(false);
+    setPendingBoxId(null);
+    setMetadata({
+      anomalyState: "",
+      confidenceScore: 0,
+      riskType: "",
+      description: ""
+    });
+  };
+
+  const handleDeleteBox = (boxId: string) => {
+    setBoundingBoxes(prev => prev.filter(box => box.id !== boxId));
+    setSelectedBoxId(null);
+    toast({
+      title: "Annotation Deleted",
+      description: "Bounding box annotation has been removed",
+    });
+  };
+
+  const handleExportAnnotations = () => {
+    const annotationsJson = JSON.stringify(boundingBoxes, null, 2);
+    console.log('Annotations to be sent to backend:', annotationsJson);
+    
+    // Create a download for now
+    const blob = new Blob([annotationsJson], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `inspection-${inspection.id}-annotations.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Annotations Exported",
+      description: `${boundingBoxes.length} annotations exported. Ready to send to backend.`,
+    });
+  };
+
+  const toggleAnnotationMode = () => {
+    setAnnotationMode(!annotationMode);
+    if (annotationMode) {
+      // Exiting annotation mode
+      setIsDrawing(false);
+      setCurrentBox(null);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl w-full max-h-[90vh] overflow-hidden">
@@ -112,6 +307,25 @@ function AnalysisModal({
             </div>
             <div className="flex items-center gap-2">
               <Button
+                variant={annotationMode ? "default" : "outline"}
+                size="sm"
+                onClick={toggleAnnotationMode}
+                className={annotationMode ? "bg-blue-600 hover:bg-blue-700" : ""}
+              >
+                <Square className="h-4 w-4 mr-2" />
+                {annotationMode ? 'Exit Annotation' : 'Annotate Boxes'}
+              </Button>
+              {boundingBoxes.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportAnnotations}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Export ({boundingBoxes.length})
+                </Button>
+              )}
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setViewMode(viewMode === 'side-by-side' ? 'slider' : 'side-by-side')}
@@ -123,6 +337,21 @@ function AnalysisModal({
         </DialogHeader>
 
         <div className="space-y-4 overflow-y-auto max-h-[calc(90vh-120px)]">
+          {/* Annotation Mode Info Banner */}
+          {annotationMode && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+              <div className="flex items-start gap-2">
+                <Square className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-blue-900">Annotation Mode Active</p>
+                  <p className="text-blue-700 mt-1">
+                    Click once to start drawing a box, move your cursor to define the area, then click again to finish. 
+                    You'll be prompted to add metadata for each annotation.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           {(!thermalImage || !analysisResult) && (
             <div className="text-center py-8">
               <p className="text-muted-foreground mb-4">
@@ -141,17 +370,90 @@ function AnalysisModal({
                   <div className="space-y-2">
                     <h3 className="font-medium text-center">Thermal Image (Original)</h3>
                     <div 
-                      className="relative bg-gray-100 rounded-lg overflow-hidden group cursor-crosshair border-2 border-gray-200 hover:border-blue-400 transition-colors flex items-center justify-center min-h-[300px]"
-                      onMouseMove={handleMouseMove}
+                      className={`relative bg-gray-100 rounded-lg overflow-hidden group border-2 transition-colors flex items-center justify-center min-h-[300px] ${
+                        annotationMode 
+                          ? 'cursor-crosshair border-blue-500 hover:border-blue-600' 
+                          : 'cursor-crosshair border-gray-200 hover:border-blue-400'
+                      }`}
+                      onMouseMove={(e) => {
+                        handleMouseMove(e);
+                        if (annotationMode) handleImageMouseMove(e);
+                      }}
                       onMouseEnter={() => setHoveredImage('thermal')}
                       onMouseLeave={() => setHoveredImage(null)}
+                      onClick={(e) => handleImageClick(e, 'thermal')}
                     >
                       <img 
                         src={thermalImage} 
                         alt="Thermal image" 
                         className="max-w-full max-h-[500px] object-contain rounded"
                       />
-                      {hoveredImage === 'thermal' && imageSize.width > 0 && (
+                      
+                      {/* Render existing bounding boxes */}
+                      {boundingBoxes.filter(box => box.imageType === 'thermal').map(box => {
+                        const left = Math.min(box.startX, box.endX);
+                        const top = Math.min(box.startY, box.endY);
+                        const width = Math.abs(box.endX - box.startX);
+                        const height = Math.abs(box.endY - box.startY);
+                        
+                        return (
+                          <div
+                            key={box.id}
+                            className={`absolute border-2 pointer-events-auto ${
+                              selectedBoxId === box.id ? 'border-yellow-400' : 
+                              box.anomalyState === 'Faulty' ? 'border-red-500' :
+                              box.anomalyState === 'Potentially Faulty' ? 'border-orange-500' :
+                              'border-green-500'
+                            }`}
+                            style={{
+                              left: `${left}%`,
+                              top: `${top}%`,
+                              width: `${width}%`,
+                              height: `${height}%`,
+                              backgroundColor: selectedBoxId === box.id ? 'rgba(255, 255, 0, 0.1)' :
+                                box.anomalyState === 'Faulty' ? 'rgba(255, 0, 0, 0.1)' :
+                                box.anomalyState === 'Potentially Faulty' ? 'rgba(255, 165, 0, 0.1)' :
+                                'rgba(0, 255, 0, 0.1)'
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedBoxId(box.id);
+                            }}
+                          >
+                            <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
+                              {box.anomalyState} ({box.confidenceScore}%)
+                            </div>
+                            {selectedBoxId === box.id && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="absolute -top-8 -right-8 h-6 w-6 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteBox(box.id);
+                                }}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
+                      
+                      {/* Render current drawing box */}
+                      {currentBox && currentBox.imageType === 'thermal' && (
+                        <div
+                          className="absolute border-2 border-dashed border-blue-500 bg-blue-500/20 pointer-events-none"
+                          style={{
+                            left: `${Math.min(currentBox.startX!, currentBox.endX!)}%`,
+                            top: `${Math.min(currentBox.startY!, currentBox.endY!)}%`,
+                            width: `${Math.abs(currentBox.endX! - currentBox.startX!)}%`,
+                            height: `${Math.abs(currentBox.endY! - currentBox.startY!)}%`,
+                          }}
+                        />
+                      )}
+                      
+                      {!annotationMode && hoveredImage === 'thermal' && imageSize.width > 0 && (
                         <>
                           <div 
                             className="absolute pointer-events-none shadow-lg z-10 rounded-lg overflow-hidden"
@@ -194,17 +496,90 @@ function AnalysisModal({
                   <div className="space-y-2">
                     <h3 className="font-medium text-center">Analysis Result</h3>
                     <div 
-                      className="relative bg-gray-100 rounded-lg overflow-hidden group cursor-crosshair border-2 border-gray-200 hover:border-green-400 transition-colors flex items-center justify-center min-h-[300px]"
-                      onMouseMove={handleMouseMove}
+                      className={`relative bg-gray-100 rounded-lg overflow-hidden group border-2 transition-colors flex items-center justify-center min-h-[300px] ${
+                        annotationMode 
+                          ? 'cursor-crosshair border-green-500 hover:border-green-600' 
+                          : 'cursor-crosshair border-gray-200 hover:border-green-400'
+                      }`}
+                      onMouseMove={(e) => {
+                        handleMouseMove(e);
+                        if (annotationMode) handleImageMouseMove(e);
+                      }}
                       onMouseEnter={() => setHoveredImage('result')}
                       onMouseLeave={() => setHoveredImage(null)}
+                      onClick={(e) => handleImageClick(e, 'result')}
                     >
                       <img 
                         src={analysisResult} 
                         alt="Analysis result" 
                         className="max-w-full max-h-[500px] object-contain rounded"
                       />
-                      {hoveredImage === 'result' && imageSize.width > 0 && (
+                      
+                      {/* Render existing bounding boxes */}
+                      {boundingBoxes.filter(box => box.imageType === 'result').map(box => {
+                        const left = Math.min(box.startX, box.endX);
+                        const top = Math.min(box.startY, box.endY);
+                        const width = Math.abs(box.endX - box.startX);
+                        const height = Math.abs(box.endY - box.startY);
+                        
+                        return (
+                          <div
+                            key={box.id}
+                            className={`absolute border-2 pointer-events-auto ${
+                              selectedBoxId === box.id ? 'border-yellow-400' : 
+                              box.anomalyState === 'Faulty' ? 'border-red-500' :
+                              box.anomalyState === 'Potentially Faulty' ? 'border-orange-500' :
+                              'border-green-500'
+                            }`}
+                            style={{
+                              left: `${left}%`,
+                              top: `${top}%`,
+                              width: `${width}%`,
+                              height: `${height}%`,
+                              backgroundColor: selectedBoxId === box.id ? 'rgba(255, 255, 0, 0.1)' :
+                                box.anomalyState === 'Faulty' ? 'rgba(255, 0, 0, 0.1)' :
+                                box.anomalyState === 'Potentially Faulty' ? 'rgba(255, 165, 0, 0.1)' :
+                                'rgba(0, 255, 0, 0.1)'
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedBoxId(box.id);
+                            }}
+                          >
+                            <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
+                              {box.anomalyState} ({box.confidenceScore}%)
+                            </div>
+                            {selectedBoxId === box.id && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="absolute -top-8 -right-8 h-6 w-6 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteBox(box.id);
+                                }}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
+                      
+                      {/* Render current drawing box */}
+                      {currentBox && currentBox.imageType === 'result' && (
+                        <div
+                          className="absolute border-2 border-dashed border-green-500 bg-green-500/20 pointer-events-none"
+                          style={{
+                            left: `${Math.min(currentBox.startX!, currentBox.endX!)}%`,
+                            top: `${Math.min(currentBox.startY!, currentBox.endY!)}%`,
+                            width: `${Math.abs(currentBox.endX! - currentBox.startX!)}%`,
+                            height: `${Math.abs(currentBox.endY! - currentBox.startY!)}%`,
+                          }}
+                        />
+                      )}
+                      
+                      {!annotationMode && hoveredImage === 'result' && imageSize.width > 0 && (
                         <>
                           <div 
                             className="absolute pointer-events-none shadow-lg z-10 rounded-lg overflow-hidden"
@@ -418,6 +793,89 @@ function AnalysisModal({
           )}
         </div>
       </DialogContent>
+      
+      {/* Metadata Form Dialog */}
+      <Dialog open={showMetadataForm} onOpenChange={setShowMetadataForm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Annotation Metadata</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="anomalyState">Anomaly State *</Label>
+              <Select 
+                value={metadata.anomalyState} 
+                onValueChange={(value) => setMetadata({...metadata, anomalyState: value as "Faulty" | "Potentially Faulty" | "Normal" | ""})}
+              >
+                <SelectTrigger id="anomalyState">
+                  <SelectValue placeholder="Select anomaly state" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Faulty">Faulty</SelectItem>
+                  <SelectItem value="Potentially Faulty">Potentially Faulty</SelectItem>
+                  <SelectItem value="Normal">Normal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="confidenceScore">Confidence Score (0-100) *</Label>
+              <div className="flex items-center gap-4">
+                <Slider
+                  id="confidenceScore"
+                  value={[metadata.confidenceScore]}
+                  onValueChange={(value) => setMetadata({...metadata, confidenceScore: value[0]})}
+                  max={100}
+                  step={1}
+                  className="flex-1"
+                />
+                <span className="text-sm font-mono w-12 text-right">{metadata.confidenceScore}%</span>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="riskType">Risk Type *</Label>
+              <Select 
+                value={metadata.riskType} 
+                onValueChange={(value) => setMetadata({...metadata, riskType: value as "Point fault" | "Full wire overload" | "Transformer overload" | ""})}
+                disabled={metadata.anomalyState === "Normal"}
+              >
+                <SelectTrigger id="riskType">
+                  <SelectValue placeholder="Select risk type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Point fault">Point fault</SelectItem>
+                  <SelectItem value="Full wire overload">Full wire overload</SelectItem>
+                  <SelectItem value="Transformer overload">Transformer overload</SelectItem>
+                </SelectContent>
+              </Select>
+              {metadata.anomalyState === "Normal" && (
+                <p className="text-xs text-muted-foreground">Risk type not required for Normal state</p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                placeholder="Add additional notes about this annotation..."
+                value={metadata.description}
+                onChange={(e) => setMetadata({...metadata, description: e.target.value})}
+                rows={3}
+              />
+            </div>
+            
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={handleCancelMetadata}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveMetadata}>
+                Save Annotation
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
