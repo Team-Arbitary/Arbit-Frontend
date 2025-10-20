@@ -46,13 +46,19 @@ interface BoundingBox {
   imageType: "thermal" | "result";
   // Tracking metadata
   source?: "ai" | "manual" | "ai-modified" | "ai-rejected";
+  annotationType?: "added" | "edited" | "deleted";
   createdBy?: string;
   createdAt?: string;
   modifiedBy?: string; // "AI" or user email (e.g., "hasitha@gmail.com")
   modifiedAt?: string;
   confirmedBy?: string; // User email if confirmed, "not confirmed by the user" if not, or user email if manually added
+  editedBy?: string; // User who last edited
+  editedAt?: string;
+  deletedBy?: string; // User who deleted (or "user:AI" for AI detections)
+  deletedAt?: string;
   aiGenerated?: boolean;
   userVerified?: boolean;
+  isDeleted?: boolean; // Soft delete flag
 }
 
 interface AnnotationMetadata {
@@ -250,38 +256,71 @@ function AnalysisModal({
         const isExisting = box.anomalyState !== "";
         const isAIGenerated = box.aiGenerated || false;
         
-        // Determine source based on actions
+        // Determine annotation type and source
+        let annotationType: "added" | "edited" | "deleted" = "added";
         let newSource: "ai" | "manual" | "ai-modified" | "ai-rejected" = "manual";
         let confirmedBy = currentUser; // Default for manual annotations
         
-        if (isExisting && isAIGenerated) {
-          // User is modifying an AI-generated box
-          if (box.anomalyState === "Normal" && metadata.anomalyState !== "Normal") {
-            // User is rejecting AI's assessment
-            newSource = "ai-rejected";
-            confirmedBy = `Rejected by ${currentUser}`;
+        if (isExisting) {
+          // This is an edit
+          annotationType = "edited";
+          
+          if (isAIGenerated) {
+            // User is editing an AI-generated box
+            if (box.anomalyState === "Normal" && metadata.anomalyState !== "Normal") {
+              // User is rejecting AI's assessment
+              newSource = "ai-rejected";
+              confirmedBy = `Rejected by ${currentUser}`;
+            } else {
+              // User is modifying AI box
+              newSource = "ai-modified";
+              confirmedBy = currentUser;
+            }
           } else {
-            // User is modifying AI box
-            newSource = "ai-modified";
+            // User is editing their own manual annotation
+            newSource = box.source || "manual";
             confirmedBy = currentUser;
           }
-        } else if (!isExisting && !isAIGenerated) {
-          // Brand new manual annotation
+        } else {
+          // Brand new annotation
+          annotationType = "added";
           newSource = "manual";
           confirmedBy = currentUser;
+        }
+        
+        // Determine editedBy: "none" if user didn't edit an AI annotation
+        let editedBy: string | undefined;
+        let editedAt: string | undefined;
+        
+        if (isExisting) {
+          // This is an edit
+          editedBy = currentUser;
+          editedAt = currentTime;
+        } else if (isAIGenerated) {
+          // AI-generated, user hasn't edited it yet
+          editedBy = "none";
+          editedAt = undefined;
+        } else {
+          // New manual annotation
+          editedBy = undefined;
+          editedAt = undefined;
         }
         
         return {
           ...box,
           ...metadata,
           // Set tracking metadata
+          annotationType,
           source: newSource,
-          createdBy: box.createdBy || (isAIGenerated ? "AI" : currentUser),
+          createdBy: box.createdBy || (isAIGenerated ? "user:AI" : currentUser),
           createdAt: box.createdAt || currentTime,
-          modifiedBy: isExisting ? currentUser : (isAIGenerated ? "AI" : currentUser),
-          modifiedAt: isExisting ? currentTime : currentTime,
+          modifiedBy: editedBy, // modifiedBy is same as editedBy
+          modifiedAt: editedAt || currentTime,
           confirmedBy: confirmedBy,
-          userVerified: isExisting || isAIGenerated,
+          editedBy: editedBy,
+          editedAt: editedAt,
+          userVerified: true,
+          isDeleted: false,
         };
       }
       return box;
@@ -346,7 +385,30 @@ function AnalysisModal({
   };
 
   const handleDeleteBox = (boxId: string) => {
-    const updatedBoxes = boundingBoxes.filter(box => box.id !== boxId);
+    const currentUser = "hasitha@gmail.com"; // Mock user
+    const currentTime = new Date().toISOString();
+    
+    // Find the box to determine who should be credited with deletion
+    const boxToDelete = boundingBoxes.find(box => box.id === boxId);
+    
+    if (!boxToDelete) return;
+    
+    // Determine who deleted it: user:AI for AI-generated, current user for manual
+    const deletedBy = boxToDelete.aiGenerated ? "user:AI" : currentUser;
+    
+    // Soft delete: mark as deleted instead of removing
+    const updatedBoxes = boundingBoxes.map(box => 
+      box.id === boxId 
+        ? { 
+            ...box, 
+            isDeleted: true,
+            deletedBy,
+            deletedAt: currentTime,
+            annotationType: "deleted" as const
+          }
+        : box
+    );
+    
     setBoundingBoxes(updatedBoxes);
     setSelectedBoxId(null);
     
@@ -355,31 +417,38 @@ function AnalysisModal({
     
     toast({
       title: "Annotation Deleted",
-      description: "Bounding box annotation has been removed",
+      description: `Bounding box annotation has been removed by ${deletedBy}`,
     });
   };
 
   const handleExportAnnotations = () => {
-    // Convert to the new format with bbox, center, and tracking metadata
-    const formattedAnnotations = boundingBoxes.map(box => {
-      const x = Math.min(box.startX, box.endX);
-      const y = Math.min(box.startY, box.endY);
-      const w = Math.abs(box.endX - box.startX);
-      const h = Math.abs(box.endY - box.startY);
-      
-      return {
-        id: box.id,
-        bbox: [x, y, w, h],
-        center: [x + w / 2, y + h / 2],
-        anomalyState: box.anomalyState,
-        confidenceScore: box.confidenceScore,
-        riskType: box.riskType,
-        description: box.description,
-        imageType: box.imageType,
-        modifiedBy: box.modifiedBy || (box.aiGenerated ? "AI" : box.createdBy || "unknown"),
-        confirmedBy: box.confirmedBy || (box.aiGenerated && !box.userVerified ? "not confirmed by the user" : box.createdBy || "unknown")
-      };
-    });
+    // Convert to the new format with bbox, center, and full tracking metadata
+    const formattedAnnotations = boundingBoxes
+      .filter(box => !box.isDeleted) // Exclude deleted annotations from export
+      .map(box => {
+        const x = Math.min(box.startX, box.endX);
+        const y = Math.min(box.startY, box.endY);
+        const w = Math.abs(box.endX - box.startX);
+        const h = Math.abs(box.endY - box.startY);
+        
+        return {
+          id: box.id,
+          bbox: [x, y, w, h],
+          center: [x + w / 2, y + h / 2],
+          anomalyState: box.anomalyState,
+          confidenceScore: box.confidenceScore,
+          riskType: box.riskType,
+          description: box.description,
+          imageType: box.imageType,
+          annotationType: box.annotationType || "added",
+          modifiedBy: box.modifiedBy || (box.aiGenerated ? "user:AI" : box.createdBy || "unknown"),
+          confirmedBy: box.confirmedBy || (box.aiGenerated && !box.userVerified ? "not confirmed by the user" : box.createdBy || "unknown"),
+          addedBy: box.createdBy || "unknown",
+          addedAt: box.createdAt,
+          editedBy: box.editedBy,
+          editedAt: box.editedAt
+        };
+      });
     
     const annotationsJson = JSON.stringify(formattedAnnotations, null, 2);
     console.log('Annotations to be sent to backend:', annotationsJson);
@@ -1804,6 +1873,41 @@ export default function InspectionDetail() {
     }
   };
 
+  // Delete annotation handler for main page
+  const handleDeleteAnnotation = (boxId: string) => {
+    const currentUser = "hasitha@gmail.com"; // Mock user
+    const currentTime = new Date().toISOString();
+    
+    // Find the box to determine who should be credited with deletion
+    const boxToDelete = cachedAnnotations.find(box => box.id === boxId);
+    
+    if (!boxToDelete) return;
+    
+    // Determine who deleted it: user:AI for AI-generated, current user for manual
+    const deletedBy = boxToDelete.aiGenerated ? "user:AI" : currentUser;
+    
+    // Soft delete: mark as deleted instead of removing
+    const updatedAnnotations = cachedAnnotations.map(box => 
+      box.id === boxId 
+        ? { 
+            ...box, 
+            isDeleted: true,
+            deletedBy,
+            deletedAt: currentTime,
+            annotationType: "deleted" as const
+          }
+        : box
+    );
+    
+    setCachedAnnotations(updatedAnnotations);
+    saveAnnotationsToCache(updatedAnnotations);
+    
+    toast({
+      title: "Annotation Deleted",
+      description: `Annotation removed by ${deletedBy}`,
+    });
+  };
+
   // Chat handler
   const handleSendMessage = async () => {
     if (!chatInput.trim()) return;
@@ -2241,80 +2345,123 @@ export default function InspectionDetail() {
                       <div className="space-y-3">
                         <h4 className="font-semibold text-lg">Anomalies</h4>
                         
-                        {cachedAnnotations.length > 0 ? (
+                        {cachedAnnotations.filter(box => !box.isDeleted).length > 0 ? (
                           <div className="space-y-2">
-                            {cachedAnnotations.map((box) => {
-                              // Determine background color based on status
-                              let bgColor = "bg-white"; // Unconfirmed AI (white)
-                              let borderColor = "border-gray-300";
-                              let statusLabel = "Unconfirmed AI Detection";
-                              let statusColor = "text-gray-600";
-                              
-                              if (box.source === "ai-rejected") {
-                                // AI box marked as false by user (light yellow)
-                                bgColor = "bg-yellow-50";
-                                borderColor = "border-yellow-400";
-                                statusLabel = "AI Detection - Rejected by User";
-                                statusColor = "text-yellow-700";
-                              } else if (box.source === "manual" || box.confirmedBy !== "not confirmed by the user") {
-                                // User-confirmed or manually added (light green)
-                                bgColor = "bg-green-50";
-                                borderColor = "border-green-400";
-                                statusLabel = box.source === "manual" ? "Manually Added" : "Confirmed by User";
-                                statusColor = "text-green-700";
-                              }
-                              
-                              return (
-                                <div key={box.id} className={`${bgColor} p-3 rounded-lg border-l-4 ${borderColor} border`}>
-                                  <div className="flex justify-between items-start mb-2">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <span className="font-semibold text-gray-900">
-                                          {box.anomalyState}
-                                        </span>
-                                        <Badge variant="outline" className={`text-xs ${
-                                          box.source === "ai-rejected" ? "border-yellow-500 text-yellow-700" :
-                                          box.source === "manual" ? "border-green-500 text-green-700" :
-                                          box.confirmedBy !== "not confirmed by the user" ? "border-green-500 text-green-700" :
-                                          "border-gray-400 text-gray-600"
-                                        }`}>
-                                          {box.source === "manual" ? "Manual" : "AI"}
-                                        </Badge>
+                            {cachedAnnotations
+                              .filter(box => !box.isDeleted)
+                              .map((box) => {
+                                // Determine background color based on status
+                                let bgColor = "bg-white"; // Unconfirmed AI (white)
+                                let borderColor = "border-gray-300";
+                                let statusLabel = "Unconfirmed AI Detection";
+                                let statusColor = "text-gray-600";
+                                
+                                if (box.source === "ai-rejected") {
+                                  // AI box marked as false by user (light yellow)
+                                  bgColor = "bg-yellow-50";
+                                  borderColor = "border-yellow-400";
+                                  statusLabel = "AI Detection - Rejected by User";
+                                  statusColor = "text-yellow-700";
+                                } else if (box.source === "manual" || box.confirmedBy !== "not confirmed by the user") {
+                                  // User-confirmed or manually added (light green)
+                                  bgColor = "bg-green-50";
+                                  borderColor = "border-green-400";
+                                  statusLabel = box.source === "manual" ? "Manually Added" : "Confirmed by User";
+                                  statusColor = "text-green-700";
+                                }
+                                
+                                return (
+                                  <div key={box.id} className={`${bgColor} p-3 rounded-lg border-l-4 ${borderColor} border`}>
+                                    <div className="flex justify-between items-start mb-2">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <span className="font-semibold text-gray-900">
+                                            {box.anomalyState}
+                                          </span>
+                                          <Badge variant="outline" className={`text-xs ${
+                                            box.source === "ai-rejected" ? "border-yellow-500 text-yellow-700" :
+                                            box.source === "manual" ? "border-green-500 text-green-700" :
+                                            box.confirmedBy !== "not confirmed by the user" ? "border-green-500 text-green-700" :
+                                            "border-gray-400 text-gray-600"
+                                          }`}>
+                                            {box.source === "manual" ? "Manual" : "AI"}
+                                          </Badge>
+                                          {box.annotationType && (
+                                            <Badge variant="secondary" className="text-xs">
+                                              {box.annotationType}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <p className="text-sm text-gray-700">
+                                          Risk: {box.riskType}
+                                          {box.description && ` • ${box.description}`}
+                                        </p>
                                       </div>
-                                      <p className="text-sm text-gray-700">
-                                        Risk: {box.riskType}
-                                        {box.description && ` • ${box.description}`}
-                                      </p>
+                                      <div className="flex flex-col items-end gap-2">
+                                        <div className="text-xs text-gray-600 text-right">
+                                          <div>Confidence: {box.confidenceScore}%</div>
+                                          <div>Image: {box.imageType === 'thermal' ? 'Thermal' : 'Result'}</div>
+                                        </div>
+                                        <Button
+                                          variant="destructive"
+                                          size="sm"
+                                          onClick={() => handleDeleteAnnotation(box.id)}
+                                          className="h-7 px-2 text-xs"
+                                        >
+                                          <Trash2 className="h-3 w-3 mr-1" />
+                                          Delete
+                                        </Button>
+                                      </div>
                                     </div>
-                                    <div className="text-right text-xs text-gray-600 ml-4">
-                                      <div>Confidence: {box.confidenceScore}%</div>
-                                      <div>Image: {box.imageType === 'thermal' ? 'Thermal' : 'Result'}</div>
-                                    </div>
-                                  </div>
-                                  
-                                  {/* Tracking Information */}
-                                  <div className="text-xs text-gray-500 mt-2 pt-2 border-t space-y-1">
-                                    <div className={`font-medium ${statusColor}`}>
-                                      {statusLabel}
-                                    </div>
-                                    <div>
-                                      <span className="font-medium">Modified by:</span> {box.modifiedBy || (box.aiGenerated ? "AI" : box.createdBy || "unknown")}
-                                    </div>
-                                    <div>
-                                      <span className="font-medium">Confirmed by:</span> {
-                                        box.confirmedBy || 
-                                        (box.aiGenerated && !box.userVerified ? "not confirmed by the user" : box.createdBy || "unknown")
-                                      }
-                                    </div>
-                                    {box.modifiedAt && (
+                                    
+                                    {/* Tracking Information */}
+                                    <div className="text-xs text-gray-500 mt-2 pt-2 border-t space-y-1">
+                                      <div className={`font-medium ${statusColor} mb-1`}>
+                                        {statusLabel}
+                                      </div>
+                                      
+                                      {/* Annotation Type */}
+                                      {box.annotationType && (
+                                        <div>
+                                          <span className="font-medium">Type:</span> {box.annotationType}
+                                        </div>
+                                      )}
+                                      
+                                      {/* Added By */}
+                                      {box.createdBy && (
+                                        <div>
+                                          <span className="font-medium">Added by:</span> {box.createdBy}
+                                          {box.createdAt && ` on ${new Date(box.createdAt).toLocaleString()}`}
+                                        </div>
+                                      )}
+                                      
+                                      {/* Confirmed By */}
                                       <div>
-                                        {box.source === "manual" ? "Created" : "Modified"}: {new Date(box.modifiedAt).toLocaleString()}
+                                        <span className="font-medium">Confirmed by:</span> {
+                                          box.confirmedBy || 
+                                          (box.aiGenerated && !box.userVerified ? "not confirmed by the user" : box.createdBy || "unknown")
+                                        }
                                       </div>
-                                    )}
+                                      
+                                      {/* Modified By (same as Edited By) */}
+                                      {(box.editedBy || box.modifiedBy) && (
+                                        <div>
+                                          <span className="font-medium">Modified by:</span> {box.editedBy || box.modifiedBy}
+                                          {box.editedAt && box.editedBy !== "none" && ` on ${new Date(box.editedAt).toLocaleString()}`}
+                                        </div>
+                                      )}
+                                      
+                                      {/* Comments/Notes */}
+                                      {box.description && (
+                                        <div className="mt-2 pt-2 border-t">
+                                          <span className="font-medium">Notes:</span>
+                                          <p className="text-gray-600 mt-1">{box.description}</p>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              })}
                           </div>
                         ) : (
                           <div className="text-center py-8 text-muted-foreground bg-gray-50 rounded-lg border">
