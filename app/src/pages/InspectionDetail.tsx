@@ -850,8 +850,12 @@ function AnalysisModal({
                         .filter((box) => box.imageType === "thermal")
                         // Sort by area: larger boxes first (will be rendered first, smaller on top)
                         .sort((a, b) => {
-                          const areaA = Math.abs(a.endX - a.startX) * Math.abs(a.endY - a.startY);
-                          const areaB = Math.abs(b.endX - b.startX) * Math.abs(b.endY - b.startY);
+                          const areaA =
+                            Math.abs(a.endX - a.startX) *
+                            Math.abs(a.endY - a.startY);
+                          const areaB =
+                            Math.abs(b.endX - b.startX) *
+                            Math.abs(b.endY - b.startY);
                           return areaB - areaA; // Larger boxes first
                         })
                         .map((box, index) => {
@@ -867,7 +871,9 @@ function AnalysisModal({
                             <div
                               key={box.id}
                               className={`absolute border-2 ${
-                                annotationMode ? 'pointer-events-none' : 'pointer-events-auto'
+                                annotationMode
+                                  ? "pointer-events-none"
+                                  : "pointer-events-auto"
                               } ${
                                 selectedBoxId === box.id
                                   ? "border-yellow-400"
@@ -1125,8 +1131,12 @@ function AnalysisModal({
                         .filter((box) => box.imageType === "result")
                         // Sort by area: larger boxes first (will be rendered first, smaller on top)
                         .sort((a, b) => {
-                          const areaA = Math.abs(a.endX - a.startX) * Math.abs(a.endY - a.startY);
-                          const areaB = Math.abs(b.endX - b.startX) * Math.abs(b.endY - b.startY);
+                          const areaA =
+                            Math.abs(a.endX - a.startX) *
+                            Math.abs(a.endY - a.startY);
+                          const areaB =
+                            Math.abs(b.endX - b.startX) *
+                            Math.abs(b.endY - b.startY);
                           return areaB - areaA; // Larger boxes first
                         })
                         .map((box, index) => {
@@ -1142,7 +1152,9 @@ function AnalysisModal({
                             <div
                               key={box.id}
                               className={`absolute border-2 ${
-                                annotationMode ? 'pointer-events-none' : 'pointer-events-auto'
+                                annotationMode
+                                  ? "pointer-events-none"
+                                  : "pointer-events-auto"
                               } ${
                                 selectedBoxId === box.id
                                   ? "border-yellow-400"
