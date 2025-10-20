@@ -599,12 +599,18 @@ function AnalysisModal({
           riskType: box.riskType,
           description: box.description,
           imageType: box.imageType,
-          
+
           // Enhanced metadata for export
           annotationType: box.annotationType || "added",
           source: box.source || "manual",
-          modifiedBy: box.modifiedBy || (box.aiGenerated ? "user:AI" : box.createdBy || "unknown"),
-          confirmedBy: box.confirmedBy || (box.aiGenerated && !box.userVerified ? "not confirmed by the user" : box.createdBy || "unknown"),
+          modifiedBy:
+            box.modifiedBy ||
+            (box.aiGenerated ? "user:AI" : box.createdBy || "unknown"),
+          confirmedBy:
+            box.confirmedBy ||
+            (box.aiGenerated && !box.userVerified
+              ? "not confirmed by the user"
+              : box.createdBy || "unknown"),
           addedBy: box.createdBy || "unknown",
           addedAt: box.createdAt,
           editedBy: box.editedBy,
@@ -612,12 +618,12 @@ function AnalysisModal({
           createdBy: box.createdBy,
           userVerified: box.userVerified || false,
           aiGenerated: box.aiGenerated || false,
-          
+
           // Server sync info
           serverSynced: box.serverSynced || false,
           lastSyncAt: box.lastSyncAt,
           serverData: box.serverData,
-          
+
           // Export timestamp
           exportedAt: new Date().toISOString(),
           exportedBy: "hasitha@gmail.com", // Replace with actual user
@@ -629,23 +635,28 @@ function AnalysisModal({
       inspection: {
         id: inspection.id,
         transformerNo: inspection.transformerNo,
-        status: inspection.status
+        status: inspection.status,
       },
       export: {
         timestamp: new Date().toISOString(),
         totalAnnotations: formattedAnnotations.length,
         annotationTypes: {
-          manual: formattedAnnotations.filter(a => a.source === 'manual').length,
-          ai: formattedAnnotations.filter(a => a.aiGenerated).length,
-          modified: formattedAnnotations.filter(a => a.source === 'ai-modified').length,
-          rejected: formattedAnnotations.filter(a => a.source === 'ai-rejected').length
+          manual: formattedAnnotations.filter((a) => a.source === "manual")
+            .length,
+          ai: formattedAnnotations.filter((a) => a.aiGenerated).length,
+          modified: formattedAnnotations.filter(
+            (a) => a.source === "ai-modified"
+          ).length,
+          rejected: formattedAnnotations.filter(
+            (a) => a.source === "ai-rejected"
+          ).length,
         },
         syncStatus: {
-          synced: formattedAnnotations.filter(a => a.serverSynced).length,
-          unsynced: formattedAnnotations.filter(a => !a.serverSynced).length
-        }
+          synced: formattedAnnotations.filter((a) => a.serverSynced).length,
+          unsynced: formattedAnnotations.filter((a) => !a.serverSynced).length,
+        },
       },
-      annotations: formattedAnnotations
+      annotations: formattedAnnotations,
     };
 
     const annotationsJson = JSON.stringify(exportSummary, null, 2);
@@ -689,12 +700,12 @@ function AnalysisModal({
           // Map anomaly state to severity level
           let severity_level = "LOW";
           let severity_color = [0, 255, 0]; // Green for low
-          
+
           if (box.anomalyState === "Faulty") {
             severity_level = "HIGH";
             severity_color = [0, 0, 255]; // Red for high
           } else if (box.anomalyState === "Potentially Faulty") {
-            severity_level = "MEDIUM"; 
+            severity_level = "MEDIUM";
             severity_color = [0, 165, 255]; // Orange for medium
           } else if (box.anomalyState === "Normal") {
             severity_level = "MINIMAL";
@@ -714,19 +725,19 @@ function AnalysisModal({
           }
 
           // Helper function to convert frontend ID to backend ID format
-        const getBackendId = (frontendId: string): string | number => {
-          // Remove prefixes and convert to appropriate format
-          if (frontendId.startsWith('ai-box-')) {
-            return frontendId.replace('ai-box-', '');
-          } else if (frontendId.startsWith('box-')) {
-            const numericId = frontendId.replace('box-', '');
-            return isNaN(Number(numericId)) ? numericId : Number(numericId);
-          }
-          // Try to convert to number if possible
-          return isNaN(Number(frontendId)) ? frontendId : Number(frontendId);
-        };
+          const getBackendId = (frontendId: string): string | number => {
+            // Remove prefixes and convert to appropriate format
+            if (frontendId.startsWith("ai-box-")) {
+              return frontendId.replace("ai-box-", "");
+            } else if (frontendId.startsWith("box-")) {
+              const numericId = frontendId.replace("box-", "");
+              return isNaN(Number(numericId)) ? numericId : Number(numericId);
+            }
+            // Try to convert to number if possible
+            return isNaN(Number(frontendId)) ? frontendId : Number(frontendId);
+          };
 
-        return {
+          return {
             id: getBackendId(box.id),
             bbox: [x, y, w, h],
             center: [x + w / 2, y + h / 2],
@@ -736,38 +747,54 @@ function AnalysisModal({
             riskType: box.riskType,
             description: box.description,
             imageType: box.imageType,
-            
+
             // Enhanced anomaly information for backend
             avg_temp_change: box.confidenceScore * 1.5, // Mock temperature change based on confidence
             max_temp_change: box.confidenceScore * 1.7,
             severity: box.confidenceScore / 100,
             type: type,
             confidence: box.confidenceScore / 100,
-            reasoning: box.description || `${box.anomalyState} anomaly detected - ${box.riskType}`,
+            reasoning:
+              box.description ||
+              `${box.anomalyState} anomaly detected - ${box.riskType}`,
             consensus_score: 0.5, // Default consensus score
             severity_level: severity_level,
             severity_color: severity_color,
-            
+
             // Tracking metadata
             annotationType: box.annotationType || "added",
             source: box.source || "manual",
-            modifiedBy: box.modifiedBy || (box.aiGenerated ? "user:AI" : box.createdBy || "unknown"),
-            confirmedBy: box.confirmedBy || (box.aiGenerated && !box.userVerified ? "not confirmed by the user" : box.createdBy || "unknown"),
+            modifiedBy:
+              box.modifiedBy ||
+              (box.aiGenerated ? "user:AI" : box.createdBy || "unknown"),
+            confirmedBy:
+              box.confirmedBy ||
+              (box.aiGenerated && !box.userVerified
+                ? "not confirmed by the user"
+                : box.createdBy || "unknown"),
             addedBy: box.createdBy || "unknown",
             addedAt: box.createdAt,
             editedBy: box.editedBy,
             editedAt: box.editedAt,
             createdBy: box.createdBy,
             userVerified: box.userVerified,
-            aiGenerated: box.aiGenerated
+            aiGenerated: box.aiGenerated,
           };
         });
 
       console.log("Saving full annotations to backend:", formattedAnnotations);
-      console.log("Inspection No:", inspection.id, "Transformer No:", inspection.transformerNo);
+      console.log(
+        "Inspection No:",
+        inspection.id,
+        "Transformer No:",
+        inspection.transformerNo
+      );
 
       const response = await fetch(
-        API_ENDPOINTS.ANALYSIS_UPDATE_ANNOTATIONS(inspection.id, inspection.transformerNo!),
+        API_ENDPOINTS.ANALYSIS_UPDATE_ANNOTATIONS(
+          inspection.id,
+          inspection.transformerNo!
+        ),
         {
           method: "PUT",
           headers: {
@@ -781,14 +808,15 @@ function AnalysisModal({
       if (!response.ok) {
         const errorText = await response.text();
         let errorMessage = `${response.status} ${response.statusText}`;
-        
+
         try {
           const errorData = JSON.parse(errorText);
-          errorMessage = errorData.message || errorData.responseDescription || errorMessage;
+          errorMessage =
+            errorData.message || errorData.responseDescription || errorMessage;
         } catch {
           errorMessage = errorText || errorMessage;
         }
-        
+
         throw new Error(errorMessage);
       }
 
@@ -797,25 +825,31 @@ function AnalysisModal({
 
       // Handle different response formats from backend
       const processBackendResponse = (backendResult: any) => {
-        if (!backendResult || typeof backendResult !== 'object') {
+        if (!backendResult || typeof backendResult !== "object") {
           return null;
         }
 
         // Format 1: Full analysis response with anomalies array
         if (backendResult.anomalies && Array.isArray(backendResult.anomalies)) {
-          console.log("Backend returned detailed analysis format:", backendResult);
+          console.log(
+            "Backend returned detailed analysis format:",
+            backendResult
+          );
           return {
-            type: 'detailed',
-            data: backendResult
+            type: "detailed",
+            data: backendResult,
           };
         }
 
         // Format 2: Simple success response
-        if (backendResult.status === 'success' || backendResult.responseCode === '200') {
+        if (
+          backendResult.status === "success" ||
+          backendResult.responseCode === "200"
+        ) {
           console.log("Backend returned simple success format:", backendResult);
           return {
-            type: 'simple',
-            data: backendResult
+            type: "simple",
+            data: backendResult,
           };
         }
 
@@ -823,8 +857,8 @@ function AnalysisModal({
         if (Array.isArray(backendResult)) {
           console.log("Backend returned array format:", backendResult);
           return {
-            type: 'array',
-            data: backendResult
+            type: "array",
+            data: backendResult,
           };
         }
 
@@ -834,34 +868,35 @@ function AnalysisModal({
         }
 
         return {
-          type: 'unknown',
-          data: backendResult
+          type: "unknown",
+          data: backendResult,
         };
       };
 
       const processedResponse = processBackendResponse(result);
-      
+
       if (processedResponse) {
         switch (processedResponse.type) {
-          case 'detailed':
+          case "detailed":
             // Handle full analysis format response
             if (onAnalysisDataUpdate) {
               onAnalysisDataUpdate({
                 ...analysisData,
                 parsedAnalysisJson: processedResponse.data,
                 analysisStatus: processedResponse.data.status || "completed",
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
               });
             }
 
             // Update bounding boxes with server data to keep them in sync
             if (processedResponse.data.anomalies) {
               const serverAnomalies = processedResponse.data.anomalies;
-              const updatedBoxes = boundingBoxes.map(box => {
-                const matchingAnomaly = serverAnomalies.find((anomaly: any) => 
-                  box.id === `ai-box-${anomaly.id}` || 
-                  box.id === anomaly.id.toString() ||
-                  box.id === `box-${anomaly.id}`
+              const updatedBoxes = boundingBoxes.map((box) => {
+                const matchingAnomaly = serverAnomalies.find(
+                  (anomaly: any) =>
+                    box.id === `ai-box-${anomaly.id}` ||
+                    box.id === anomaly.id.toString() ||
+                    box.id === `box-${anomaly.id}`
                 );
 
                 if (matchingAnomaly) {
@@ -870,13 +905,13 @@ function AnalysisModal({
                     // Update with server response data
                     serverSynced: true,
                     lastSyncAt: new Date().toISOString(),
-                    serverData: matchingAnomaly
+                    serverData: matchingAnomaly,
                   };
                 }
                 return {
                   ...box,
                   serverSynced: true,
-                  lastSyncAt: new Date().toISOString()
+                  lastSyncAt: new Date().toISOString(),
                 };
               });
 
@@ -884,19 +919,22 @@ function AnalysisModal({
             }
             break;
 
-          case 'simple':
-          case 'array':
+          case "simple":
+          case "array":
             // Handle simple success or array format
-            const updatedBoxes = boundingBoxes.map(box => ({
+            const updatedBoxes = boundingBoxes.map((box) => ({
               ...box,
               serverSynced: true,
-              lastSyncAt: new Date().toISOString()
+              lastSyncAt: new Date().toISOString(),
             }));
             setBoundingBoxes(updatedBoxes);
             break;
 
-          case 'unknown':
-            console.warn("Unknown backend response format:", processedResponse.data);
+          case "unknown":
+            console.warn(
+              "Unknown backend response format:",
+              processedResponse.data
+            );
             break;
         }
       }
@@ -905,7 +943,6 @@ function AnalysisModal({
         title: "Annotations Saved",
         description: `${formattedAnnotations.length} annotations saved successfully to the backend`,
       });
-
     } catch (error: any) {
       console.error("Failed to save annotations:", error);
       toast({
@@ -3706,7 +3743,9 @@ export default function InspectionDetail() {
                                                   }
                                                 />
                                                 <span className="text-[10px] text-gray-500">
-                                                  {box.serverSynced ? "Synced" : "Local"}
+                                                  {box.serverSynced
+                                                    ? "Synced"
+                                                    : "Local"}
                                                 </span>
                                               </div>
                                             </div>
