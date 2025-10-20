@@ -44,6 +44,15 @@ interface BoundingBox {
   riskType: "Point fault" | "Full wire overload" | "Transformer overload" | "Normal" | "";
   description: string;
   imageType: "thermal" | "result";
+  // Tracking metadata
+  source?: "ai" | "manual" | "ai-modified" | "ai-rejected";
+  createdBy?: string;
+  createdAt?: string;
+  modifiedBy?: string; // "AI" or user email (e.g., "hasitha@gmail.com")
+  modifiedAt?: string;
+  confirmedBy?: string; // User email if confirmed, "not confirmed by the user" if not, or user email if manually added
+  aiGenerated?: boolean;
+  userVerified?: boolean;
 }
 
 interface AnnotationMetadata {
@@ -231,12 +240,53 @@ function AnalysisModal({
       return;
     }
     
-    // Update the box with metadata
-    const updatedBoxes = boundingBoxes.map(box => 
-      box.id === pendingBoxId 
-        ? { ...box, ...metadata }
-        : box
-    );
+    // TODO: Get actual user from authentication context
+    const currentUser = "hasitha@gmail.com"; // Mock user - replace with actual auth
+    const currentTime = new Date().toISOString();
+    
+    // Update the box with metadata and tracking info
+    const updatedBoxes = boundingBoxes.map(box => {
+      if (box.id === pendingBoxId) {
+        const isExisting = box.anomalyState !== "";
+        const isAIGenerated = box.aiGenerated || false;
+        
+        // Determine source based on actions
+        let newSource: "ai" | "manual" | "ai-modified" | "ai-rejected" = "manual";
+        let confirmedBy = currentUser; // Default for manual annotations
+        
+        if (isExisting && isAIGenerated) {
+          // User is modifying an AI-generated box
+          if (box.anomalyState === "Normal" && metadata.anomalyState !== "Normal") {
+            // User is rejecting AI's assessment
+            newSource = "ai-rejected";
+            confirmedBy = `Rejected by ${currentUser}`;
+          } else {
+            // User is modifying AI box
+            newSource = "ai-modified";
+            confirmedBy = currentUser;
+          }
+        } else if (!isExisting && !isAIGenerated) {
+          // Brand new manual annotation
+          newSource = "manual";
+          confirmedBy = currentUser;
+        }
+        
+        return {
+          ...box,
+          ...metadata,
+          // Set tracking metadata
+          source: newSource,
+          createdBy: box.createdBy || (isAIGenerated ? "AI" : currentUser),
+          createdAt: box.createdAt || currentTime,
+          modifiedBy: isExisting ? currentUser : (isAIGenerated ? "AI" : currentUser),
+          modifiedAt: isExisting ? currentTime : currentTime,
+          confirmedBy: confirmedBy,
+          userVerified: isExisting || isAIGenerated,
+        };
+      }
+      return box;
+    });
+    
     setBoundingBoxes(updatedBoxes);
     
     // Emit event to notify main component
@@ -310,7 +360,7 @@ function AnalysisModal({
   };
 
   const handleExportAnnotations = () => {
-    // Convert to the new format with bbox and center
+    // Convert to the new format with bbox, center, and tracking metadata
     const formattedAnnotations = boundingBoxes.map(box => {
       const x = Math.min(box.startX, box.endX);
       const y = Math.min(box.startY, box.endY);
@@ -325,7 +375,9 @@ function AnalysisModal({
         confidenceScore: box.confidenceScore,
         riskType: box.riskType,
         description: box.description,
-        imageType: box.imageType
+        imageType: box.imageType,
+        modifiedBy: box.modifiedBy || (box.aiGenerated ? "AI" : box.createdBy || "unknown"),
+        confirmedBy: box.confirmedBy || (box.aiGenerated && !box.userVerified ? "not confirmed by the user" : box.createdBy || "unknown")
       };
     });
     
@@ -2150,88 +2202,130 @@ export default function InspectionDetail() {
               </Card>
             )}
               
-            {/* Analysis Summary and Arbit AI Assistant - Only show when analysis is completed */}
+            {/* Analysis History and Summary - Only show when analysis is completed */}
             {(inspection.status === 'Completed' || inspection.status === 'completed') && analysisResult && (
               <>
-                {/* Analysis Summary - Fixed height with scroll */}
-                {analysisData && (
-                  <Card className="mt-6">
-                    <CardHeader>
-                      <CardTitle>Analysis Summary</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {/* Fixed height scrollable container */}
-                      <div className="max-h-[320px] overflow-y-auto">
+                {/* Analysis History and Summary - Bounding Box Annotations */}
+                <Card className="mt-6">
+                  <CardHeader>
+                    <CardTitle>Analysis History and Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Fixed height scrollable container */}
+                    <div className="max-h-[400px] overflow-y-auto space-y-4">
+                      {/* Analysis Metadata */}
+                      {analysisData && (
                         <div className="bg-gray-50 p-4 rounded-lg border">
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-2">
                             <div>
                               <span className="text-gray-600">Status:</span>
                               <div className="font-medium text-green-600">{analysisData.analysisStatus}</div>
                             </div>
                             <div>
-                              <span className="text-gray-600">Date:</span>
+                              <span className="text-gray-600">Analysis Date:</span>
                               <div className="font-medium">{new Date(analysisData.analysisDate).toLocaleDateString()}</div>
                             </div>
                             <div>
                               <span className="text-gray-600">Processing Time:</span>
                               <div className="font-medium">{analysisData.processingTimeMs}ms</div>
                             </div>
-                            {analysisData.analysisResultJson && (() => {
-                              try {
-                                const resultJson = JSON.parse(analysisData.analysisResultJson);
-                                return (
-                                  <div>
-                                    <span className="text-gray-600">Anomalies:</span>
-                                    <div className="font-medium text-red-600">
-                                      {resultJson.summary?.total_anomalies || 0} found
-                                    </div>
-                                  </div>
-                                );
-                              } catch {
-                                return null;
-                              }
-                            })()}
+                            <div>
+                              <span className="text-gray-600">Annotations:</span>
+                              <div className="font-medium text-blue-600">{cachedAnnotations.length}</div>
+                            </div>
                           </div>
-                          
-                          {/* Anomaly Details */}
-                          {analysisData.analysisResultJson && (() => {
-                            try {
-                              const resultJson = JSON.parse(analysisData.analysisResultJson);
-                              if (resultJson.anomalies && resultJson.anomalies.length > 0) {
-                                return (
-                                  <div className="mt-4">
-                                    <h4 className="font-medium mb-2">Detected Anomalies:</h4>
-                                    <div className="space-y-2">
-                                      {resultJson.anomalies.map((anomaly: any, index: number) => (
-                                        <div key={index} className="bg-white p-3 rounded border-l-4 border-red-500">
-                                          <div className="flex justify-between items-start">
-                                            <div>
-                                              <span className="font-medium text-red-600">
-                                                {anomaly.severity_level} Severity
-                                              </span>
-                                              <p className="text-sm text-gray-600 mt-1">{anomaly.reasoning}</p>
-                                            </div>
-                                            <div className="text-right text-sm">
-                                              <div>Confidence: {(anomaly.confidence * 100).toFixed(1)}%</div>
-                                              <div>Area: {anomaly.area?.toLocaleString()}</div>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ))}
+                        </div>
+                      )}
+                      
+                      {/* Bounding Box Anomalies Section */}
+                      <div className="space-y-3">
+                        <h4 className="font-semibold text-lg">Anomalies</h4>
+                        
+                        {cachedAnnotations.length > 0 ? (
+                          <div className="space-y-2">
+                            {cachedAnnotations.map((box) => {
+                              // Determine background color based on status
+                              let bgColor = "bg-white"; // Unconfirmed AI (white)
+                              let borderColor = "border-gray-300";
+                              let statusLabel = "Unconfirmed AI Detection";
+                              let statusColor = "text-gray-600";
+                              
+                              if (box.source === "ai-rejected") {
+                                // AI box marked as false by user (light yellow)
+                                bgColor = "bg-yellow-50";
+                                borderColor = "border-yellow-400";
+                                statusLabel = "AI Detection - Rejected by User";
+                                statusColor = "text-yellow-700";
+                              } else if (box.source === "manual" || box.confirmedBy !== "not confirmed by the user") {
+                                // User-confirmed or manually added (light green)
+                                bgColor = "bg-green-50";
+                                borderColor = "border-green-400";
+                                statusLabel = box.source === "manual" ? "Manually Added" : "Confirmed by User";
+                                statusColor = "text-green-700";
+                              }
+                              
+                              return (
+                                <div key={box.id} className={`${bgColor} p-3 rounded-lg border-l-4 ${borderColor} border`}>
+                                  <div className="flex justify-between items-start mb-2">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="font-semibold text-gray-900">
+                                          {box.anomalyState}
+                                        </span>
+                                        <Badge variant="outline" className={`text-xs ${
+                                          box.source === "ai-rejected" ? "border-yellow-500 text-yellow-700" :
+                                          box.source === "manual" ? "border-green-500 text-green-700" :
+                                          box.confirmedBy !== "not confirmed by the user" ? "border-green-500 text-green-700" :
+                                          "border-gray-400 text-gray-600"
+                                        }`}>
+                                          {box.source === "manual" ? "Manual" : "AI"}
+                                        </Badge>
+                                      </div>
+                                      <p className="text-sm text-gray-700">
+                                        Risk: {box.riskType}
+                                        {box.description && ` • ${box.description}`}
+                                      </p>
+                                    </div>
+                                    <div className="text-right text-xs text-gray-600 ml-4">
+                                      <div>Confidence: {box.confidenceScore}%</div>
+                                      <div>Image: {box.imageType === 'thermal' ? 'Thermal' : 'Result'}</div>
                                     </div>
                                   </div>
-                                );
-                              }
-                            } catch {
-                              return null;
-                            }
-                            return null;
-                          })()}
-                        </div>
+                                  
+                                  {/* Tracking Information */}
+                                  <div className="text-xs text-gray-500 mt-2 pt-2 border-t space-y-1">
+                                    <div className={`font-medium ${statusColor}`}>
+                                      {statusLabel}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium">Modified by:</span> {box.modifiedBy || (box.aiGenerated ? "AI" : box.createdBy || "unknown")}
+                                    </div>
+                                    <div>
+                                      <span className="font-medium">Confirmed by:</span> {
+                                        box.confirmedBy || 
+                                        (box.aiGenerated && !box.userVerified ? "not confirmed by the user" : box.createdBy || "unknown")
+                                      }
+                                    </div>
+                                    {box.modifiedAt && (
+                                      <div>
+                                        {box.source === "manual" ? "Created" : "Modified"}: {new Date(box.modifiedAt).toLocaleString()}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-muted-foreground bg-gray-50 rounded-lg border">
+                            <p>No bounding box annotations yet.</p>
+                            <p className="text-sm mt-1">Use the Anomaly Annotation Tool to add annotations.</p>
+                          </div>
+                        )}
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
+                    </div>
+                  </CardContent>
+                </Card>
                 
                 {/* Arbit AI Assistant Chat */}
                 <Card className="mt-6">
