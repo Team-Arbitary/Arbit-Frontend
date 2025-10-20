@@ -1953,18 +1953,6 @@ export default function InspectionDetail() {
                   <CardTitle className="flex items-center justify-between">
                     <span>Thermal Image Comparison</span>
                     <div className="flex gap-2">
-                      {/* Anomaly Annotation Tool Button - Show when analysis is completed */}
-                      {(inspection.status === 'Completed' || inspection.status === 'completed') && analysisResult && (
-                        <Button 
-                          onClick={openAnalysisModal}
-                          size="sm"
-                          variant="default"
-                        >
-                          <Search className="h-4 w-4 mr-2" />
-                          Anomaly Annotation Tool
-                        </Button>
-                      )}
-                      
                       {/* Analyze Button - Show when not yet completed */}
                       {(inspection.status !== 'Completed' && inspection.status !== 'completed') && (
                         <Button 
@@ -2093,6 +2081,20 @@ export default function InspectionDetail() {
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Anomaly Annotation Tool Button - Centered below images */}
+                  {(inspection.status === 'Completed' || inspection.status === 'completed') && analysisResult && (
+                    <div className="flex justify-center mt-6">
+                      <Button 
+                        onClick={openAnalysisModal}
+                        size="lg"
+                        className="w-full max-w-md"
+                      >
+                        <Search className="h-5 w-5 mr-2" />
+                        Anomaly Annotation Tool
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ) : (
@@ -2148,83 +2150,9 @@ export default function InspectionDetail() {
               </Card>
             )}
               
-            {/* Arbit AI Assistant and Analysis Summary - Only show when analysis is completed */}
+            {/* Analysis Summary and Arbit AI Assistant - Only show when analysis is completed */}
             {(inspection.status === 'Completed' || inspection.status === 'completed') && analysisResult && (
               <>
-                {/* Arbit AI Assistant Chat */}
-                <Card className="mt-6">
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <Bot className="h-5 w-5 text-primary" />
-                      <CardTitle>Arbit AI Assistant</CardTitle>
-                      <Badge variant="secondary" className="text-xs">Beta</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {/* Chat Messages - Reverse order (newest on top) - Fixed height with scroll */}
-                    <div className="border rounded-lg bg-gray-50 h-[280px] overflow-y-auto flex flex-col-reverse p-4 space-y-reverse space-y-3 mb-3">
-                      {chatMessages.length === 0 ? (
-                        <div className="text-center text-muted-foreground text-sm py-8">
-                          <Bot className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p>Ask me about thermal images, anomalies, or annotations!</p>
-                        </div>
-                      ) : (
-                        chatMessages.map((msg) => (
-                          <div 
-                            key={msg.id}
-                            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                          >
-                            <div 
-                              className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                                msg.role === 'user' 
-                                  ? 'bg-primary text-primary-foreground' 
-                                  : 'bg-white border'
-                              }`}
-                            >
-                              <p className="text-sm">{msg.content}</p>
-                              <span className="text-xs opacity-70 mt-1 block">
-                                {msg.timestamp.toLocaleTimeString()}
-                              </span>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    
-                    {/* Chat Input */}
-                    <div className="flex gap-2">
-                      <Input 
-                        placeholder="Ask about images, annotations, or anomalies..."
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSendMessage();
-                          }
-                        }}
-                        disabled={isChatLoading}
-                        className="flex-1"
-                      />
-                      <Button 
-                        onClick={handleSendMessage}
-                        disabled={isChatLoading || !chatInput.trim()}
-                        size="icon"
-                      >
-                        {isChatLoading ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                        ) : (
-                          <Send className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                    
-                    <p className="text-xs text-muted-foreground mt-2">
-                      💡 The AI can analyze your annotations and provide insights about thermal anomalies
-                    </p>
-                  </CardContent>
-                </Card>
-                
                 {/* Analysis Summary - Fixed height with scroll */}
                 {analysisData && (
                   <Card className="mt-6">
@@ -2304,6 +2232,80 @@ export default function InspectionDetail() {
                     </CardContent>
                   </Card>
                 )}
+                
+                {/* Arbit AI Assistant Chat */}
+                <Card className="mt-6">
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <Bot className="h-5 w-5 text-primary" />
+                      <CardTitle>Arbit AI Assistant</CardTitle>
+                      <Badge variant="secondary" className="text-xs">Beta</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Chat Messages - Reverse order (newest on top) - Fixed height with scroll */}
+                    <div className="border rounded-lg bg-gray-50 h-[280px] overflow-y-auto flex flex-col-reverse p-4 space-y-reverse space-y-3 mb-3">
+                      {chatMessages.length === 0 ? (
+                        <div className="text-center text-muted-foreground text-sm py-8">
+                          <Bot className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p>Ask me about thermal images, anomalies, or annotations!</p>
+                        </div>
+                      ) : (
+                        chatMessages.map((msg) => (
+                          <div 
+                            key={msg.id}
+                            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div 
+                              className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                                msg.role === 'user' 
+                                  ? 'bg-primary text-primary-foreground' 
+                                  : 'bg-white border'
+                              }`}
+                            >
+                              <p className="text-sm">{msg.content}</p>
+                              <span className="text-xs opacity-70 mt-1 block">
+                                {msg.timestamp.toLocaleTimeString()}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    
+                    {/* Chat Input */}
+                    <div className="flex gap-2">
+                      <Input 
+                        placeholder="Ask about images, annotations, or anomalies..."
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage();
+                          }
+                        }}
+                        disabled={isChatLoading}
+                        className="flex-1"
+                      />
+                      <Button 
+                        onClick={handleSendMessage}
+                        disabled={isChatLoading || !chatInput.trim()}
+                        size="icon"
+                      >
+                        {isChatLoading ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    
+                    <p className="text-xs text-muted-foreground mt-2">
+                      💡 The AI can analyze your annotations and provide insights about thermal anomalies
+                    </p>
+                  </CardContent>
+                </Card>
               </>
             )}
             </div>
