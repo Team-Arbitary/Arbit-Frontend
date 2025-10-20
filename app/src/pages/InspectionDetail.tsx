@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -177,12 +177,102 @@ function AnalysisModal({
     description: "",
   });
 
-  // Sync boundingBoxes with initialAnnotations when they change
+  // Sync boundingBoxes with initialAnnotations and convert AI anomalies
+  // Use ref to track if we've already initialized to prevent re-adding AI boxes
+  const hasInitialized = useRef(false);
+
   useEffect(() => {
-    if (initialAnnotations && initialAnnotations.length > 0) {
-      setBoundingBoxes(initialAnnotations);
+    // Start with initial annotations (manual ones)
+    let allBoxes = [...initialAnnotations];
+
+    // Convert AI-detected anomalies to bounding box format (only once)
+    if (
+      analysisData?.parsedAnalysisJson?.anomalies &&
+      !hasInitialized.current
+    ) {
+      const img = document.querySelector(
+        "#modal-analysis-img"
+      ) as HTMLImageElement;
+      if (img && img.naturalWidth > 0) {
+        const imageWidth = img.naturalWidth;
+        const imageHeight = img.naturalHeight;
+
+        const aiBoxes: BoundingBox[] = analysisData.parsedAnalysisJson.anomalies
+          .filter((anomaly: any) => anomaly.bbox && Array.isArray(anomaly.bbox))
+          .map((anomaly: any) => {
+            const [x, y, width, height] = anomaly.bbox;
+
+            // Convert pixel coordinates to percentages
+            const startXPercent = (x / imageWidth) * 100;
+            const startYPercent = (y / imageHeight) * 100;
+            const endXPercent = ((x + width) / imageWidth) * 100;
+            const endYPercent = ((y + height) / imageHeight) * 100;
+
+            // Map severity level to anomaly state
+            let anomalyState: "Faulty" | "Potentially Faulty" | "Normal" =
+              "Normal";
+            let riskType:
+              | "Point fault"
+              | "Full wire overload"
+              | "Transformer overload"
+              | "Normal" = "Normal";
+
+            if (anomaly.severity_level === "HIGH") {
+              anomalyState = "Faulty";
+              riskType =
+                anomaly.type === "heating"
+                  ? "Transformer overload"
+                  : "Point fault";
+            } else if (anomaly.severity_level === "MEDIUM") {
+              anomalyState = "Potentially Faulty";
+              riskType =
+                anomaly.type === "heating"
+                  ? "Full wire overload"
+                  : "Point fault";
+            } else if (anomaly.severity_level === "LOW") {
+              anomalyState = "Potentially Faulty";
+              riskType = "Point fault";
+            }
+
+            // Use stable ID based only on anomaly.id from API
+            const stableId = `ai-box-${anomaly.id}`;
+
+            const box: BoundingBox = {
+              id: stableId,
+              startX: startXPercent,
+              startY: startYPercent,
+              endX: endXPercent,
+              endY: endYPercent,
+              anomalyState,
+              confidenceScore: Math.round((anomaly.confidence || 1) * 100),
+              riskType,
+              description:
+                anomaly.reasoning ||
+                `${anomaly.type} detected - ${anomaly.severity_level} severity`,
+              imageType: "result",
+              source: "ai",
+              annotationType: "added",
+              createdBy: "user:AI",
+              createdAt: new Date().toISOString(),
+              confirmedBy: "not confirmed by the user",
+              aiGenerated: true,
+              userVerified: false,
+              isDeleted: false,
+              editedBy: "none",
+            };
+
+            return box;
+          });
+
+        allBoxes = [...allBoxes, ...aiBoxes];
+        hasInitialized.current = true;
+      }
     }
-  }, [initialAnnotations]);
+
+    if (allBoxes.length > 0 || initialAnnotations.length === 0) {
+      setBoundingBoxes(allBoxes);
+    }
+  }, [initialAnnotations, analysisData]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const container = e.currentTarget;
@@ -466,18 +556,8 @@ function AnalysisModal({
     // Determine who deleted it: user:AI for AI-generated, current user for manual
     const deletedBy = boxToDelete.aiGenerated ? "user:AI" : currentUser;
 
-    // Soft delete: mark as deleted instead of removing
-    const updatedBoxes = boundingBoxes.map((box) =>
-      box.id === boxId
-        ? {
-            ...box,
-            isDeleted: true,
-            deletedBy,
-            deletedAt: currentTime,
-            annotationType: "deleted" as const,
-          }
-        : box
-    );
+    // Hard delete: remove the box from the array completely
+    const updatedBoxes = boundingBoxes.filter((box) => box.id !== boxId);
 
     setBoundingBoxes(updatedBoxes);
     setSelectedBoxId(null);
@@ -768,16 +848,27 @@ function AnalysisModal({
                       {/* Render existing bounding boxes */}
                       {boundingBoxes
                         .filter((box) => box.imageType === "thermal")
-                        .map((box) => {
+                        // Sort by area: larger boxes first (will be rendered first, smaller on top)
+                        .sort((a, b) => {
+                          const areaA = Math.abs(a.endX - a.startX) * Math.abs(a.endY - a.startY);
+                          const areaB = Math.abs(b.endX - b.startX) * Math.abs(b.endY - b.startY);
+                          return areaB - areaA; // Larger boxes first
+                        })
+                        .map((box, index) => {
                           const left = Math.min(box.startX, box.endX);
                           const top = Math.min(box.startY, box.endY);
                           const width = Math.abs(box.endX - box.startX);
                           const height = Math.abs(box.endY - box.startY);
 
+                          // Calculate z-index: smaller boxes get higher z-index
+                          const zIndex = 10 + index;
+
                           return (
                             <div
                               key={box.id}
-                              className={`absolute border-2 pointer-events-auto ${
+                              className={`absolute border-2 ${
+                                annotationMode ? 'pointer-events-none' : 'pointer-events-auto'
+                              } ${
                                 selectedBoxId === box.id
                                   ? "border-yellow-400"
                                   : box.anomalyState === "Faulty"
@@ -791,6 +882,7 @@ function AnalysisModal({
                                 top: `${top}%`,
                                 width: `${width}%`,
                                 height: `${height}%`,
+                                zIndex: zIndex,
                                 backgroundColor:
                                   selectedBoxId === box.id
                                     ? "rgba(255, 255, 0, 0.1)"
@@ -801,8 +893,10 @@ function AnalysisModal({
                                     : "rgba(0, 255, 0, 0.1)",
                               }}
                               onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedBoxId(box.id);
+                                if (!annotationMode) {
+                                  e.stopPropagation();
+                                  setSelectedBoxId(box.id);
+                                }
                               }}
                             >
                               <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
@@ -813,7 +907,7 @@ function AnalysisModal({
                                   <Button
                                     variant="default"
                                     size="sm"
-                                    className="absolute -top-8 -right-16 h-6 w-6 p-0 bg-blue-600 hover:bg-blue-700"
+                                    className="absolute top-1 right-1 h-6 w-6 p-0 bg-blue-600 hover:bg-blue-700 z-20"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleEditBox(box.id);
@@ -821,18 +915,6 @@ function AnalysisModal({
                                     title="Edit annotation"
                                   >
                                     <Pencil className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    className="absolute -top-8 -right-8 h-6 w-6 p-0"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteBox(box.id);
-                                    }}
-                                    title="Delete annotation"
-                                  >
-                                    <X className="h-3 w-3" />
                                   </Button>
 
                                   {/* Resize handles */}
@@ -917,6 +999,7 @@ function AnalysisModal({
                             height: `${Math.abs(
                               currentBox.endY! - currentBox.startY!
                             )}%`,
+                            zIndex: 9999,
                           }}
                         />
                       )}
@@ -1013,105 +1096,54 @@ function AnalysisModal({
                         !isResizing && handleImageClick(e, "result")
                       }
                     >
-                      <div className="relative inline-block">
-                        <img
-                          id="modal-analysis-img"
-                          src={thermalImage}
-                          alt="Analysis result"
-                          className="max-w-full max-h-[500px] object-contain rounded"
-                        />
-                        {/* SVG overlay for AI-detected bounding boxes */}
-                        {analysisData?.parsedAnalysisJson?.anomalies && (
-                          <svg
-                            className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                            style={{ maxHeight: "500px" }}
-                            viewBox="0 0 640 480"
-                            preserveAspectRatio="xMidYMid meet"
-                          >
-                            {analysisData.parsedAnalysisJson.anomalies
-                              .filter(
-                                (anomaly: any) =>
-                                  anomaly.bbox && Array.isArray(anomaly.bbox)
-                              )
-                              .map((anomaly: any, index: number) => {
-                                const [x, y, width, height] = anomaly.bbox;
+                      <img
+                        id="modal-analysis-img"
+                        src={thermalImage}
+                        alt="Analysis result"
+                        className="max-w-full max-h-[500px] object-contain rounded"
+                      />
 
-                                // Determine color based on severity
-                                let strokeColor = "#10b981"; // green for low
-                                let fillColor = "rgba(16, 185, 129, 0.1)";
+                      {/* Delete button - Square button for selected box */}
+                      {selectedBoxId && (
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-4 right-4 h-10 w-10 z-30 rounded-lg"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteBox(selectedBoxId);
+                            setSelectedBoxId(null);
+                          }}
+                          title="Delete selected bounding box"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </Button>
+                      )}
 
-                                if (anomaly.severity_level === "HIGH") {
-                                  strokeColor = "#ef4444"; // red
-                                  fillColor = "rgba(239, 68, 68, 0.15)";
-                                } else if (
-                                  anomaly.severity_level === "MEDIUM"
-                                ) {
-                                  strokeColor = "#f97316"; // orange
-                                  fillColor = "rgba(249, 115, 22, 0.15)";
-                                }
-
-                                return (
-                                  <g
-                                    key={`modal-anomaly-${anomaly.id}-${index}`}
-                                  >
-                                    {/* Bounding box rectangle */}
-                                    <rect
-                                      x={x}
-                                      y={y}
-                                      width={width}
-                                      height={height}
-                                      fill={fillColor}
-                                      stroke={strokeColor}
-                                      strokeWidth="2"
-                                    />
-                                    {/* Label background */}
-                                    <rect
-                                      x={x}
-                                      y={y - 20}
-                                      width={Math.max(
-                                        140,
-                                        (anomaly.type?.length || 10) * 8
-                                      )}
-                                      height="18"
-                                      fill="rgba(0, 0, 0, 0.75)"
-                                      rx="3"
-                                    />
-                                    {/* Label text */}
-                                    <text
-                                      x={x + 4}
-                                      y={y - 7}
-                                      fill="white"
-                                      fontSize="11"
-                                      fontWeight="600"
-                                      fontFamily="system-ui, -apple-system, sans-serif"
-                                    >
-                                      ID:{anomaly.id} | {anomaly.type} |{" "}
-                                      {anomaly.severity_level} (
-                                      {Math.round(
-                                        (anomaly.confidence || 1) * 100
-                                      )}
-                                      %)
-                                    </text>
-                                  </g>
-                                );
-                              })}
-                          </svg>
-                        )}
-                      </div>
-
-                      {/* Render existing bounding boxes */}
+                      {/* Render existing bounding boxes (including AI-detected ones) */}
                       {boundingBoxes
                         .filter((box) => box.imageType === "result")
-                        .map((box) => {
+                        // Sort by area: larger boxes first (will be rendered first, smaller on top)
+                        .sort((a, b) => {
+                          const areaA = Math.abs(a.endX - a.startX) * Math.abs(a.endY - a.startY);
+                          const areaB = Math.abs(b.endX - b.startX) * Math.abs(b.endY - b.startY);
+                          return areaB - areaA; // Larger boxes first
+                        })
+                        .map((box, index) => {
                           const left = Math.min(box.startX, box.endX);
                           const top = Math.min(box.startY, box.endY);
                           const width = Math.abs(box.endX - box.startX);
                           const height = Math.abs(box.endY - box.startY);
 
+                          // Calculate z-index: smaller boxes get higher z-index
+                          const zIndex = 10 + index;
+
                           return (
                             <div
                               key={box.id}
-                              className={`absolute border-2 pointer-events-auto ${
+                              className={`absolute border-2 ${
+                                annotationMode ? 'pointer-events-none' : 'pointer-events-auto'
+                              } ${
                                 selectedBoxId === box.id
                                   ? "border-yellow-400"
                                   : box.anomalyState === "Faulty"
@@ -1125,6 +1157,7 @@ function AnalysisModal({
                                 top: `${top}%`,
                                 width: `${width}%`,
                                 height: `${height}%`,
+                                zIndex: zIndex,
                                 backgroundColor:
                                   selectedBoxId === box.id
                                     ? "rgba(255, 255, 0, 0.1)"
@@ -1135,8 +1168,10 @@ function AnalysisModal({
                                     : "rgba(0, 255, 0, 0.1)",
                               }}
                               onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedBoxId(box.id);
+                                if (!annotationMode) {
+                                  e.stopPropagation();
+                                  setSelectedBoxId(box.id);
+                                }
                               }}
                             >
                               <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
@@ -1147,7 +1182,7 @@ function AnalysisModal({
                                   <Button
                                     variant="default"
                                     size="sm"
-                                    className="absolute -top-8 -right-16 h-6 w-6 p-0 bg-blue-600 hover:bg-blue-700"
+                                    className="absolute top-1 right-1 h-6 w-6 p-0 bg-blue-600 hover:bg-blue-700 z-20"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleEditBox(box.id);
@@ -1155,18 +1190,6 @@ function AnalysisModal({
                                     title="Edit annotation"
                                   >
                                     <Pencil className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    className="absolute -top-8 -right-8 h-6 w-6 p-0"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteBox(box.id);
-                                    }}
-                                    title="Delete annotation"
-                                  >
-                                    <X className="h-3 w-3" />
                                   </Button>
 
                                   {/* Resize handles */}
@@ -1251,6 +1274,7 @@ function AnalysisModal({
                             height: `${Math.abs(
                               currentBox.endY! - currentBox.startY!
                             )}%`,
+                            zIndex: 9999,
                           }}
                         />
                       )}
@@ -1350,84 +1374,79 @@ function AnalysisModal({
                     onMouseMove={handleSliderDrag}
                   >
                     {/* Base image (analysis result) with bounding boxes */}
-                    <div className="relative inline-block">
-                      <img
-                        src={thermalImage}
-                        alt="Analysis result"
-                        className="max-w-full max-h-[600px] object-contain"
-                      />
-                      {/* SVG overlay for AI-detected bounding boxes */}
-                      {analysisData?.parsedAnalysisJson?.anomalies && (
-                        <svg
-                          className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                          style={{ maxHeight: "600px" }}
-                          viewBox="0 0 640 480"
-                          preserveAspectRatio="xMidYMid meet"
-                        >
-                          {analysisData.parsedAnalysisJson.anomalies
-                            .filter(
-                              (anomaly: any) =>
-                                anomaly.bbox && Array.isArray(anomaly.bbox)
-                            )
-                            .map((anomaly: any, index: number) => {
-                              const [x, y, width, height] = anomaly.bbox;
+                    <img
+                      src={thermalImage}
+                      alt="Analysis result"
+                      className="max-w-full max-h-[600px] object-contain"
+                      id="slider-base-img"
+                    />
 
-                              // Determine color based on severity
-                              let strokeColor = "#10b981";
-                              let fillColor = "rgba(16, 185, 129, 0.1)";
+                    {/* Bounding boxes on base image using percentage-based positioning */}
+                    {analysisData?.parsedAnalysisJson?.anomalies &&
+                      (() => {
+                        const img = document.getElementById(
+                          "slider-base-img"
+                        ) as HTMLImageElement;
+                        if (!img || img.naturalWidth === 0) return null;
 
-                              if (anomaly.severity_level === "HIGH") {
-                                strokeColor = "#ef4444";
-                                fillColor = "rgba(239, 68, 68, 0.15)";
-                              } else if (anomaly.severity_level === "MEDIUM") {
-                                strokeColor = "#f97316";
-                                fillColor = "rgba(249, 115, 22, 0.15)";
-                              }
+                        const imageWidth = img.naturalWidth;
+                        const imageHeight = img.naturalHeight;
+                        const displayWidth = img.offsetWidth;
+                        const displayHeight = img.offsetHeight;
 
-                              return (
-                                <g
-                                  key={`slider-anomaly-${anomaly.id}-${index}`}
+                        return analysisData.parsedAnalysisJson.anomalies
+                          .filter(
+                            (anomaly: any) =>
+                              anomaly.bbox && Array.isArray(anomaly.bbox)
+                          )
+                          .map((anomaly: any, index: number) => {
+                            const [x, y, width, height] = anomaly.bbox;
+
+                            // Convert pixel coordinates to display coordinates
+                            const scaleX = displayWidth / imageWidth;
+                            const scaleY = displayHeight / imageHeight;
+                            const displayX = x * scaleX;
+                            const displayY = y * scaleY;
+                            const displayW = width * scaleX;
+                            const displayH = height * scaleY;
+
+                            // Determine color based on severity
+                            let borderColor = "#10b981"; // green for low
+                            let bgColor = "rgba(16, 185, 129, 0.1)";
+
+                            if (anomaly.severity_level === "HIGH") {
+                              borderColor = "#ef4444"; // red
+                              bgColor = "rgba(239, 68, 68, 0.15)";
+                            } else if (anomaly.severity_level === "MEDIUM") {
+                              borderColor = "#f97316"; // orange
+                              bgColor = "rgba(249, 115, 22, 0.15)";
+                            }
+
+                            return (
+                              <div
+                                key={`slider-anomaly-${anomaly.id}-${index}`}
+                                className="absolute border-2 pointer-events-none"
+                                style={{
+                                  left: `${displayX}px`,
+                                  top: `${displayY}px`,
+                                  width: `${displayW}px`,
+                                  height: `${displayH}px`,
+                                  borderColor: borderColor,
+                                  backgroundColor: bgColor,
+                                }}
+                              >
+                                <div
+                                  className="absolute -top-6 left-0 bg-black/75 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap font-medium"
+                                  style={{ fontSize: "10px" }}
                                 >
-                                  <rect
-                                    x={x}
-                                    y={y}
-                                    width={width}
-                                    height={height}
-                                    fill={fillColor}
-                                    stroke={strokeColor}
-                                    strokeWidth="2"
-                                  />
-                                  <rect
-                                    x={x}
-                                    y={y - 20}
-                                    width={Math.max(
-                                      140,
-                                      (anomaly.type?.length || 10) * 8
-                                    )}
-                                    height="18"
-                                    fill="rgba(0, 0, 0, 0.75)"
-                                    rx="3"
-                                  />
-                                  <text
-                                    x={x + 4}
-                                    y={y - 7}
-                                    fill="white"
-                                    fontSize="11"
-                                    fontWeight="600"
-                                    fontFamily="system-ui, -apple-system, sans-serif"
-                                  >
-                                    ID:{anomaly.id} | {anomaly.type} (
-                                    {Math.round(
-                                      (anomaly.confidence || 1) * 100
-                                    )}
-                                    %)
-                                  </text>
-                                </g>
-                              );
-                            })}
-                        </svg>
-                      )}
-                    </div>
+                                  ID:{anomaly.id} (
+                                  {Math.round((anomaly.confidence || 1) * 100)}
+                                  %)
+                                </div>
+                              </div>
+                            );
+                          });
+                      })()}
 
                     {/* Overlay image (thermal) with clip */}
                     <div
@@ -2655,7 +2674,7 @@ export default function InspectionDetail() {
                 {statusPolling ? "Syncing..." : "Sync Status"}
               </Button>
             )}
-            <Button
+            {/* <Button
               onClick={openAnalysisModal}
               disabled={
                 inspection.status !== "Completed" &&
@@ -2670,7 +2689,7 @@ export default function InspectionDetail() {
             >
               <Search className="h-4 w-4 mr-2" />
               View Analysis
-            </Button>
+            </Button> */}
             <Button onClick={() => handleUpload("baseline")}>
               <Upload className="h-4 w-4 mr-2" />
               Baseline Image
@@ -2885,15 +2904,20 @@ export default function InspectionDetail() {
                                   }
                                 }}
                               />
-                              {/* SVG overlay for bounding boxes using actual pixel coordinates */}
-                              {analysisData?.parsedAnalysisJson?.anomalies && (
-                                <svg
-                                  className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                                  style={{ maxHeight: "500px" }}
-                                  viewBox="0 0 640 480"
-                                  preserveAspectRatio="xMidYMid meet"
-                                >
-                                  {analysisData.parsedAnalysisJson.anomalies
+
+                              {/* Bounding boxes overlay using percentage-based positioning */}
+                              {analysisData?.parsedAnalysisJson?.anomalies &&
+                                (() => {
+                                  const img = document.getElementById(
+                                    "analysis-result-img"
+                                  ) as HTMLImageElement;
+                                  if (!img || img.naturalWidth === 0)
+                                    return null;
+
+                                  const imageWidth = img.naturalWidth;
+                                  const imageHeight = img.naturalHeight;
+
+                                  return analysisData.parsedAnalysisJson.anomalies
                                     .filter(
                                       (anomaly: any) =>
                                         anomaly.bbox &&
@@ -2903,66 +2927,63 @@ export default function InspectionDetail() {
                                       const [x, y, width, height] =
                                         anomaly.bbox;
 
+                                      // Convert pixel coordinates to percentages
+                                      const startXPercent =
+                                        (x / imageWidth) * 100;
+                                      const startYPercent =
+                                        (y / imageHeight) * 100;
+                                      const endXPercent =
+                                        ((x + width) / imageWidth) * 100;
+                                      const endYPercent =
+                                        ((y + height) / imageHeight) * 100;
+
                                       // Determine color based on severity
-                                      let strokeColor = "#10b981"; // green for low
-                                      let fillColor = "rgba(16, 185, 129, 0.1)";
+                                      let borderColor = "#10b981"; // green for low
+                                      let bgColor = "rgba(16, 185, 129, 0.1)";
 
                                       if (anomaly.severity_level === "HIGH") {
-                                        strokeColor = "#ef4444"; // red
-                                        fillColor = "rgba(239, 68, 68, 0.15)";
+                                        borderColor = "#ef4444"; // red
+                                        bgColor = "rgba(239, 68, 68, 0.15)";
                                       } else if (
                                         anomaly.severity_level === "MEDIUM"
                                       ) {
-                                        strokeColor = "#f97316"; // orange
-                                        fillColor = "rgba(249, 115, 22, 0.15)";
+                                        borderColor = "#f97316"; // orange
+                                        bgColor = "rgba(249, 115, 22, 0.15)";
                                       }
 
                                       return (
-                                        <g
+                                        <div
                                           key={`anomaly-${anomaly.id}-${index}`}
+                                          className="absolute border-2 pointer-events-none"
+                                          style={{
+                                            left: `${startXPercent}%`,
+                                            top: `${startYPercent}%`,
+                                            width: `${
+                                              endXPercent - startXPercent
+                                            }%`,
+                                            height: `${
+                                              endYPercent - startYPercent
+                                            }%`,
+                                            borderColor: borderColor,
+                                            backgroundColor: bgColor,
+                                          }}
                                         >
-                                          {/* Bounding box rectangle */}
-                                          <rect
-                                            x={x}
-                                            y={y}
-                                            width={width}
-                                            height={height}
-                                            fill={fillColor}
-                                            stroke={strokeColor}
-                                            strokeWidth="2"
-                                          />
-                                          {/* Label background */}
-                                          <rect
-                                            x={x}
-                                            y={y - 20}
-                                            width={Math.max(
-                                              120,
-                                              (anomaly.type?.length || 10) * 8
-                                            )}
-                                            height="18"
-                                            fill="rgba(0, 0, 0, 0.75)"
-                                            rx="3"
-                                          />
-                                          {/* Label text */}
-                                          <text
-                                            x={x + 4}
-                                            y={y - 7}
-                                            fill="white"
-                                            fontSize="11"
-                                            fontWeight="600"
-                                            fontFamily="system-ui, -apple-system, sans-serif"
+                                          <div
+                                            className="absolute -top-6 left-0 bg-black/75 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap font-medium"
+                                            style={{
+                                              fontSize: "10px",
+                                            }}
                                           >
                                             ID:{anomaly.id} | {anomaly.type} (
                                             {Math.round(
                                               (anomaly.confidence || 1) * 100
                                             )}
                                             %)
-                                          </text>
-                                        </g>
+                                          </div>
+                                        </div>
                                       );
-                                    })}
-                                </svg>
-                              )}
+                                    });
+                                })()}
                             </div>
                           ) : (
                             <div className="text-center text-muted-foreground">
