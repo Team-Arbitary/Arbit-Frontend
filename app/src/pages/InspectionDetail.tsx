@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
-import { ArrowLeft, Upload, Eye, Trash2, Search, ZoomIn, MoreHorizontal, Square, X, Save } from "lucide-react";
+import { ArrowLeft, Upload, Eye, Trash2, Search, ZoomIn, MoreHorizontal, Square, X, Save, Pencil, Send, Bot } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
@@ -41,7 +41,7 @@ interface BoundingBox {
   endY: number;
   anomalyState: "Faulty" | "Potentially Faulty" | "Normal" | "";
   confidenceScore: number;
-  riskType: "Point fault" | "Full wire overload" | "Transformer overload" | "";
+  riskType: "Point fault" | "Full wire overload" | "Transformer overload" | "Normal" | "";
   description: string;
   imageType: "thermal" | "result";
 }
@@ -49,7 +49,7 @@ interface BoundingBox {
 interface AnnotationMetadata {
   anomalyState: "Faulty" | "Potentially Faulty" | "Normal" | "";
   confidenceScore: number;
-  riskType: "Point fault" | "Full wire overload" | "Transformer overload" | "";
+  riskType: "Point fault" | "Full wire overload" | "Transformer overload" | "Normal" | "";
   description: string;
 }
 
@@ -60,6 +60,7 @@ interface AnalysisModalProps {
   analysisResult: string | null;
   inspection: InspectionView;
   analysisData: any;
+  initialAnnotations?: BoundingBox[];
 }
 
 function AnalysisModal({ 
@@ -68,7 +69,8 @@ function AnalysisModal({
   thermalImage, 
   analysisResult, 
   inspection,
-  analysisData
+  analysisData,
+  initialAnnotations = []
 }: AnalysisModalProps) {
   const [comparisonPosition, setComparisonPosition] = useState(50);
   const [hoveredImage, setHoveredImage] = useState<'thermal' | 'result' | null>(null);
@@ -81,13 +83,18 @@ function AnalysisModal({
   
   // Bounding box annotation states
   const [annotationMode, setAnnotationMode] = useState(false);
-  const [boundingBoxes, setBoundingBoxes] = useState<BoundingBox[]>([]);
+  const [boundingBoxes, setBoundingBoxes] = useState<BoundingBox[]>(initialAnnotations);
   const [currentBox, setCurrentBox] = useState<Partial<BoundingBox> | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
   const [showMetadataForm, setShowMetadataForm] = useState(false);
   const [pendingBoxId, setPendingBoxId] = useState<string | null>(null);
   const { toast } = useToast();
+  
+  // Box resizing state
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeHandle, setResizeHandle] = useState<'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w' | null>(null);
+  const [resizingBoxId, setResizingBoxId] = useState<string | null>(null);
   
   // Metadata form state
   const [metadata, setMetadata] = useState<AnnotationMetadata>({
@@ -96,6 +103,13 @@ function AnalysisModal({
     riskType: "",
     description: ""
   });
+
+  // Sync boundingBoxes with initialAnnotations when they change
+  useEffect(() => {
+    if (initialAnnotations && initialAnnotations.length > 0) {
+      setBoundingBoxes(initialAnnotations);
+    }
+  }, [initialAnnotations]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const container = e.currentTarget;
@@ -218,15 +232,20 @@ function AnalysisModal({
     }
     
     // Update the box with metadata
-    setBoundingBoxes(prev => prev.map(box => 
+    const updatedBoxes = boundingBoxes.map(box => 
       box.id === pendingBoxId 
         ? { ...box, ...metadata }
         : box
-    ));
+    );
+    setBoundingBoxes(updatedBoxes);
+    
+    // Emit event to notify main component
+    window.dispatchEvent(new CustomEvent('annotationsUpdated', { detail: updatedBoxes }));
     
     // Reset form
     setShowMetadataForm(false);
     setPendingBoxId(null);
+    setSelectedBoxId(null); // Clear selection after saving
     setMetadata({
       anomalyState: "",
       confidenceScore: 0,
@@ -237,6 +256,27 @@ function AnalysisModal({
     toast({
       title: "Annotation Saved",
       description: "Bounding box annotation has been saved successfully",
+    });
+  };
+
+  const handleEditBox = (boxId: string) => {
+    const boxToEdit = boundingBoxes.find(box => box.id === boxId);
+    if (!boxToEdit) return;
+    
+    // Load the box's metadata into the form
+    setMetadata({
+      anomalyState: boxToEdit.anomalyState,
+      confidenceScore: boxToEdit.confidenceScore,
+      riskType: boxToEdit.riskType,
+      description: boxToEdit.description
+    });
+    
+    setPendingBoxId(boxId);
+    setShowMetadataForm(true);
+    
+    toast({
+      title: "Edit Mode",
+      description: "Update the annotation metadata and save",
     });
   };
 
@@ -256,8 +296,13 @@ function AnalysisModal({
   };
 
   const handleDeleteBox = (boxId: string) => {
-    setBoundingBoxes(prev => prev.filter(box => box.id !== boxId));
+    const updatedBoxes = boundingBoxes.filter(box => box.id !== boxId);
+    setBoundingBoxes(updatedBoxes);
     setSelectedBoxId(null);
+    
+    // Emit event to notify main component
+    window.dispatchEvent(new CustomEvent('annotationsUpdated', { detail: updatedBoxes }));
+    
     toast({
       title: "Annotation Deleted",
       description: "Bounding box annotation has been removed",
@@ -265,7 +310,26 @@ function AnalysisModal({
   };
 
   const handleExportAnnotations = () => {
-    const annotationsJson = JSON.stringify(boundingBoxes, null, 2);
+    // Convert to the new format with bbox and center
+    const formattedAnnotations = boundingBoxes.map(box => {
+      const x = Math.min(box.startX, box.endX);
+      const y = Math.min(box.startY, box.endY);
+      const w = Math.abs(box.endX - box.startX);
+      const h = Math.abs(box.endY - box.startY);
+      
+      return {
+        id: box.id,
+        bbox: [x, y, w, h],
+        center: [x + w / 2, y + h / 2],
+        anomalyState: box.anomalyState,
+        confidenceScore: box.confidenceScore,
+        riskType: box.riskType,
+        description: box.description,
+        imageType: box.imageType
+      };
+    });
+    
+    const annotationsJson = JSON.stringify(formattedAnnotations, null, 2);
     console.log('Annotations to be sent to backend:', annotationsJson);
     
     // Create a download for now
@@ -290,6 +354,82 @@ function AnalysisModal({
       setIsDrawing(false);
       setCurrentBox(null);
     }
+  };
+
+  // Handle box resizing
+  const handleResizeStart = (e: React.MouseEvent, boxId: string, handle: 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w') => {
+    e.stopPropagation();
+    setIsResizing(true);
+    setResizingBoxId(boxId);
+    setResizeHandle(handle);
+    setSelectedBoxId(boxId);
+  };
+
+  const handleResizeMove = (e: React.MouseEvent<HTMLDivElement>, imageType: 'thermal' | 'result') => {
+    if (!isResizing || !resizingBoxId || !resizeHandle) return;
+    
+    const img = e.currentTarget.querySelector('img') as HTMLImageElement;
+    if (!img) return;
+    
+    const imgRect = img.getBoundingClientRect();
+    const x = ((e.clientX - imgRect.left) / imgRect.width) * 100;
+    const y = ((e.clientY - imgRect.top) / imgRect.height) * 100;
+    
+    setBoundingBoxes(prev => prev.map(box => {
+      if (box.id !== resizingBoxId || box.imageType !== imageType) return box;
+      
+      let newBox = { ...box };
+      
+      // Update coordinates based on which handle is being dragged
+      switch (resizeHandle) {
+        case 'nw': // Top-left corner
+          newBox.startX = x;
+          newBox.startY = y;
+          break;
+        case 'ne': // Top-right corner
+          newBox.endX = x;
+          newBox.startY = y;
+          break;
+        case 'sw': // Bottom-left corner
+          newBox.startX = x;
+          newBox.endY = y;
+          break;
+        case 'se': // Bottom-right corner
+          newBox.endX = x;
+          newBox.endY = y;
+          break;
+        case 'n': // Top edge
+          newBox.startY = y;
+          break;
+        case 's': // Bottom edge
+          newBox.endY = y;
+          break;
+        case 'e': // Right edge
+          newBox.endX = x;
+          break;
+        case 'w': // Left edge
+          newBox.startX = x;
+          break;
+      }
+      
+      return newBox;
+    }));
+  };
+
+  const handleResizeEnd = () => {
+    if (isResizing && resizingBoxId) {
+      // Emit event to notify main component
+      window.dispatchEvent(new CustomEvent('annotationsUpdated', { detail: boundingBoxes }));
+      
+      toast({
+        title: "Box Resized",
+        description: "Bounding box has been resized successfully",
+      });
+    }
+    
+    setIsResizing(false);
+    setResizingBoxId(null);
+    setResizeHandle(null);
   };
 
   return (
@@ -377,11 +517,16 @@ function AnalysisModal({
                       }`}
                       onMouseMove={(e) => {
                         handleMouseMove(e);
-                        if (annotationMode) handleImageMouseMove(e);
+                        if (annotationMode && !isResizing) handleImageMouseMove(e);
+                        if (isResizing) handleResizeMove(e, 'thermal');
+                      }}
+                      onMouseUp={handleResizeEnd}
+                      onMouseLeave={() => {
+                        setHoveredImage(null);
+                        if (isResizing) handleResizeEnd();
                       }}
                       onMouseEnter={() => setHoveredImage('thermal')}
-                      onMouseLeave={() => setHoveredImage(null)}
-                      onClick={(e) => handleImageClick(e, 'thermal')}
+                      onClick={(e) => !isResizing && handleImageClick(e, 'thermal')}
                     >
                       <img 
                         src={thermalImage} 
@@ -424,17 +569,50 @@ function AnalysisModal({
                               {box.anomalyState} ({box.confidenceScore}%)
                             </div>
                             {selectedBoxId === box.id && (
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                className="absolute -top-8 -right-8 h-6 w-6 p-0"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteBox(box.id);
-                                }}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
+                              <>
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="absolute -top-8 -right-16 h-6 w-6 p-0 bg-blue-600 hover:bg-blue-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditBox(box.id);
+                                  }}
+                                  title="Edit annotation"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute -top-8 -right-8 h-6 w-6 p-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteBox(box.id);
+                                  }}
+                                  title="Delete annotation"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                                
+                                {/* Resize handles */}
+                                <div className="absolute -top-1 -left-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-nw-resize z-10" 
+                                     onMouseDown={(e) => handleResizeStart(e, box.id, 'nw')} title="Drag to resize" />
+                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-ne-resize z-10" 
+                                     onMouseDown={(e) => handleResizeStart(e, box.id, 'ne')} title="Drag to resize" />
+                                <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-sw-resize z-10" 
+                                     onMouseDown={(e) => handleResizeStart(e, box.id, 'sw')} title="Drag to resize" />
+                                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-se-resize z-10" 
+                                     onMouseDown={(e) => handleResizeStart(e, box.id, 'se')} title="Drag to resize" />
+                                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-n-resize z-10" 
+                                     onMouseDown={(e) => handleResizeStart(e, box.id, 'n')} title="Drag to resize" />
+                                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-s-resize z-10" 
+                                     onMouseDown={(e) => handleResizeStart(e, box.id, 's')} title="Drag to resize" />
+                                <div className="absolute top-1/2 -translate-y-1/2 -left-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-w-resize z-10" 
+                                     onMouseDown={(e) => handleResizeStart(e, box.id, 'w')} title="Drag to resize" />
+                                <div className="absolute top-1/2 -translate-y-1/2 -right-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-e-resize z-10" 
+                                     onMouseDown={(e) => handleResizeStart(e, box.id, 'e')} title="Drag to resize" />
+                              </>
                             )}
                           </div>
                         );
@@ -503,11 +681,16 @@ function AnalysisModal({
                       }`}
                       onMouseMove={(e) => {
                         handleMouseMove(e);
-                        if (annotationMode) handleImageMouseMove(e);
+                        if (annotationMode && !isResizing) handleImageMouseMove(e);
+                        if (isResizing) handleResizeMove(e, 'result');
+                      }}
+                      onMouseUp={handleResizeEnd}
+                      onMouseLeave={() => {
+                        setHoveredImage(null);
+                        if (isResizing) handleResizeEnd();
                       }}
                       onMouseEnter={() => setHoveredImage('result')}
-                      onMouseLeave={() => setHoveredImage(null)}
-                      onClick={(e) => handleImageClick(e, 'result')}
+                      onClick={(e) => !isResizing && handleImageClick(e, 'result')}
                     >
                       <img 
                         src={analysisResult} 
@@ -550,17 +733,50 @@ function AnalysisModal({
                               {box.anomalyState} ({box.confidenceScore}%)
                             </div>
                             {selectedBoxId === box.id && (
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                className="absolute -top-8 -right-8 h-6 w-6 p-0"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteBox(box.id);
-                                }}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
+                              <>
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="absolute -top-8 -right-16 h-6 w-6 p-0 bg-blue-600 hover:bg-blue-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditBox(box.id);
+                                  }}
+                                  title="Edit annotation"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute -top-8 -right-8 h-6 w-6 p-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteBox(box.id);
+                                  }}
+                                  title="Delete annotation"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                                
+                                {/* Resize handles */}
+                                <div className="absolute -top-1 -left-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-nw-resize z-10" 
+                                     onMouseDown={(e) => handleResizeStart(e, box.id, 'nw')} title="Drag to resize" />
+                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-ne-resize z-10" 
+                                     onMouseDown={(e) => handleResizeStart(e, box.id, 'ne')} title="Drag to resize" />
+                                <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-sw-resize z-10" 
+                                     onMouseDown={(e) => handleResizeStart(e, box.id, 'sw')} title="Drag to resize" />
+                                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-se-resize z-10" 
+                                     onMouseDown={(e) => handleResizeStart(e, box.id, 'se')} title="Drag to resize" />
+                                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-n-resize z-10" 
+                                     onMouseDown={(e) => handleResizeStart(e, box.id, 'n')} title="Drag to resize" />
+                                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-s-resize z-10" 
+                                     onMouseDown={(e) => handleResizeStart(e, box.id, 's')} title="Drag to resize" />
+                                <div className="absolute top-1/2 -translate-y-1/2 -left-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-w-resize z-10" 
+                                     onMouseDown={(e) => handleResizeStart(e, box.id, 'w')} title="Drag to resize" />
+                                <div className="absolute top-1/2 -translate-y-1/2 -right-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-e-resize z-10" 
+                                     onMouseDown={(e) => handleResizeStart(e, box.id, 'e')} title="Drag to resize" />
+                              </>
                             )}
                           </div>
                         );
@@ -798,14 +1014,24 @@ function AnalysisModal({
       <Dialog open={showMetadataForm} onOpenChange={setShowMetadataForm}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Annotation Metadata</DialogTitle>
+            <DialogTitle>
+              {boundingBoxes.find(box => box.id === pendingBoxId)?.anomalyState ? 'Edit Annotation Metadata' : 'Annotation Metadata'}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="anomalyState">Anomaly State *</Label>
               <Select 
                 value={metadata.anomalyState} 
-                onValueChange={(value) => setMetadata({...metadata, anomalyState: value as "Faulty" | "Potentially Faulty" | "Normal" | ""})}
+                onValueChange={(value) => {
+                  const newState = value as "Faulty" | "Potentially Faulty" | "Normal" | "";
+                  setMetadata({
+                    ...metadata, 
+                    anomalyState: newState,
+                    // Auto-set Risk Type to "Normal" when Anomaly State is "Normal"
+                    riskType: newState === "Normal" ? "Normal" : metadata.riskType
+                  });
+                }}
               >
                 <SelectTrigger id="anomalyState">
                   <SelectValue placeholder="Select anomaly state" />
@@ -837,7 +1063,7 @@ function AnalysisModal({
               <Label htmlFor="riskType">Risk Type *</Label>
               <Select 
                 value={metadata.riskType} 
-                onValueChange={(value) => setMetadata({...metadata, riskType: value as "Point fault" | "Full wire overload" | "Transformer overload" | ""})}
+                onValueChange={(value) => setMetadata({...metadata, riskType: value as "Point fault" | "Full wire overload" | "Transformer overload" | "Normal" | ""})}
                 disabled={metadata.anomalyState === "Normal"}
               >
                 <SelectTrigger id="riskType">
@@ -847,10 +1073,11 @@ function AnalysisModal({
                   <SelectItem value="Point fault">Point fault</SelectItem>
                   <SelectItem value="Full wire overload">Full wire overload</SelectItem>
                   <SelectItem value="Transformer overload">Transformer overload</SelectItem>
+                  <SelectItem value="Normal">Normal</SelectItem>
                 </SelectContent>
               </Select>
               {metadata.anomalyState === "Normal" && (
-                <p className="text-xs text-muted-foreground">Risk type not required for Normal state</p>
+                <p className="text-xs text-muted-foreground">Risk type automatically set to Normal</p>
               )}
             </div>
             
@@ -905,6 +1132,14 @@ export default function InspectionDetail() {
   const [annotationPosition, setAnnotationPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  
+  // Cached annotations state
+  const [cachedAnnotations, setCachedAnnotations] = useState<BoundingBox[]>([]);
+  
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<Array<{id: string, role: 'user' | 'assistant', content: string, timestamp: Date}>>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
 
   const [inspection, setInspection] = useState<InspectionView>({
     id: id ?? "-",
@@ -1475,6 +1710,110 @@ export default function InspectionDetail() {
     }
   };
 
+  // Annotation caching functions
+  const CACHE_KEY_PREFIX = 'inspection_annotations_';
+  
+  const saveAnnotationsToCache = (annotations: BoundingBox[]) => {
+    if (!id) return;
+    const cacheKey = `${CACHE_KEY_PREFIX}${id}`;
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify(annotations));
+      console.log('Annotations saved to cache:', annotations);
+    } catch (error) {
+      console.error('Failed to save annotations to cache:', error);
+    }
+  };
+
+  const loadAnnotationsFromCache = () => {
+    if (!id) return [];
+    const cacheKey = `${CACHE_KEY_PREFIX}${id}`;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const annotations = JSON.parse(cached) as BoundingBox[];
+        console.log('Annotations loaded from cache:', annotations);
+        return annotations;
+      }
+    } catch (error) {
+      console.error('Failed to load annotations from cache:', error);
+    }
+    return [];
+  };
+
+  const clearAnnotationsCache = () => {
+    if (!id) return;
+    const cacheKey = `${CACHE_KEY_PREFIX}${id}`;
+    try {
+      localStorage.removeItem(cacheKey);
+      setCachedAnnotations([]);
+      console.log('Annotations cache cleared');
+    } catch (error) {
+      console.error('Failed to clear annotations cache:', error);
+    }
+  };
+
+  // Chat handler
+  const handleSendMessage = async () => {
+    if (!chatInput.trim()) return;
+    
+    const userMessage = {
+      id: `msg-${Date.now()}`,
+      role: 'user' as const,
+      content: chatInput.trim(),
+      timestamp: new Date()
+    };
+    
+    setChatMessages(prev => [userMessage, ...prev]); // Newest on top
+    setChatInput('');
+    setIsChatLoading(true);
+    
+    try {
+      // TODO: Replace with actual RAG backend API call
+      // For now, create a mock response
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const assistantMessage = {
+        id: `msg-${Date.now()}-assistant`,
+        role: 'assistant' as const,
+        content: `I'm Arbit AI Assistant. I can help you analyze thermal images and annotations. (RAG integration pending)`,
+        timestamp: new Date()
+      };
+      
+      setChatMessages(prev => [assistantMessage, ...prev]); // Newest on top
+    } catch (error) {
+      console.error('Chat error:', error);
+      toast({
+        title: "Chat Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
+  // Load cached annotations on component mount
+  useEffect(() => {
+    const cached = loadAnnotationsFromCache();
+    if (cached.length > 0) {
+      setCachedAnnotations(cached);
+    }
+  }, [id]);
+
+  // Listen for annotation updates from the modal
+  useEffect(() => {
+    const handleAnnotationsUpdate = (event: CustomEvent<BoundingBox[]>) => {
+      const annotations = event.detail;
+      setCachedAnnotations(annotations);
+      saveAnnotationsToCache(annotations);
+    };
+
+    window.addEventListener('annotationsUpdated' as any, handleAnnotationsUpdate as any);
+    return () => {
+      window.removeEventListener('annotationsUpdated' as any, handleAnnotationsUpdate as any);
+    };
+  }, [id]);
+
   const openAnalysisModal = () => {
     // Always try to fetch analysis result when opening modal
     fetchAnalysisResult();
@@ -1605,44 +1944,53 @@ export default function InspectionDetail() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Side - Details and Thermal Upload */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Tabs for Thermal Comparison and Annotation Tools */}
-            <Tabs defaultValue="comparison" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="comparison">Thermal Image Comparison</TabsTrigger>
-                <TabsTrigger value="annotation">Annotation Tools</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="comparison" className="mt-6">
+            {/* Thermal Image Comparison */}
+            <div className="w-full">
                 {/* Thermal Image Upload/Comparison */}
                 {(baselineImage && thermalImage) ? (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span>Thermal Image Comparison</span>
-                    {(inspection.status !== 'Completed' && inspection.status !== 'completed') && (
-                      <Button 
-                        onClick={handleAnalyze}
-                        disabled={isAnalyzing}
-                        size="sm"
-                      >
-                        {isAnalyzing ? (
-                          <>
-                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                            Analyzing...
-                          </>
-                        ) : (
-                          <>
-                            <ZoomIn className="h-4 w-4 mr-2" />
-                            Analyze Images
-                          </>
-                        )}
-                      </Button>
-                    )}
+                    <div className="flex gap-2">
+                      {/* Anomaly Annotation Tool Button - Show when analysis is completed */}
+                      {(inspection.status === 'Completed' || inspection.status === 'completed') && analysisResult && (
+                        <Button 
+                          onClick={openAnalysisModal}
+                          size="sm"
+                          variant="default"
+                        >
+                          <Search className="h-4 w-4 mr-2" />
+                          Anomaly Annotation Tool
+                        </Button>
+                      )}
+                      
+                      {/* Analyze Button - Show when not yet completed */}
+                      {(inspection.status !== 'Completed' && inspection.status !== 'completed') && (
+                        <Button 
+                          onClick={handleAnalyze}
+                          disabled={isAnalyzing}
+                          size="sm"
+                        >
+                          {isAnalyzing ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                              Analyzing...
+                            </>
+                          ) : (
+                            <>
+                              <ZoomIn className="h-4 w-4 mr-2" />
+                              Analyze Images
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4">
-                    {/* Current Image */}
+                    {/* Current Thermal Image */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -1675,31 +2023,71 @@ export default function InspectionDetail() {
                       </div>
                     </div>
 
-                    {/* Baseline Image */}
+                    {/* Analysis Result Image */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <h3 className="font-medium">Baseline</h3>
-                        {baselineImage && (
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium">Analysis Result</h3>
+                          {analysisResult && <Badge variant="secondary">Processed</Badge>}
+                        </div>
+                        {analysisResult && (
                           <div className="flex gap-2">
-                            <Button variant="outline" size="icon" onClick={() => openInNewTab(baselineImage)}>
+                            <Button variant="outline" size="icon" onClick={() => openInNewTab(analysisResult)}>
                               <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button variant="outline" size="icon" onClick={() => handleDeleteImage('baseline')}>
-                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         )}
                       </div>
-                      <div className="bg-primary/5 rounded-lg border-2 border-dashed border-primary/20 flex items-center justify-center min-h-[300px] p-4">
-                        {baselineImage ? (
-                          <img 
-                            src={baselineImage} 
-                            alt="Baseline thermal image" 
-                            className="max-w-full max-h-[500px] object-contain rounded-lg"
-                          />
+                      <div className="bg-violet-50 rounded-lg border-2 border-dashed border-violet-200 flex items-center justify-center min-h-[300px] p-4 relative">
+                        {analysisResult ? (
+                          <div className="relative inline-block">
+                            <img 
+                              src={analysisResult} 
+                              alt="Analysis result image" 
+                              className="max-w-full max-h-[500px] object-contain rounded-lg"
+                            />
+                            {/* Render cached bounding boxes */}
+                            {cachedAnnotations.filter(box => box.imageType === 'result').map(box => {
+                              const left = Math.min(box.startX, box.endX);
+                              const top = Math.min(box.startY, box.endY);
+                              const width = Math.abs(box.endX - box.startX);
+                              const height = Math.abs(box.endY - box.startY);
+                              
+                              return (
+                                <div
+                                  key={box.id}
+                                  className={`absolute border-2 pointer-events-none ${
+                                    box.anomalyState === 'Faulty' ? 'border-red-500' :
+                                    box.anomalyState === 'Potentially Faulty' ? 'border-orange-500' :
+                                    'border-green-500'
+                                  }`}
+                                  style={{
+                                    left: `${left}%`,
+                                    top: `${top}%`,
+                                    width: `${width}%`,
+                                    height: `${height}%`,
+                                    backgroundColor: box.anomalyState === 'Faulty' ? 'rgba(255, 0, 0, 0.1)' :
+                                      box.anomalyState === 'Potentially Faulty' ? 'rgba(255, 165, 0, 0.1)' :
+                                      'rgba(0, 255, 0, 0.1)'
+                                  }}
+                                >
+                                  <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
+                                    {box.anomalyState} ({box.confidenceScore}%)
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         ) : (
                           <div className="text-center text-muted-foreground">
-                            <div className="text-sm">No baseline image</div>
+                            {(inspection.status === 'Completed' || inspection.status === 'completed') ? (
+                              <>
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                                <div className="text-sm">Loading analysis result...</div>
+                              </>
+                            ) : (
+                              <div className="text-sm">Analysis pending</div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1759,135 +2147,166 @@ export default function InspectionDetail() {
                 </CardContent>
               </Card>
             )}
-              </TabsContent>
-
-              <TabsContent value="annotation" className="mt-6">
-                {/* Annotation Tools */}
-                <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  Annotation Tools
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="icon">
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-                      </svg>
-                    </Button>
-                    <Button variant="outline" size="icon">
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                      </svg>
-                    </Button>
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {(inspection.status === 'Completed' || inspection.status === 'completed') && analysisResult ? (
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium flex items-center gap-2">
-                          <svg className="h-4 w-4 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <path d="M9 12l2 2 4-4"/>
-                            <circle cx="12" cy="12" r="10"/>
-                          </svg>
-                          Analysis Result Image
-                        </h4>
-                        <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm" onClick={handleZoomIn}>
-                            <ZoomIn className="h-4 w-4 mr-1" />
-                            Zoom In
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={handleZoomOut}>
-                            <ZoomIn className="h-4 w-4 mr-1 rotate-180" />
-                            Zoom Out
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={handleResetZoom}>
-                            <svg className="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-                              <path d="M21 3v5h-5"/>
-                              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-                              <path d="M3 21v-5h5"/>
-                            </svg>
-                            Reset
-                          </Button>
+              
+            {/* Arbit AI Assistant and Analysis Summary - Only show when analysis is completed */}
+            {(inspection.status === 'Completed' || inspection.status === 'completed') && analysisResult && (
+              <>
+                {/* Arbit AI Assistant Chat */}
+                <Card className="mt-6">
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <Bot className="h-5 w-5 text-primary" />
+                      <CardTitle>Arbit AI Assistant</CardTitle>
+                      <Badge variant="secondary" className="text-xs">Beta</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Chat Messages - Reverse order (newest on top) - Fixed height with scroll */}
+                    <div className="border rounded-lg bg-gray-50 h-[280px] overflow-y-auto flex flex-col-reverse p-4 space-y-reverse space-y-3 mb-3">
+                      {chatMessages.length === 0 ? (
+                        <div className="text-center text-muted-foreground text-sm py-8">
+                          <Bot className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p>Ask me about thermal images, anomalies, or annotations!</p>
                         </div>
-                      </div>
-                      <div 
-                        className="bg-green-50 rounded-lg border-2 border-green-200 overflow-hidden min-h-[400px] relative"
-                        style={{ cursor: annotationZoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
-                        onMouseDown={handleMouseDown}
-                        onMouseMove={handleMouseMove}
-                        onMouseUp={handleMouseUp}
-                        onMouseLeave={handleMouseUp}
-                      >
-                        <div 
-                          className="flex items-center justify-center p-4"
-                          style={{
-                            transform: `translate(${annotationPosition.x}px, ${annotationPosition.y}px) scale(${annotationZoom})`,
-                            transition: isDragging ? 'none' : 'transform 0.2s ease-out',
-                          }}
-                        >
-                          <img 
-                            src={analysisResult} 
-                            alt="Analysis result with annotations" 
-                            className="max-w-full max-h-[400px] object-contain rounded-lg select-none"
-                            draggable={false}
-                          />
-                        </div>
-                      </div>
-                      {annotationZoom > 1 && (
-                        <p className="text-xs text-muted-foreground text-center mt-2">
-                          Drag the image to pan • Zoom: {(annotationZoom * 100).toFixed(0)}%
-                        </p>
+                      ) : (
+                        chatMessages.map((msg) => (
+                          <div 
+                            key={msg.id}
+                            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div 
+                              className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                                msg.role === 'user' 
+                                  ? 'bg-primary text-primary-foreground' 
+                                  : 'bg-white border'
+                              }`}
+                            >
+                              <p className="text-sm">{msg.content}</p>
+                              <span className="text-xs opacity-70 mt-1 block">
+                                {msg.timestamp.toLocaleTimeString()}
+                              </span>
+                            </div>
+                          </div>
+                        ))
                       )}
-                      <div className="flex gap-2 mt-2">
-                        <Button variant="outline" size="sm" onClick={() => openInNewTab(analysisResult)}>
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Full Size
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={openAnalysisModal}
-                        >
-                          <Search className="h-4 w-4 mr-2" />
-                          Compare Images
-                        </Button>
+                    </div>
+                    
+                    {/* Chat Input */}
+                    <div className="flex gap-2">
+                      <Input 
+                        placeholder="Ask about images, annotations, or anomalies..."
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage();
+                          }
+                        }}
+                        disabled={isChatLoading}
+                        className="flex-1"
+                      />
+                      <Button 
+                        onClick={handleSendMessage}
+                        disabled={isChatLoading || !chatInput.trim()}
+                        size="icon"
+                      >
+                        {isChatLoading ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    
+                    <p className="text-xs text-muted-foreground mt-2">
+                      💡 The AI can analyze your annotations and provide insights about thermal anomalies
+                    </p>
+                  </CardContent>
+                </Card>
+                
+                {/* Analysis Summary - Fixed height with scroll */}
+                {analysisData && (
+                  <Card className="mt-6">
+                    <CardHeader>
+                      <CardTitle>Analysis Summary</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {/* Fixed height scrollable container */}
+                      <div className="max-h-[320px] overflow-y-auto">
+                        <div className="bg-gray-50 p-4 rounded-lg border">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-600">Status:</span>
+                              <div className="font-medium text-green-600">{analysisData.analysisStatus}</div>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Date:</span>
+                              <div className="font-medium">{new Date(analysisData.analysisDate).toLocaleDateString()}</div>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Processing Time:</span>
+                              <div className="font-medium">{analysisData.processingTimeMs}ms</div>
+                            </div>
+                            {analysisData.analysisResultJson && (() => {
+                              try {
+                                const resultJson = JSON.parse(analysisData.analysisResultJson);
+                                return (
+                                  <div>
+                                    <span className="text-gray-600">Anomalies:</span>
+                                    <div className="font-medium text-red-600">
+                                      {resultJson.summary?.total_anomalies || 0} found
+                                    </div>
+                                  </div>
+                                );
+                              } catch {
+                                return null;
+                              }
+                            })()}
+                          </div>
+                          
+                          {/* Anomaly Details */}
+                          {analysisData.analysisResultJson && (() => {
+                            try {
+                              const resultJson = JSON.parse(analysisData.analysisResultJson);
+                              if (resultJson.anomalies && resultJson.anomalies.length > 0) {
+                                return (
+                                  <div className="mt-4">
+                                    <h4 className="font-medium mb-2">Detected Anomalies:</h4>
+                                    <div className="space-y-2">
+                                      {resultJson.anomalies.map((anomaly: any, index: number) => (
+                                        <div key={index} className="bg-white p-3 rounded border-l-4 border-red-500">
+                                          <div className="flex justify-between items-start">
+                                            <div>
+                                              <span className="font-medium text-red-600">
+                                                {anomaly.severity_level} Severity
+                                              </span>
+                                              <p className="text-sm text-gray-600 mt-1">{anomaly.reasoning}</p>
+                                            </div>
+                                            <div className="text-right text-sm">
+                                              <div>Confidence: {(anomaly.confidence * 100).toFixed(1)}%</div>
+                                              <div>Area: {anomaly.area?.toLocaleString()}</div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              }
+                            } catch {
+                              return null;
+                            }
+                            return null;
+                          })()}
+                        </div>
                       </div>
-                    </div>
-                    <div className="border-t pt-4">
-                      <p className="text-sm text-muted-foreground">
-                        The analysis result image shows detected anomalies and annotations. 
-                        Use the annotation tools above to add your own notes and markings.
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center text-muted-foreground py-8">
-                    <svg className="h-12 w-12 mx-auto mb-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path d="M14.828 14.828a4 4 0 0 1-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
-                    </svg>
-                    <div className="text-sm">
-                      {inspection.status === 'Completed' || inspection.status === 'completed' 
-                        ? (!analysisResult 
-                            ? 'Loading analysis result image...' 
-                            : 'Analysis result image will appear here'
-                          )
-                        : 'Annotation tools will be available when analysis is completed'
-                      }
-                    </div>
-                    {(inspection.status === 'Completed' || inspection.status === 'completed') && !analysisResult && (
-                      <div className="mt-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mx-auto"></div>
-                      </div>
-                    )}
-                  </div>
+                    </CardContent>
+                  </Card>
                 )}
-              </CardContent>
-            </Card>
-              </TabsContent>
-            </Tabs>
+              </>
+            )}
+            </div>
           </div>
 
           {/* Right Side - Progress and Baseline Upload */}
@@ -2026,6 +2445,7 @@ export default function InspectionDetail() {
         analysisResult={analysisResult}
         inspection={inspection}
         analysisData={analysisData}
+        initialAnnotations={cachedAnnotations}
       />
     </Layout>
   );
