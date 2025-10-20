@@ -100,6 +100,10 @@ interface BoundingBox {
   aiGenerated?: boolean;
   userVerified?: boolean;
   isDeleted?: boolean; // Soft delete flag
+  // Server sync metadata
+  serverSynced?: boolean;
+  lastSyncAt?: string;
+  serverData?: any; // Store the full server response for this annotation
 }
 
 interface AnnotationMetadata {
@@ -122,6 +126,7 @@ interface AnalysisModalProps {
   inspection: InspectionView;
   analysisData: any;
   initialAnnotations?: BoundingBox[];
+  onAnalysisDataUpdate?: (data: any) => void;
 }
 
 function AnalysisModal({
@@ -132,6 +137,7 @@ function AnalysisModal({
   inspection,
   analysisData,
   initialAnnotations = [],
+  onAnalysisDataUpdate,
 }: AnalysisModalProps) {
   const [comparisonPosition, setComparisonPosition] = useState(50);
   const [hoveredImage, setHoveredImage] = useState<"thermal" | "result" | null>(
@@ -574,7 +580,7 @@ function AnalysisModal({
   };
 
   const handleExportAnnotations = () => {
-    // Convert to the new format with bbox, center, and full tracking metadata
+    // Convert to comprehensive export format with full metadata
     const formattedAnnotations = boundingBoxes
       .filter((box) => !box.isDeleted) // Exclude deleted annotations from export
       .map((box) => {
@@ -587,43 +593,327 @@ function AnalysisModal({
           id: box.id,
           bbox: [x, y, w, h],
           center: [x + w / 2, y + h / 2],
+          area: w * h,
           anomalyState: box.anomalyState,
           confidenceScore: box.confidenceScore,
           riskType: box.riskType,
           description: box.description,
           imageType: box.imageType,
+          
+          // Enhanced metadata for export
           annotationType: box.annotationType || "added",
-          modifiedBy:
-            box.modifiedBy ||
-            (box.aiGenerated ? "user:AI" : box.createdBy || "unknown"),
-          confirmedBy:
-            box.confirmedBy ||
-            (box.aiGenerated && !box.userVerified
-              ? "not confirmed by the user"
-              : box.createdBy || "unknown"),
+          source: box.source || "manual",
+          modifiedBy: box.modifiedBy || (box.aiGenerated ? "user:AI" : box.createdBy || "unknown"),
+          confirmedBy: box.confirmedBy || (box.aiGenerated && !box.userVerified ? "not confirmed by the user" : box.createdBy || "unknown"),
           addedBy: box.createdBy || "unknown",
           addedAt: box.createdAt,
           editedBy: box.editedBy,
           editedAt: box.editedAt,
+          createdBy: box.createdBy,
+          userVerified: box.userVerified || false,
+          aiGenerated: box.aiGenerated || false,
+          
+          // Server sync info
+          serverSynced: box.serverSynced || false,
+          lastSyncAt: box.lastSyncAt,
+          serverData: box.serverData,
+          
+          // Export timestamp
+          exportedAt: new Date().toISOString(),
+          exportedBy: "hasitha@gmail.com", // Replace with actual user
         };
       });
 
-    const annotationsJson = JSON.stringify(formattedAnnotations, null, 2);
-    console.log("Annotations to be sent to backend:", annotationsJson);
+    // Create export summary
+    const exportSummary = {
+      inspection: {
+        id: inspection.id,
+        transformerNo: inspection.transformerNo,
+        status: inspection.status
+      },
+      export: {
+        timestamp: new Date().toISOString(),
+        totalAnnotations: formattedAnnotations.length,
+        annotationTypes: {
+          manual: formattedAnnotations.filter(a => a.source === 'manual').length,
+          ai: formattedAnnotations.filter(a => a.aiGenerated).length,
+          modified: formattedAnnotations.filter(a => a.source === 'ai-modified').length,
+          rejected: formattedAnnotations.filter(a => a.source === 'ai-rejected').length
+        },
+        syncStatus: {
+          synced: formattedAnnotations.filter(a => a.serverSynced).length,
+          unsynced: formattedAnnotations.filter(a => !a.serverSynced).length
+        }
+      },
+      annotations: formattedAnnotations
+    };
 
-    // Create a download for now
+    const annotationsJson = JSON.stringify(exportSummary, null, 2);
+    console.log("Comprehensive annotations export:", exportSummary);
+
+    // Create a download
     const blob = new Blob([annotationsJson], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `inspection-${inspection.id}-annotations.json`;
+    a.download = `inspection-${inspection.id}-annotations-export.json`;
     a.click();
     URL.revokeObjectURL(url);
 
     toast({
       title: "Annotations Exported",
-      description: `${boundingBoxes.length} annotations exported. Ready to send to backend.`,
+      description: `${formattedAnnotations.length} annotations exported with full metadata`,
     });
+  };
+
+  const handleSaveAnnotations = async () => {
+    if (!inspection.id || !inspection.transformerNo) {
+      toast({
+        title: "Save Error",
+        description: "Missing inspection ID or transformer number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Convert to the full format for backend with all anomaly information
+      const formattedAnnotations = boundingBoxes
+        .filter((box) => !box.isDeleted) // Exclude deleted annotations from save
+        .map((box) => {
+          const x = Math.min(box.startX, box.endX);
+          const y = Math.min(box.startY, box.endY);
+          const w = Math.abs(box.endX - box.startX);
+          const h = Math.abs(box.endY - box.startY);
+
+          // Map anomaly state to severity level
+          let severity_level = "LOW";
+          let severity_color = [0, 255, 0]; // Green for low
+          
+          if (box.anomalyState === "Faulty") {
+            severity_level = "HIGH";
+            severity_color = [0, 0, 255]; // Red for high
+          } else if (box.anomalyState === "Potentially Faulty") {
+            severity_level = "MEDIUM"; 
+            severity_color = [0, 165, 255]; // Orange for medium
+          } else if (box.anomalyState === "Normal") {
+            severity_level = "MINIMAL";
+            severity_color = [0, 255, 0]; // Green for normal
+          }
+
+          // Map risk type to anomaly type
+          let type = "heating";
+          if (box.riskType === "Point fault") {
+            type = "heating";
+          } else if (box.riskType === "Full wire overload") {
+            type = "heating";
+          } else if (box.riskType === "Transformer overload") {
+            type = "heating";
+          } else if (box.riskType === "Normal") {
+            type = "normal";
+          }
+
+          // Helper function to convert frontend ID to backend ID format
+        const getBackendId = (frontendId: string): string | number => {
+          // Remove prefixes and convert to appropriate format
+          if (frontendId.startsWith('ai-box-')) {
+            return frontendId.replace('ai-box-', '');
+          } else if (frontendId.startsWith('box-')) {
+            const numericId = frontendId.replace('box-', '');
+            return isNaN(Number(numericId)) ? numericId : Number(numericId);
+          }
+          // Try to convert to number if possible
+          return isNaN(Number(frontendId)) ? frontendId : Number(frontendId);
+        };
+
+        return {
+            id: getBackendId(box.id),
+            bbox: [x, y, w, h],
+            center: [x + w / 2, y + h / 2],
+            area: w * h,
+            anomalyState: box.anomalyState,
+            confidenceScore: box.confidenceScore,
+            riskType: box.riskType,
+            description: box.description,
+            imageType: box.imageType,
+            
+            // Enhanced anomaly information for backend
+            avg_temp_change: box.confidenceScore * 1.5, // Mock temperature change based on confidence
+            max_temp_change: box.confidenceScore * 1.7,
+            severity: box.confidenceScore / 100,
+            type: type,
+            confidence: box.confidenceScore / 100,
+            reasoning: box.description || `${box.anomalyState} anomaly detected - ${box.riskType}`,
+            consensus_score: 0.5, // Default consensus score
+            severity_level: severity_level,
+            severity_color: severity_color,
+            
+            // Tracking metadata
+            annotationType: box.annotationType || "added",
+            source: box.source || "manual",
+            modifiedBy: box.modifiedBy || (box.aiGenerated ? "user:AI" : box.createdBy || "unknown"),
+            confirmedBy: box.confirmedBy || (box.aiGenerated && !box.userVerified ? "not confirmed by the user" : box.createdBy || "unknown"),
+            addedBy: box.createdBy || "unknown",
+            addedAt: box.createdAt,
+            editedBy: box.editedBy,
+            editedAt: box.editedAt,
+            createdBy: box.createdBy,
+            userVerified: box.userVerified,
+            aiGenerated: box.aiGenerated
+          };
+        });
+
+      console.log("Saving full annotations to backend:", formattedAnnotations);
+      console.log("Inspection No:", inspection.id, "Transformer No:", inspection.transformerNo);
+
+      const response = await fetch(
+        API_ENDPOINTS.ANALYSIS_UPDATE_ANNOTATIONS(inspection.id, inspection.transformerNo!),
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include", // Include credentials for authentication
+          body: JSON.stringify(formattedAnnotations),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = `${response.status} ${response.statusText}`;
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorData.responseDescription || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      console.log("Annotations saved successfully:", result);
+
+      // Handle different response formats from backend
+      const processBackendResponse = (backendResult: any) => {
+        if (!backendResult || typeof backendResult !== 'object') {
+          return null;
+        }
+
+        // Format 1: Full analysis response with anomalies array
+        if (backendResult.anomalies && Array.isArray(backendResult.anomalies)) {
+          console.log("Backend returned detailed analysis format:", backendResult);
+          return {
+            type: 'detailed',
+            data: backendResult
+          };
+        }
+
+        // Format 2: Simple success response
+        if (backendResult.status === 'success' || backendResult.responseCode === '200') {
+          console.log("Backend returned simple success format:", backendResult);
+          return {
+            type: 'simple',
+            data: backendResult
+          };
+        }
+
+        // Format 3: Array of updated annotations
+        if (Array.isArray(backendResult)) {
+          console.log("Backend returned array format:", backendResult);
+          return {
+            type: 'array',
+            data: backendResult
+          };
+        }
+
+        // Format 4: Envelope format with responseData
+        if (backendResult.responseData) {
+          return processBackendResponse(backendResult.responseData);
+        }
+
+        return {
+          type: 'unknown',
+          data: backendResult
+        };
+      };
+
+      const processedResponse = processBackendResponse(result);
+      
+      if (processedResponse) {
+        switch (processedResponse.type) {
+          case 'detailed':
+            // Handle full analysis format response
+            if (onAnalysisDataUpdate) {
+              onAnalysisDataUpdate({
+                ...analysisData,
+                parsedAnalysisJson: processedResponse.data,
+                analysisStatus: processedResponse.data.status || "completed",
+                updatedAt: new Date().toISOString()
+              });
+            }
+
+            // Update bounding boxes with server data to keep them in sync
+            if (processedResponse.data.anomalies) {
+              const serverAnomalies = processedResponse.data.anomalies;
+              const updatedBoxes = boundingBoxes.map(box => {
+                const matchingAnomaly = serverAnomalies.find((anomaly: any) => 
+                  box.id === `ai-box-${anomaly.id}` || 
+                  box.id === anomaly.id.toString() ||
+                  box.id === `box-${anomaly.id}`
+                );
+
+                if (matchingAnomaly) {
+                  return {
+                    ...box,
+                    // Update with server response data
+                    serverSynced: true,
+                    lastSyncAt: new Date().toISOString(),
+                    serverData: matchingAnomaly
+                  };
+                }
+                return {
+                  ...box,
+                  serverSynced: true,
+                  lastSyncAt: new Date().toISOString()
+                };
+              });
+
+              setBoundingBoxes(updatedBoxes);
+            }
+            break;
+
+          case 'simple':
+          case 'array':
+            // Handle simple success or array format
+            const updatedBoxes = boundingBoxes.map(box => ({
+              ...box,
+              serverSynced: true,
+              lastSyncAt: new Date().toISOString()
+            }));
+            setBoundingBoxes(updatedBoxes);
+            break;
+
+          case 'unknown':
+            console.warn("Unknown backend response format:", processedResponse.data);
+            break;
+        }
+      }
+
+      toast({
+        title: "Annotations Saved",
+        description: `${formattedAnnotations.length} annotations saved successfully to the backend`,
+      });
+
+    } catch (error: any) {
+      console.error("Failed to save annotations:", error);
+      toast({
+        title: "Save Failed",
+        description: error.message || "Failed to save annotations to backend",
+        variant: "destructive",
+      });
+    }
   };
 
   const toggleAnnotationMode = () => {
@@ -751,14 +1041,25 @@ function AnalysisModal({
                 {annotationMode ? "Exit Annotation" : "Annotate Boxes"}
               </Button>
               {boundingBoxes.length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportAnnotations}
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  Export ({boundingBoxes.length})
-                </Button>
+                <>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleSaveAnnotations}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Save ({boundingBoxes.length})
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportAnnotations}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Export ({boundingBoxes.length})
+                  </Button>
+                </>
               )}
               <Button
                 variant="outline"
@@ -3384,6 +3685,30 @@ export default function InspectionDetail() {
                                                   ? "Thermal"
                                                   : "Result"}
                                               </div>
+                                              {/* Server sync indicator */}
+                                              <div className="flex items-center gap-1 justify-end mt-1">
+                                                <div
+                                                  className={`w-2 h-2 rounded-full ${
+                                                    box.serverSynced
+                                                      ? "bg-green-500"
+                                                      : "bg-gray-400"
+                                                  }`}
+                                                  title={
+                                                    box.serverSynced
+                                                      ? `Synced ${
+                                                          box.lastSyncAt
+                                                            ? new Date(
+                                                                box.lastSyncAt
+                                                              ).toLocaleTimeString()
+                                                            : ""
+                                                        }`
+                                                      : "Not synced with server"
+                                                  }
+                                                />
+                                                <span className="text-[10px] text-gray-500">
+                                                  {box.serverSynced ? "Synced" : "Local"}
+                                                </span>
+                                              </div>
                                             </div>
                                             <Button
                                               variant="destructive"
@@ -3741,6 +4066,7 @@ export default function InspectionDetail() {
         inspection={inspection}
         analysisData={analysisData}
         initialAnnotations={cachedAnnotations}
+        onAnalysisDataUpdate={setAnalysisData}
       />
     </Layout>
   );
