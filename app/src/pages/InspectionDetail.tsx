@@ -1054,6 +1054,11 @@ function AnalysisModal({
         title: "Annotations Saved",
         description: `${formattedAnnotations.length} annotations saved successfully to the backend`,
       });
+
+      // Refresh the page after successful save
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500); // Wait 1.5 seconds for toast to be visible, then reload
     } catch (error: any) {
       console.error("Failed to save annotations:", error);
       toast({
@@ -1224,7 +1229,11 @@ function AnalysisModal({
         </DialogHeader>
 
         {/* View Mode Tabs */}
-        <Tabs value={viewMode} onValueChange={(value: any) => setViewMode(value)} className="w-full">
+        <Tabs
+          value={viewMode}
+          onValueChange={(value: any) => setViewMode(value)}
+          className="w-full"
+        >
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="side-by-side">Side by Side</TabsTrigger>
             <TabsTrigger value="slider">Slider</TabsTrigger>
@@ -1232,842 +1241,683 @@ function AnalysisModal({
             <TabsTrigger value="zoom">Zoom & Pan</TabsTrigger>
           </TabsList>
 
-        <div className="space-y-4 overflow-y-auto max-h-[calc(90vh-180px)] mt-4">
-          {/* Annotation Mode Info Banner */}
-          {annotationMode && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
-              <div className="flex items-start gap-2">
-                <Square className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium text-blue-900">
-                    Annotation Mode Active
-                  </p>
-                  <p className="text-blue-700 mt-1">
-                    Click once to start drawing a box, move your cursor to
-                    define the area, then click again to finish. You'll be
-                    prompted to add metadata for each annotation.
-                  </p>
+          <div className="space-y-4 overflow-y-auto max-h-[calc(90vh-180px)] mt-4">
+            {/* Annotation Mode Info Banner */}
+            {annotationMode && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                <div className="flex items-start gap-2">
+                  <Square className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-blue-900">
+                      Annotation Mode Active
+                    </p>
+                    <p className="text-blue-700 mt-1">
+                      Click once to start drawing a box, move your cursor to
+                      define the area, then click again to finish. You'll be
+                      prompted to add metadata for each annotation.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-          {(!thermalImage || !analysisResult) && (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground mb-4">
-                {!thermalImage
-                  ? "No thermal image available for comparison."
-                  : !analysisResult
-                  ? "No analysis result image found for this inspection."
-                  : "Loading images..."}
-              </p>
-            </div>
-          )}
+            )}
+            {(!thermalImage || !analysisResult) && (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground mb-4">
+                  {!thermalImage
+                    ? "No thermal image available for comparison."
+                    : !analysisResult
+                    ? "No analysis result image found for this inspection."
+                    : "Loading images..."}
+                </p>
+              </div>
+            )}
 
-          {analysisResult && thermalImage && (
-            <>
-              <TabsContent value="side-by-side" className="mt-0">
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Thermal Image */}
-                  <div className="space-y-2">
-                    <h3 className="font-medium text-center">
-                      Thermal Image (Original)
-                    </h3>
-                    <div
-                      className={`relative bg-gray-100 rounded-lg overflow-hidden group border-2 transition-colors flex items-center justify-center min-h-[300px] ${
-                        annotationMode
-                          ? "cursor-crosshair border-blue-500 hover:border-blue-600"
-                          : "cursor-crosshair border-gray-200 hover:border-blue-400"
-                      }`}
-                      onMouseMove={(e) => {
-                        handleMouseMove(e);
-                        if (annotationMode && !isResizing)
-                          handleImageMouseMove(e);
-                        if (isResizing) handleResizeMove(e, "thermal");
-                      }}
-                      onMouseUp={handleResizeEnd}
-                      onMouseLeave={() => {
-                        setHoveredImage(null);
-                        if (isResizing) handleResizeEnd();
-                      }}
-                      onMouseEnter={() => setHoveredImage("thermal")}
-                      onClick={(e) =>
-                        !isResizing && handleImageClick(e, "thermal")
-                      }
-                    >
-                      <img
-                        src={thermalImage}
-                        alt="Thermal image"
-                        className="max-w-full max-h-[500px] object-contain rounded"
-                      />
-
-                      {/* Render existing bounding boxes */}
-                      {boundingBoxes
-                        .filter((box) => box.imageType === "thermal")
-                        // Sort by area: larger boxes first (will be rendered first, smaller on top)
-                        .sort((a, b) => {
-                          const areaA =
-                            Math.abs(a.endX - a.startX) *
-                            Math.abs(a.endY - a.startY);
-                          const areaB =
-                            Math.abs(b.endX - b.startX) *
-                            Math.abs(b.endY - b.startY);
-                          return areaB - areaA; // Larger boxes first
-                        })
-                        .map((box, index) => {
-                          const left = Math.min(box.startX, box.endX);
-                          const top = Math.min(box.startY, box.endY);
-                          const width = Math.abs(box.endX - box.startX);
-                          const height = Math.abs(box.endY - box.startY);
-
-                          // Calculate z-index: smaller boxes get higher z-index
-                          const zIndex = 10 + index;
-
-                          return (
-                            <div
-                              key={box.id}
-                              className={`absolute border-2 ${
-                                annotationMode
-                                  ? "pointer-events-none"
-                                  : "pointer-events-auto"
-                              } ${
-                                selectedBoxId === box.id
-                                  ? "border-yellow-400"
-                                  : box.anomalyState === "Faulty"
-                                  ? "border-red-500"
-                                  : box.anomalyState === "Potentially Faulty"
-                                  ? "border-orange-500"
-                                  : "border-green-500"
-                              }`}
-                              style={{
-                                left: `${left}%`,
-                                top: `${top}%`,
-                                width: `${width}%`,
-                                height: `${height}%`,
-                                zIndex: zIndex,
-                                backgroundColor:
-                                  selectedBoxId === box.id
-                                    ? "rgba(255, 255, 0, 0.1)"
-                                    : box.anomalyState === "Faulty"
-                                    ? "rgba(255, 0, 0, 0.1)"
-                                    : box.anomalyState === "Potentially Faulty"
-                                    ? "rgba(255, 165, 0, 0.1)"
-                                    : "rgba(0, 255, 0, 0.1)",
-                              }}
-                              onClick={(e) => {
-                                if (!annotationMode) {
-                                  e.stopPropagation();
-                                  setSelectedBoxId(box.id);
-                                }
-                              }}
-                            >
-                              <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
-                                {box.anomalyState} ({box.confidenceScore}%)
-                              </div>
-                              {selectedBoxId === box.id && (
-                                <>
-                                  <Button
-                                    variant="default"
-                                    size="sm"
-                                    className="absolute top-1 right-1 h-6 w-6 p-0 bg-blue-600 hover:bg-blue-700 z-20"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleEditBox(box.id);
-                                    }}
-                                    title="Edit annotation"
-                                  >
-                                    <Pencil className="h-3 w-3" />
-                                  </Button>
-
-                                  {/* Resize handles */}
-                                  <div
-                                    className="absolute -top-1 -left-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-nw-resize z-10"
-                                    onMouseDown={(e) =>
-                                      handleResizeStart(e, box.id, "nw")
-                                    }
-                                    title="Drag to resize"
-                                  />
-                                  <div
-                                    className="absolute -top-1 -right-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-ne-resize z-10"
-                                    onMouseDown={(e) =>
-                                      handleResizeStart(e, box.id, "ne")
-                                    }
-                                    title="Drag to resize"
-                                  />
-                                  <div
-                                    className="absolute -bottom-1 -left-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-sw-resize z-10"
-                                    onMouseDown={(e) =>
-                                      handleResizeStart(e, box.id, "sw")
-                                    }
-                                    title="Drag to resize"
-                                  />
-                                  <div
-                                    className="absolute -bottom-1 -right-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-se-resize z-10"
-                                    onMouseDown={(e) =>
-                                      handleResizeStart(e, box.id, "se")
-                                    }
-                                    title="Drag to resize"
-                                  />
-                                  <div
-                                    className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-n-resize z-10"
-                                    onMouseDown={(e) =>
-                                      handleResizeStart(e, box.id, "n")
-                                    }
-                                    title="Drag to resize"
-                                  />
-                                  <div
-                                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-s-resize z-10"
-                                    onMouseDown={(e) =>
-                                      handleResizeStart(e, box.id, "s")
-                                    }
-                                    title="Drag to resize"
-                                  />
-                                  <div
-                                    className="absolute top-1/2 -translate-y-1/2 -left-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-w-resize z-10"
-                                    onMouseDown={(e) =>
-                                      handleResizeStart(e, box.id, "w")
-                                    }
-                                    title="Drag to resize"
-                                  />
-                                  <div
-                                    className="absolute top-1/2 -translate-y-1/2 -right-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-e-resize z-10"
-                                    onMouseDown={(e) =>
-                                      handleResizeStart(e, box.id, "e")
-                                    }
-                                    title="Drag to resize"
-                                  />
-                                </>
-                              )}
-                            </div>
-                          );
-                        })}
-
-                      {/* Render current drawing box */}
-                      {currentBox && currentBox.imageType === "thermal" && (
-                        <div
-                          className="absolute border-2 border-dashed border-blue-500 bg-blue-500/20 pointer-events-none"
-                          style={{
-                            left: `${Math.min(
-                              currentBox.startX!,
-                              currentBox.endX!
-                            )}%`,
-                            top: `${Math.min(
-                              currentBox.startY!,
-                              currentBox.endY!
-                            )}%`,
-                            width: `${Math.abs(
-                              currentBox.endX! - currentBox.startX!
-                            )}%`,
-                            height: `${Math.abs(
-                              currentBox.endY! - currentBox.startY!
-                            )}%`,
-                            zIndex: 9999,
-                          }}
-                        />
-                      )}
-
-                      <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium">
-                        Original
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Analysis Result */}
-                  <div className="space-y-2">
-                    <h3 className="font-medium text-center">Analysis Result</h3>
-                    <div
-                      className={`relative bg-gray-100 rounded-lg overflow-hidden group border-2 transition-colors flex items-center justify-center min-h-[300px] ${
-                        annotationMode
-                          ? "cursor-crosshair border-green-500 hover:border-green-600"
-                          : "cursor-crosshair border-gray-200 hover:border-green-400"
-                      }`}
-                      onMouseMove={(e) => {
-                        handleMouseMove(e);
-                        if (annotationMode && !isResizing)
-                          handleImageMouseMove(e);
-                        if (isResizing) handleResizeMove(e, "result");
-                      }}
-                      onMouseUp={handleResizeEnd}
-                      onMouseLeave={() => {
-                        setHoveredImage(null);
-                        if (isResizing) handleResizeEnd();
-                      }}
-                      onMouseEnter={() => setHoveredImage("result")}
-                      onClick={(e) =>
-                        !isResizing && handleImageClick(e, "result")
-                      }
-                    >
-                      <img
-                        id="modal-analysis-img"
-                        src={thermalImage}
-                        alt="Analysis result"
-                        className="max-w-full max-h-[500px] object-contain rounded"
-                      />
-
-                      {/* Delete button - Square button for selected box */}
-                      {selectedBoxId && (
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-4 right-4 h-10 w-10 z-30 rounded-lg"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteBox(selectedBoxId);
-                            setSelectedBoxId(null);
-                          }}
-                          title="Delete selected bounding box"
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </Button>
-                      )}
-
-                      {/* Render existing bounding boxes (including AI-detected ones) */}
-                      {boundingBoxes
-                        .filter((box) => box.imageType === "result")
-                        // Sort by area: larger boxes first (will be rendered first, smaller on top)
-                        .sort((a, b) => {
-                          const areaA =
-                            Math.abs(a.endX - a.startX) *
-                            Math.abs(a.endY - a.startY);
-                          const areaB =
-                            Math.abs(b.endX - b.startX) *
-                            Math.abs(b.endY - b.startY);
-                          return areaB - areaA; // Larger boxes first
-                        })
-                        .map((box, index) => {
-                          const left = Math.min(box.startX, box.endX);
-                          const top = Math.min(box.startY, box.endY);
-                          const width = Math.abs(box.endX - box.startX);
-                          const height = Math.abs(box.endY - box.startY);
-
-                          // Calculate z-index: smaller boxes get higher z-index
-                          const zIndex = 10 + index;
-
-                          return (
-                            <div
-                              key={box.id}
-                              className={`absolute border-2 ${
-                                annotationMode
-                                  ? "pointer-events-none"
-                                  : "pointer-events-auto"
-                              } ${
-                                selectedBoxId === box.id
-                                  ? "border-yellow-400"
-                                  : box.anomalyState === "Faulty"
-                                  ? "border-red-500"
-                                  : box.anomalyState === "Potentially Faulty"
-                                  ? "border-orange-500"
-                                  : "border-green-500"
-                              }`}
-                              style={{
-                                left: `${left}%`,
-                                top: `${top}%`,
-                                width: `${width}%`,
-                                height: `${height}%`,
-                                zIndex: zIndex,
-                                backgroundColor:
-                                  selectedBoxId === box.id
-                                    ? "rgba(255, 255, 0, 0.1)"
-                                    : box.anomalyState === "Faulty"
-                                    ? "rgba(255, 0, 0, 0.1)"
-                                    : box.anomalyState === "Potentially Faulty"
-                                    ? "rgba(255, 165, 0, 0.1)"
-                                    : "rgba(0, 255, 0, 0.1)",
-                              }}
-                              onClick={(e) => {
-                                if (!annotationMode) {
-                                  e.stopPropagation();
-                                  setSelectedBoxId(box.id);
-                                }
-                              }}
-                            >
-                              <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
-                                {box.anomalyState} ({box.confidenceScore}%)
-                              </div>
-                              {selectedBoxId === box.id && (
-                                <>
-                                  <Button
-                                    variant="default"
-                                    size="sm"
-                                    className="absolute top-1 right-1 h-6 w-6 p-0 bg-blue-600 hover:bg-blue-700 z-20"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleEditBox(box.id);
-                                    }}
-                                    title="Edit annotation"
-                                  >
-                                    <Pencil className="h-3 w-3" />
-                                  </Button>
-
-                                  {/* Resize handles */}
-                                  <div
-                                    className="absolute -top-1 -left-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-nw-resize z-10"
-                                    onMouseDown={(e) =>
-                                      handleResizeStart(e, box.id, "nw")
-                                    }
-                                    title="Drag to resize"
-                                  />
-                                  <div
-                                    className="absolute -top-1 -right-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-ne-resize z-10"
-                                    onMouseDown={(e) =>
-                                      handleResizeStart(e, box.id, "ne")
-                                    }
-                                    title="Drag to resize"
-                                  />
-                                  <div
-                                    className="absolute -bottom-1 -left-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-sw-resize z-10"
-                                    onMouseDown={(e) =>
-                                      handleResizeStart(e, box.id, "sw")
-                                    }
-                                    title="Drag to resize"
-                                  />
-                                  <div
-                                    className="absolute -bottom-1 -right-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-se-resize z-10"
-                                    onMouseDown={(e) =>
-                                      handleResizeStart(e, box.id, "se")
-                                    }
-                                    title="Drag to resize"
-                                  />
-                                  <div
-                                    className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-n-resize z-10"
-                                    onMouseDown={(e) =>
-                                      handleResizeStart(e, box.id, "n")
-                                    }
-                                    title="Drag to resize"
-                                  />
-                                  <div
-                                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-s-resize z-10"
-                                    onMouseDown={(e) =>
-                                      handleResizeStart(e, box.id, "s")
-                                    }
-                                    title="Drag to resize"
-                                  />
-                                  <div
-                                    className="absolute top-1/2 -translate-y-1/2 -left-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-w-resize z-10"
-                                    onMouseDown={(e) =>
-                                      handleResizeStart(e, box.id, "w")
-                                    }
-                                    title="Drag to resize"
-                                  />
-                                  <div
-                                    className="absolute top-1/2 -translate-y-1/2 -right-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-e-resize z-10"
-                                    onMouseDown={(e) =>
-                                      handleResizeStart(e, box.id, "e")
-                                    }
-                                    title="Drag to resize"
-                                  />
-                                </>
-                              )}
-                            </div>
-                          );
-                        })}
-
-                      {/* Render current drawing box */}
-                      {currentBox && currentBox.imageType === "result" && (
-                        <div
-                          className="absolute border-2 border-dashed border-green-500 bg-green-500/20 pointer-events-none"
-                          style={{
-                            left: `${Math.min(
-                              currentBox.startX!,
-                              currentBox.endX!
-                            )}%`,
-                            top: `${Math.min(
-                              currentBox.startY!,
-                              currentBox.endY!
-                            )}%`,
-                            width: `${Math.abs(
-                              currentBox.endX! - currentBox.startX!
-                            )}%`,
-                            height: `${Math.abs(
-                              currentBox.endY! - currentBox.startY!
-                            )}%`,
-                            zIndex: 9999,
-                          }}
-                        />
-                      )}
-
-                      <div className="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-xs font-medium">
-                        Result
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="slider" className="mt-0">
-                {/* Slider Comparison View */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-lg">
-                    <label className="text-sm font-medium whitespace-nowrap">
-                      Comparison Slider:
-                    </label>
-                    <Slider
-                      value={[comparisonPosition]}
-                      onValueChange={(value) => setComparisonPosition(value[0])}
-                      max={100}
-                      step={1}
-                      className="flex-1"
-                    />
-                    <span className="text-sm text-muted-foreground font-mono">
-                      {comparisonPosition}%
-                    </span>
-                  </div>
-
-                  <div
-                    className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 cursor-col-resize flex items-center justify-center min-h-[400px]"
-                    onClick={handleSliderClick}
-                    onMouseDown={() => setIsDragging(true)}
-                    onMouseUp={() => setIsDragging(false)}
-                    onMouseLeave={() => setIsDragging(false)}
-                    onMouseMove={handleSliderDrag}
-                  >
-                    {/* Base image (analysis result) with bounding boxes */}
-                    <img
-                      src={thermalImage}
-                      alt="Analysis result"
-                      className="max-w-full max-h-[600px] object-contain"
-                      id="slider-base-img"
-                    />
-
-                    {/* Bounding boxes on base image using percentage-based positioning */}
-                    {analysisData?.parsedAnalysisJson?.anomalies &&
-                      (() => {
-                        const img = document.getElementById(
-                          "slider-base-img"
-                        ) as HTMLImageElement;
-                        if (!img || img.naturalWidth === 0) return null;
-
-                        const imageWidth = img.naturalWidth;
-                        const imageHeight = img.naturalHeight;
-                        const displayWidth = img.offsetWidth;
-                        const displayHeight = img.offsetHeight;
-                        
-                        // Get image's actual position within the centered container
-                        const imgRect = img.getBoundingClientRect();
-                        const containerRect = img.parentElement?.getBoundingClientRect();
-                        const offsetX = containerRect ? imgRect.left - containerRect.left : 0;
-                        const offsetY = containerRect ? imgRect.top - containerRect.top : 0;
-
-                        return analysisData.parsedAnalysisJson.anomalies
-                          .filter(
-                            (anomaly: any) =>
-                              anomaly.bbox && Array.isArray(anomaly.bbox)
-                          )
-                          .map((anomaly: any, index: number) => {
-                            const [x, y, width, height] = anomaly.bbox;
-
-                            // Convert pixel coordinates to display coordinates
-                            const scaleX = displayWidth / imageWidth;
-                            const scaleY = displayHeight / imageHeight;
-                            const displayX = x * scaleX;
-                            const displayY = y * scaleY;
-                            const displayW = width * scaleX;
-                            const displayH = height * scaleY;
-
-                            // Determine color based on severity
-                            let borderColor = "#10b981"; // green for low
-                            let bgColor = "rgba(16, 185, 129, 0.1)";
-
-                            if (anomaly.severity_level === "HIGH") {
-                              borderColor = "#ef4444"; // red
-                              bgColor = "rgba(239, 68, 68, 0.15)";
-                            } else if (anomaly.severity_level === "MEDIUM") {
-                              borderColor = "#f97316"; // orange
-                              bgColor = "rgba(249, 115, 22, 0.15)";
-                            }
-
-                            return (
-                              <div
-                                key={`slider-anomaly-${anomaly.id}-${index}`}
-                                className="absolute border-2 pointer-events-none"
-                                style={{
-                                  left: `${offsetX + displayX}px`,
-                                  top: `${offsetY + displayY}px`,
-                                  width: `${displayW}px`,
-                                  height: `${displayH}px`,
-                                  borderColor: borderColor,
-                                  backgroundColor: bgColor,
-                                }}
-                              >
-                                <div
-                                  className="absolute -top-6 left-0 bg-black/75 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap font-medium"
-                                  style={{ fontSize: "10px" }}
-                                >
-                                  ID:{anomaly.id} (
-                                  {Math.round((anomaly.confidence || 1) * 100)}
-                                  %)
-                                </div>
-                              </div>
-                            );
-                          });
-                      })()}
-
-                    {/* Overlay image (thermal) with clip */}
-                    <div
-                      className="absolute inset-0 overflow-hidden flex items-center justify-center"
-                      style={{
-                        clipPath: `inset(0 ${100 - comparisonPosition}% 0 0)`,
-                      }}
-                    >
-                      <img
-                        src={thermalImage}
-                        alt="Thermal image"
-                        className="max-w-full max-h-[600px] object-contain"
-                      />
-                    </div>
-
-                    {/* Divider line with handle */}
-                    <div
-                      className="absolute top-0 bottom-0 w-1 bg-white shadow-lg cursor-col-resize"
-                      style={{ left: `${comparisonPosition}%` }}
-                    >
-                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white border-2 border-gray-300 rounded-full shadow-lg flex items-center justify-center">
-                        <div className="w-1 h-4 bg-gray-400 rounded"></div>
-                      </div>
-                    </div>
-
-                    {/* Labels */}
-                    <div className="absolute top-3 left-3 bg-blue-600/90 text-white px-3 py-1 rounded-full text-sm font-medium">
-                      Thermal Original
-                    </div>
-                    <div className="absolute top-3 right-3 bg-green-600/90 text-white px-3 py-1 rounded-full text-sm font-medium">
-                      Analysis Result
-                    </div>
-
-                    {/* Instructions */}
-                    <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded text-xs">
-                      Drag slider or click to compare
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="magnifier" className="mt-0">
-                {/* Magnifier Comparison View - Separate tab, not in annotation mode */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-lg">
-                    <label className="text-sm font-medium">Magnifier Size:</label>
-                    <Slider
-                      value={[magnifierSize]}
-                      onValueChange={(value) => setMagnifierSize(value[0])}
-                      min={100}
-                      max={300}
-                      step={10}
-                      className="flex-1 max-w-xs"
-                    />
-                    <span className="text-sm text-muted-foreground">{magnifierSize}px</span>
-                    <label className="text-sm font-medium ml-4">Zoom:</label>
-                    <Slider
-                      value={[magnifierZoom]}
-                      onValueChange={(value) => setMagnifierZoom(value[0])}
-                      min={1.5}
-                      max={5}
-                      step={0.5}
-                      className="flex-1 max-w-xs"
-                    />
-                    <span className="text-sm text-muted-foreground">{magnifierZoom}x</span>
-                  </div>
-                  
+            {analysisResult && thermalImage && (
+              <>
+                <TabsContent value="side-by-side" className="mt-0">
                   <div className="grid grid-cols-2 gap-4">
-                    {/* Thermal Image with Bounding Boxes */}
+                    {/* Thermal Image */}
                     <div className="space-y-2">
-                      <h3 className="font-medium text-center">Thermal Image (with annotations)</h3>
-                      <div 
-                        className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px]"
-                        onMouseMove={handleMouseMove}
+                      <h3 className="font-medium text-center">
+                        Thermal Image (Original)
+                      </h3>
+                      <div
+                        className={`relative bg-gray-100 rounded-lg overflow-hidden group border-2 transition-colors flex items-center justify-center min-h-[300px] ${
+                          annotationMode
+                            ? "cursor-crosshair border-blue-500 hover:border-blue-600"
+                            : "cursor-crosshair border-gray-200 hover:border-blue-400"
+                        }`}
+                        onMouseMove={(e) => {
+                          handleMouseMove(e);
+                          if (annotationMode && !isResizing)
+                            handleImageMouseMove(e);
+                          if (isResizing) handleResizeMove(e, "thermal");
+                        }}
+                        onMouseUp={handleResizeEnd}
+                        onMouseLeave={() => {
+                          setHoveredImage(null);
+                          if (isResizing) handleResizeEnd();
+                        }}
                         onMouseEnter={() => setHoveredImage("thermal")}
-                        onMouseLeave={() => setHoveredImage(null)}
+                        onClick={(e) =>
+                          !isResizing && handleImageClick(e, "thermal")
+                        }
                       >
                         <img
                           src={thermalImage}
-                          alt="Thermal Image"
-                          className="max-w-full max-h-[500px] object-contain"
-                          id="magnifier-thermal-img"
+                          alt="Thermal image"
+                          className="max-w-full max-h-[500px] object-contain rounded"
                         />
-                        
-                        {/* Render bounding boxes */}
+
+                        {/* Render existing bounding boxes */}
                         {boundingBoxes
                           .filter((box) => box.imageType === "thermal")
+                          // Sort by area: larger boxes first (will be rendered first, smaller on top)
+                          .sort((a, b) => {
+                            const areaA =
+                              Math.abs(a.endX - a.startX) *
+                              Math.abs(a.endY - a.startY);
+                            const areaB =
+                              Math.abs(b.endX - b.startX) *
+                              Math.abs(b.endY - b.startY);
+                            return areaB - areaA; // Larger boxes first
+                          })
                           .map((box, index) => {
                             const left = Math.min(box.startX, box.endX);
                             const top = Math.min(box.startY, box.endY);
                             const width = Math.abs(box.endX - box.startX);
                             const height = Math.abs(box.endY - box.startY);
 
+                            // Calculate z-index: smaller boxes get higher z-index
+                            const zIndex = 10 + index;
+
                             return (
                               <div
                                 key={box.id}
-                                className="absolute border-2 pointer-events-none"
+                                className={`absolute border-2 ${
+                                  annotationMode
+                                    ? "pointer-events-none"
+                                    : "pointer-events-auto"
+                                } ${
+                                  selectedBoxId === box.id
+                                    ? "border-yellow-400"
+                                    : box.anomalyState === "Faulty"
+                                    ? "border-red-500"
+                                    : box.anomalyState === "Potentially Faulty"
+                                    ? "border-orange-500"
+                                    : "border-green-500"
+                                }`}
                                 style={{
                                   left: `${left}%`,
                                   top: `${top}%`,
                                   width: `${width}%`,
                                   height: `${height}%`,
-                                  borderColor: box.anomalyState === "Faulty"
-                                    ? "#ef4444"
-                                    : box.anomalyState === "Potentially Faulty"
-                                    ? "#f97316"
-                                    : "#10b981",
-                                  backgroundColor: box.anomalyState === "Faulty"
-                                    ? "rgba(239, 68, 68, 0.1)"
-                                    : box.anomalyState === "Potentially Faulty"
-                                    ? "rgba(249, 115, 22, 0.1)"
-                                    : "rgba(16, 185, 129, 0.1)",
+                                  zIndex: zIndex,
+                                  backgroundColor:
+                                    selectedBoxId === box.id
+                                      ? "rgba(255, 255, 0, 0.1)"
+                                      : box.anomalyState === "Faulty"
+                                      ? "rgba(255, 0, 0, 0.1)"
+                                      : box.anomalyState ===
+                                        "Potentially Faulty"
+                                      ? "rgba(255, 165, 0, 0.1)"
+                                      : "rgba(0, 255, 0, 0.1)",
+                                }}
+                                onClick={(e) => {
+                                  if (!annotationMode) {
+                                    e.stopPropagation();
+                                    setSelectedBoxId(box.id);
+                                  }
                                 }}
                               >
                                 <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
                                   {box.anomalyState} ({box.confidenceScore}%)
                                 </div>
+                                {selectedBoxId === box.id && (
+                                  <>
+                                    <Button
+                                      variant="default"
+                                      size="sm"
+                                      className="absolute top-1 right-1 h-6 w-6 p-0 bg-blue-600 hover:bg-blue-700 z-20"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditBox(box.id);
+                                      }}
+                                      title="Edit annotation"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+
+                                    {/* Resize handles */}
+                                    <div
+                                      className="absolute -top-1 -left-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-nw-resize z-10"
+                                      onMouseDown={(e) =>
+                                        handleResizeStart(e, box.id, "nw")
+                                      }
+                                      title="Drag to resize"
+                                    />
+                                    <div
+                                      className="absolute -top-1 -right-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-ne-resize z-10"
+                                      onMouseDown={(e) =>
+                                        handleResizeStart(e, box.id, "ne")
+                                      }
+                                      title="Drag to resize"
+                                    />
+                                    <div
+                                      className="absolute -bottom-1 -left-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-sw-resize z-10"
+                                      onMouseDown={(e) =>
+                                        handleResizeStart(e, box.id, "sw")
+                                      }
+                                      title="Drag to resize"
+                                    />
+                                    <div
+                                      className="absolute -bottom-1 -right-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-se-resize z-10"
+                                      onMouseDown={(e) =>
+                                        handleResizeStart(e, box.id, "se")
+                                      }
+                                      title="Drag to resize"
+                                    />
+                                    <div
+                                      className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-n-resize z-10"
+                                      onMouseDown={(e) =>
+                                        handleResizeStart(e, box.id, "n")
+                                      }
+                                      title="Drag to resize"
+                                    />
+                                    <div
+                                      className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-s-resize z-10"
+                                      onMouseDown={(e) =>
+                                        handleResizeStart(e, box.id, "s")
+                                      }
+                                      title="Drag to resize"
+                                    />
+                                    <div
+                                      className="absolute top-1/2 -translate-y-1/2 -left-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-w-resize z-10"
+                                      onMouseDown={(e) =>
+                                        handleResizeStart(e, box.id, "w")
+                                      }
+                                      title="Drag to resize"
+                                    />
+                                    <div
+                                      className="absolute top-1/2 -translate-y-1/2 -right-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-e-resize z-10"
+                                      onMouseDown={(e) =>
+                                        handleResizeStart(e, box.id, "e")
+                                      }
+                                      title="Drag to resize"
+                                    />
+                                  </>
+                                )}
                               </div>
                             );
                           })}
-                        
-                        {/* Magnifier overlay */}
-                        {hoveredImage === "thermal" && imageSize.width > 0 && (
+
+                        {/* Render current drawing box */}
+                        {currentBox && currentBox.imageType === "thermal" && (
                           <div
-                            className="absolute border-2 border-blue-500 rounded-full pointer-events-none shadow-lg"
+                            className="absolute border-2 border-dashed border-blue-500 bg-blue-500/20 pointer-events-none"
                             style={{
-                              width: `${magnifierSize}px`,
-                              height: `${magnifierSize}px`,
-                              left: `${mousePosition.x - magnifierSize / 2}px`,
-                              top: `${mousePosition.y - magnifierSize / 2}px`,
-                              backgroundImage: `url(${thermalImage})`,
-                              backgroundPosition: `${imagePosition.x}% ${imagePosition.y}%`,
-                              backgroundSize: `${imageSize.width * magnifierZoom}px ${imageSize.height * magnifierZoom}px`,
-                              backgroundRepeat: "no-repeat",
-                              backgroundColor: "white",
+                              left: `${Math.min(
+                                currentBox.startX!,
+                                currentBox.endX!
+                              )}%`,
+                              top: `${Math.min(
+                                currentBox.startY!,
+                                currentBox.endY!
+                              )}%`,
+                              width: `${Math.abs(
+                                currentBox.endX! - currentBox.startX!
+                              )}%`,
+                              height: `${Math.abs(
+                                currentBox.endY! - currentBox.startY!
+                              )}%`,
+                              zIndex: 9999,
                             }}
                           />
                         )}
-                        
-                        <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
-                          🔍 Hover to magnify {magnifierZoom}x
+
+                        <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium">
+                          Original
                         </div>
                       </div>
                     </div>
-                    
-                    {/* Analysis Result Image */}
+
+                    {/* Analysis Result */}
                     <div className="space-y-2">
-                      <h3 className="font-medium text-center">Analysis Result</h3>
-                      <div 
-                        className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px]"
-                        onMouseMove={handleMouseMove}
+                      <h3 className="font-medium text-center">
+                        Analysis Result
+                      </h3>
+                      <div
+                        className={`relative bg-gray-100 rounded-lg overflow-hidden group border-2 transition-colors flex items-center justify-center min-h-[300px] ${
+                          annotationMode
+                            ? "cursor-crosshair border-green-500 hover:border-green-600"
+                            : "cursor-crosshair border-gray-200 hover:border-green-400"
+                        }`}
+                        onMouseMove={(e) => {
+                          handleMouseMove(e);
+                          if (annotationMode && !isResizing)
+                            handleImageMouseMove(e);
+                          if (isResizing) handleResizeMove(e, "result");
+                        }}
+                        onMouseUp={handleResizeEnd}
+                        onMouseLeave={() => {
+                          setHoveredImage(null);
+                          if (isResizing) handleResizeEnd();
+                        }}
                         onMouseEnter={() => setHoveredImage("result")}
-                        onMouseLeave={() => setHoveredImage(null)}
+                        onClick={(e) =>
+                          !isResizing && handleImageClick(e, "result")
+                        }
                       >
                         <img
-                          src={analysisResult}
-                          alt="Analysis Result"
-                          className="max-w-full max-h-[500px] object-contain"
+                          id="modal-analysis-img"
+                          src={thermalImage}
+                          alt="Analysis result"
+                          className="max-w-full max-h-[500px] object-contain rounded"
                         />
-                        
-                        {/* Magnifier overlay */}
-                        {hoveredImage === "result" && imageSize.width > 0 && (
+
+                        {/* Delete button - Square button for selected box */}
+                        {selectedBoxId && (
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-4 right-4 h-10 w-10 z-30 rounded-lg"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteBox(selectedBoxId);
+                              setSelectedBoxId(null);
+                            }}
+                            title="Delete selected bounding box"
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </Button>
+                        )}
+
+                        {/* Render existing bounding boxes (including AI-detected ones) */}
+                        {boundingBoxes
+                          .filter((box) => box.imageType === "result")
+                          // Sort by area: larger boxes first (will be rendered first, smaller on top)
+                          .sort((a, b) => {
+                            const areaA =
+                              Math.abs(a.endX - a.startX) *
+                              Math.abs(a.endY - a.startY);
+                            const areaB =
+                              Math.abs(b.endX - b.startX) *
+                              Math.abs(b.endY - b.startY);
+                            return areaB - areaA; // Larger boxes first
+                          })
+                          .map((box, index) => {
+                            const left = Math.min(box.startX, box.endX);
+                            const top = Math.min(box.startY, box.endY);
+                            const width = Math.abs(box.endX - box.startX);
+                            const height = Math.abs(box.endY - box.startY);
+
+                            // Calculate z-index: smaller boxes get higher z-index
+                            const zIndex = 10 + index;
+
+                            return (
+                              <div
+                                key={box.id}
+                                className={`absolute border-2 ${
+                                  annotationMode
+                                    ? "pointer-events-none"
+                                    : "pointer-events-auto"
+                                } ${
+                                  selectedBoxId === box.id
+                                    ? "border-yellow-400"
+                                    : box.anomalyState === "Faulty"
+                                    ? "border-red-500"
+                                    : box.anomalyState === "Potentially Faulty"
+                                    ? "border-orange-500"
+                                    : "border-green-500"
+                                }`}
+                                style={{
+                                  left: `${left}%`,
+                                  top: `${top}%`,
+                                  width: `${width}%`,
+                                  height: `${height}%`,
+                                  zIndex: zIndex,
+                                  backgroundColor:
+                                    selectedBoxId === box.id
+                                      ? "rgba(255, 255, 0, 0.1)"
+                                      : box.anomalyState === "Faulty"
+                                      ? "rgba(255, 0, 0, 0.1)"
+                                      : box.anomalyState ===
+                                        "Potentially Faulty"
+                                      ? "rgba(255, 165, 0, 0.1)"
+                                      : "rgba(0, 255, 0, 0.1)",
+                                }}
+                                onClick={(e) => {
+                                  if (!annotationMode) {
+                                    e.stopPropagation();
+                                    setSelectedBoxId(box.id);
+                                  }
+                                }}
+                              >
+                                <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
+                                  {box.anomalyState} ({box.confidenceScore}%)
+                                </div>
+                                {selectedBoxId === box.id && (
+                                  <>
+                                    <Button
+                                      variant="default"
+                                      size="sm"
+                                      className="absolute top-1 right-1 h-6 w-6 p-0 bg-blue-600 hover:bg-blue-700 z-20"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditBox(box.id);
+                                      }}
+                                      title="Edit annotation"
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+
+                                    {/* Resize handles */}
+                                    <div
+                                      className="absolute -top-1 -left-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-nw-resize z-10"
+                                      onMouseDown={(e) =>
+                                        handleResizeStart(e, box.id, "nw")
+                                      }
+                                      title="Drag to resize"
+                                    />
+                                    <div
+                                      className="absolute -top-1 -right-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-ne-resize z-10"
+                                      onMouseDown={(e) =>
+                                        handleResizeStart(e, box.id, "ne")
+                                      }
+                                      title="Drag to resize"
+                                    />
+                                    <div
+                                      className="absolute -bottom-1 -left-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-sw-resize z-10"
+                                      onMouseDown={(e) =>
+                                        handleResizeStart(e, box.id, "sw")
+                                      }
+                                      title="Drag to resize"
+                                    />
+                                    <div
+                                      className="absolute -bottom-1 -right-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-se-resize z-10"
+                                      onMouseDown={(e) =>
+                                        handleResizeStart(e, box.id, "se")
+                                      }
+                                      title="Drag to resize"
+                                    />
+                                    <div
+                                      className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-n-resize z-10"
+                                      onMouseDown={(e) =>
+                                        handleResizeStart(e, box.id, "n")
+                                      }
+                                      title="Drag to resize"
+                                    />
+                                    <div
+                                      className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-s-resize z-10"
+                                      onMouseDown={(e) =>
+                                        handleResizeStart(e, box.id, "s")
+                                      }
+                                      title="Drag to resize"
+                                    />
+                                    <div
+                                      className="absolute top-1/2 -translate-y-1/2 -left-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-w-resize z-10"
+                                      onMouseDown={(e) =>
+                                        handleResizeStart(e, box.id, "w")
+                                      }
+                                      title="Drag to resize"
+                                    />
+                                    <div
+                                      className="absolute top-1/2 -translate-y-1/2 -right-1 w-3 h-3 bg-white border-2 border-blue-600 rounded-full cursor-e-resize z-10"
+                                      onMouseDown={(e) =>
+                                        handleResizeStart(e, box.id, "e")
+                                      }
+                                      title="Drag to resize"
+                                    />
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                        {/* Render current drawing box */}
+                        {currentBox && currentBox.imageType === "result" && (
                           <div
-                            className="absolute border-2 border-green-500 rounded-full pointer-events-none shadow-lg"
+                            className="absolute border-2 border-dashed border-green-500 bg-green-500/20 pointer-events-none"
                             style={{
-                              width: `${magnifierSize}px`,
-                              height: `${magnifierSize}px`,
-                              left: `${mousePosition.x - magnifierSize / 2}px`,
-                              top: `${mousePosition.y - magnifierSize / 2}px`,
-                              backgroundImage: `url(${analysisResult})`,
-                              backgroundPosition: `${imagePosition.x}% ${imagePosition.y}%`,
-                              backgroundSize: `${imageSize.width * magnifierZoom}px ${imageSize.height * magnifierZoom}px`,
-                              backgroundRepeat: "no-repeat",
-                              backgroundColor: "white",
+                              left: `${Math.min(
+                                currentBox.startX!,
+                                currentBox.endX!
+                              )}%`,
+                              top: `${Math.min(
+                                currentBox.startY!,
+                                currentBox.endY!
+                              )}%`,
+                              width: `${Math.abs(
+                                currentBox.endX! - currentBox.startX!
+                              )}%`,
+                              height: `${Math.abs(
+                                currentBox.endY! - currentBox.startY!
+                              )}%`,
+                              zIndex: 9999,
                             }}
                           />
                         )}
-                        
-                        <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
-                          🔍 Hover to magnify {magnifierZoom}x
+
+                        <div className="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-xs font-medium">
+                          Result
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </TabsContent>
+                </TabsContent>
 
-              <TabsContent value="zoom" className="mt-0">
-                {/* Zoom & Pan View */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-lg">
-                    <label className="text-sm font-medium">Zoom:</label>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setZoomLevel(Math.max(1, zoomLevel - 0.25))}
+                <TabsContent value="slider" className="mt-0">
+                  {/* Slider Comparison View */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-lg">
+                      <label className="text-sm font-medium whitespace-nowrap">
+                        Comparison Slider:
+                      </label>
+                      <Slider
+                        value={[comparisonPosition]}
+                        onValueChange={(value) =>
+                          setComparisonPosition(value[0])
+                        }
+                        max={100}
+                        step={1}
+                        className="flex-1"
+                      />
+                      <span className="text-sm text-muted-foreground font-mono">
+                        {comparisonPosition}%
+                      </span>
+                    </div>
+
+                    <div
+                      className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 cursor-col-resize flex items-center justify-center min-h-[400px]"
+                      onClick={handleSliderClick}
+                      onMouseDown={() => setIsDragging(true)}
+                      onMouseUp={() => setIsDragging(false)}
+                      onMouseLeave={() => setIsDragging(false)}
+                      onMouseMove={handleSliderDrag}
                     >
-                      -
-                    </Button>
-                    <Slider
-                      value={[zoomLevel]}
-                      onValueChange={(value) => setZoomLevel(value[0])}
-                      min={1}
-                      max={5}
-                      step={0.25}
-                      className="flex-1 max-w-xs"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setZoomLevel(Math.min(5, zoomLevel + 0.25))}
-                    >
-                      +
-                    </Button>
-                    <span className="text-sm text-muted-foreground font-mono">{zoomLevel.toFixed(2)}x</span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setZoomLevel(1);
-                        setPanOffset({ x: 0, y: 0 });
-                      }}
-                    >
-                      Reset
-                    </Button>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* Thermal Image with Bounding Boxes */}
-                    <div className="space-y-2">
-                      <h3 className="font-medium text-center">Thermal Image (with annotations)</h3>
-                      <div
-                        className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px] select-none"
-                        style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
-                        onMouseDown={(e) => {
-                          setIsPanning(true);
-                          setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
-                        }}
-                        onMouseMove={(e) => {
-                          if (isPanning) {
-                            setPanOffset({
-                              x: e.clientX - panStart.x,
-                              y: e.clientY - panStart.y,
+                      {/* Base image (analysis result) with bounding boxes */}
+                      <img
+                        src={thermalImage}
+                        alt="Analysis result"
+                        className="max-w-full max-h-[600px] object-contain"
+                        id="slider-base-img"
+                      />
+
+                      {/* Bounding boxes on base image using percentage-based positioning */}
+                      {analysisData?.parsedAnalysisJson?.anomalies &&
+                        (() => {
+                          const img = document.getElementById(
+                            "slider-base-img"
+                          ) as HTMLImageElement;
+                          if (!img || img.naturalWidth === 0) return null;
+
+                          const imageWidth = img.naturalWidth;
+                          const imageHeight = img.naturalHeight;
+                          const displayWidth = img.offsetWidth;
+                          const displayHeight = img.offsetHeight;
+
+                          // Get image's actual position within the centered container
+                          const imgRect = img.getBoundingClientRect();
+                          const containerRect =
+                            img.parentElement?.getBoundingClientRect();
+                          const offsetX = containerRect
+                            ? imgRect.left - containerRect.left
+                            : 0;
+                          const offsetY = containerRect
+                            ? imgRect.top - containerRect.top
+                            : 0;
+
+                          return analysisData.parsedAnalysisJson.anomalies
+                            .filter(
+                              (anomaly: any) =>
+                                anomaly.bbox && Array.isArray(anomaly.bbox)
+                            )
+                            .map((anomaly: any, index: number) => {
+                              const [x, y, width, height] = anomaly.bbox;
+
+                              // Convert pixel coordinates to display coordinates
+                              const scaleX = displayWidth / imageWidth;
+                              const scaleY = displayHeight / imageHeight;
+                              const displayX = x * scaleX;
+                              const displayY = y * scaleY;
+                              const displayW = width * scaleX;
+                              const displayH = height * scaleY;
+
+                              // Determine color based on severity
+                              let borderColor = "#10b981"; // green for low
+                              let bgColor = "rgba(16, 185, 129, 0.1)";
+
+                              if (anomaly.severity_level === "HIGH") {
+                                borderColor = "#ef4444"; // red
+                                bgColor = "rgba(239, 68, 68, 0.15)";
+                              } else if (anomaly.severity_level === "MEDIUM") {
+                                borderColor = "#f97316"; // orange
+                                bgColor = "rgba(249, 115, 22, 0.15)";
+                              }
+
+                              return (
+                                <div
+                                  key={`slider-anomaly-${anomaly.id}-${index}`}
+                                  className="absolute border-2 pointer-events-none"
+                                  style={{
+                                    left: `${offsetX + displayX}px`,
+                                    top: `${offsetY + displayY}px`,
+                                    width: `${displayW}px`,
+                                    height: `${displayH}px`,
+                                    borderColor: borderColor,
+                                    backgroundColor: bgColor,
+                                  }}
+                                >
+                                  <div
+                                    className="absolute -top-6 left-0 bg-black/75 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap font-medium"
+                                    style={{ fontSize: "10px" }}
+                                  >
+                                    ID:{anomaly.id} (
+                                    {Math.round(
+                                      (anomaly.confidence || 1) * 100
+                                    )}
+                                    %)
+                                  </div>
+                                </div>
+                              );
                             });
-                          }
+                        })()}
+
+                      {/* Overlay image (thermal) with clip */}
+                      <div
+                        className="absolute inset-0 overflow-hidden flex items-center justify-center"
+                        style={{
+                          clipPath: `inset(0 ${100 - comparisonPosition}% 0 0)`,
                         }}
-                        onMouseUp={() => setIsPanning(false)}
-                        onMouseLeave={() => setIsPanning(false)}
                       >
+                        <img
+                          src={thermalImage}
+                          alt="Thermal image"
+                          className="max-w-full max-h-[600px] object-contain"
+                        />
+                      </div>
+
+                      {/* Divider line with handle */}
+                      <div
+                        className="absolute top-0 bottom-0 w-1 bg-white shadow-lg cursor-col-resize"
+                        style={{ left: `${comparisonPosition}%` }}
+                      >
+                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white border-2 border-gray-300 rounded-full shadow-lg flex items-center justify-center">
+                          <div className="w-1 h-4 bg-gray-400 rounded"></div>
+                        </div>
+                      </div>
+
+                      {/* Labels */}
+                      <div className="absolute top-3 left-3 bg-blue-600/90 text-white px-3 py-1 rounded-full text-sm font-medium">
+                        Thermal Original
+                      </div>
+                      <div className="absolute top-3 right-3 bg-green-600/90 text-white px-3 py-1 rounded-full text-sm font-medium">
+                        Analysis Result
+                      </div>
+
+                      {/* Instructions */}
+                      <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded text-xs">
+                        Drag slider or click to compare
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="magnifier" className="mt-0">
+                  {/* Magnifier Comparison View - Separate tab, not in annotation mode */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-lg">
+                      <label className="text-sm font-medium">
+                        Magnifier Size:
+                      </label>
+                      <Slider
+                        value={[magnifierSize]}
+                        onValueChange={(value) => setMagnifierSize(value[0])}
+                        min={100}
+                        max={300}
+                        step={10}
+                        className="flex-1 max-w-xs"
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {magnifierSize}px
+                      </span>
+                      <label className="text-sm font-medium ml-4">Zoom:</label>
+                      <Slider
+                        value={[magnifierZoom]}
+                        onValueChange={(value) => setMagnifierZoom(value[0])}
+                        min={1.5}
+                        max={5}
+                        step={0.5}
+                        className="flex-1 max-w-xs"
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {magnifierZoom}x
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Thermal Image with Bounding Boxes */}
+                      <div className="space-y-2">
+                        <h3 className="font-medium text-center">
+                          Thermal Image
+                        </h3>
                         <div
-                          className="relative"
-                          style={{
-                            transform: `scale(${zoomLevel}) translate(${panOffset.x / zoomLevel}px, ${panOffset.y / zoomLevel}px)`,
-                            transformOrigin: 'center center',
-                            transition: isPanning ? 'none' : 'transform 0.1s ease-out',
-                          }}
+                          className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px]"
+                          onMouseMove={handleMouseMove}
+                          onMouseEnter={() => setHoveredImage("thermal")}
+                          onMouseLeave={() => setHoveredImage(null)}
                         >
                           <img
                             src={thermalImage}
                             alt="Thermal Image"
-                            className="max-w-full max-h-[500px] object-contain pointer-events-none"
-                            draggable={false}
+                            className="max-w-full max-h-[500px] object-contain"
+                            id="magnifier-thermal-img"
                           />
-                          
+
                           {/* Render bounding boxes */}
                           {boundingBoxes
                             .filter((box) => box.imageType === "thermal")
-                            .map((box) => {
+                            .map((box, index) => {
                               const left = Math.min(box.startX, box.endX);
                               const top = Math.min(box.startY, box.endY);
                               const width = Math.abs(box.endX - box.startX);
@@ -2082,16 +1932,20 @@ function AnalysisModal({
                                     top: `${top}%`,
                                     width: `${width}%`,
                                     height: `${height}%`,
-                                    borderColor: box.anomalyState === "Faulty"
-                                      ? "#ef4444"
-                                      : box.anomalyState === "Potentially Faulty"
-                                      ? "#f97316"
-                                      : "#10b981",
-                                    backgroundColor: box.anomalyState === "Faulty"
-                                      ? "rgba(239, 68, 68, 0.1)"
-                                      : box.anomalyState === "Potentially Faulty"
-                                      ? "rgba(249, 115, 22, 0.1)"
-                                      : "rgba(16, 185, 129, 0.1)",
+                                    borderColor:
+                                      box.anomalyState === "Faulty"
+                                        ? "#ef4444"
+                                        : box.anomalyState ===
+                                          "Potentially Faulty"
+                                        ? "#f97316"
+                                        : "#10b981",
+                                    backgroundColor:
+                                      box.anomalyState === "Faulty"
+                                        ? "rgba(239, 68, 68, 0.1)"
+                                        : box.anomalyState ===
+                                          "Potentially Faulty"
+                                        ? "rgba(249, 115, 22, 0.1)"
+                                        : "rgba(16, 185, 129, 0.1)",
                                   }}
                                 >
                                   <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
@@ -2100,198 +1954,542 @@ function AnalysisModal({
                                 </div>
                               );
                             })}
+
+                          {/* Magnifier overlay */}
+                          {hoveredImage === "thermal" &&
+                            imageSize.width > 0 && (
+                              <div
+                                className="absolute border-2 border-blue-500 rounded-full pointer-events-none shadow-lg"
+                                style={{
+                                  width: `${magnifierSize}px`,
+                                  height: `${magnifierSize}px`,
+                                  left: `${
+                                    mousePosition.x - magnifierSize / 2
+                                  }px`,
+                                  top: `${
+                                    mousePosition.y - magnifierSize / 2
+                                  }px`,
+                                  backgroundImage: `url(${thermalImage})`,
+                                  backgroundPosition: `${imagePosition.x}% ${imagePosition.y}%`,
+                                  backgroundSize: `${
+                                    imageSize.width * magnifierZoom
+                                  }px ${imageSize.height * magnifierZoom}px`,
+                                  backgroundRepeat: "no-repeat",
+                                  backgroundColor: "white",
+                                }}
+                              />
+                            )}
+
+                          <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                            🔍 Hover to magnify {magnifierZoom}x
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Analysis Result Image with Bounding Boxes */}
+                      <div className="space-y-2">
+                        <h3 className="font-medium text-center">
+                          Analysis Result (with annotations)
+                        </h3>
+                        <div
+                          className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px]"
+                          onMouseMove={handleMouseMove}
+                          onMouseEnter={() => setHoveredImage("result")}
+                          onMouseLeave={() => setHoveredImage(null)}
+                        >
+                          <img
+                            src={thermalImage}
+                            alt="Analysis Result"
+                            className="max-w-full max-h-[500px] object-contain"
+                            id="magnifier-result-img"
+                          />
+
+                          {/* Bounding boxes on result/thermal image */}
+                          {boundingBoxes
+                            .filter((box) => box.imageType === "result")
+                            .map((box, index) => {
+                              const left = Math.min(box.startX, box.endX);
+                              const top = Math.min(box.startY, box.endY);
+                              const width = Math.abs(box.endX - box.startX);
+                              const height = Math.abs(box.endY - box.startY);
+                              const zIndex = 10 + index;
+
+                              return (
+                                <div
+                                  key={`magnifier-result-box-${box.id}`}
+                                  className="absolute border-2 pointer-events-none"
+                                  style={{
+                                    left: `${left}%`,
+                                    top: `${top}%`,
+                                    width: `${width}%`,
+                                    height: `${height}%`,
+                                    zIndex: zIndex,
+                                    borderColor:
+                                      box.anomalyState === "Faulty"
+                                        ? "#ef4444"
+                                        : box.anomalyState ===
+                                          "Potentially Faulty"
+                                        ? "#f97316"
+                                        : "#10b981",
+                                    backgroundColor:
+                                      box.anomalyState === "Faulty"
+                                        ? "rgba(239, 68, 68, 0.1)"
+                                        : box.anomalyState ===
+                                          "Potentially Faulty"
+                                        ? "rgba(249, 115, 22, 0.1)"
+                                        : "rgba(16, 185, 129, 0.1)",
+                                  }}
+                                >
+                                  <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
+                                    {box.anomalyState} ({box.confidenceScore}%)
+                                  </div>
+                                </div>
+                              );
+                            })}
+
+                          {/* Magnifier overlay */}
+                          {hoveredImage === "result" && imageSize.width > 0 && (
+                            <div
+                              className="absolute border-2 border-green-500 rounded-full pointer-events-none shadow-lg"
+                              style={{
+                                width: `${magnifierSize}px`,
+                                height: `${magnifierSize}px`,
+                                left: `${
+                                  mousePosition.x - magnifierSize / 2
+                                }px`,
+                                top: `${mousePosition.y - magnifierSize / 2}px`,
+                                backgroundImage: `url(${thermalImage})`,
+                                backgroundPosition: `${imagePosition.x}% ${imagePosition.y}%`,
+                                backgroundSize: `${
+                                  imageSize.width * magnifierZoom
+                                }px ${imageSize.height * magnifierZoom}px`,
+                                backgroundRepeat: "no-repeat",
+                                backgroundColor: "white",
+                              }}
+                            />
+                          )}
+
+                          <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                            🔍 Hover to magnify {magnifierZoom}x
+                          </div>
                         </div>
                       </div>
                     </div>
-                    
-                    {/* Analysis Result Image */}
-                    <div className="space-y-2">
-                      <h3 className="font-medium text-center">Analysis Result</h3>
-                      <div
-                        className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px] select-none"
-                        style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
-                        onMouseDown={(e) => {
-                          setIsPanning(true);
-                          setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
-                        }}
-                        onMouseMove={(e) => {
-                          if (isPanning) {
-                            setPanOffset({
-                              x: e.clientX - panStart.x,
-                              y: e.clientY - panStart.y,
-                            });
-                          }
-                        }}
-                        onMouseUp={() => setIsPanning(false)}
-                        onMouseLeave={() => setIsPanning(false)}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="zoom" className="mt-0">
+                  {/* Zoom & Pan View */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-lg">
+                      <label className="text-sm font-medium">Zoom:</label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setZoomLevel(Math.max(1, zoomLevel - 0.25))
+                        }
                       >
-                        <img
-                          src={analysisResult}
-                          alt="Analysis Result"
-                          className="max-w-full max-h-[500px] object-contain pointer-events-none"
-                          draggable={false}
-                          style={{
-                            transform: `scale(${zoomLevel}) translate(${panOffset.x / zoomLevel}px, ${panOffset.y / zoomLevel}px)`,
-                            transformOrigin: 'center center',
-                            transition: isPanning ? 'none' : 'transform 0.1s ease-out',
+                        -
+                      </Button>
+                      <Slider
+                        value={[zoomLevel]}
+                        onValueChange={(value) => setZoomLevel(value[0])}
+                        min={1}
+                        max={5}
+                        step={0.25}
+                        className="flex-1 max-w-xs"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setZoomLevel(Math.min(5, zoomLevel + 0.25))
+                        }
+                      >
+                        +
+                      </Button>
+                      <span className="text-sm text-muted-foreground font-mono">
+                        {zoomLevel.toFixed(2)}x
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setZoomLevel(1);
+                          setPanOffset({ x: 0, y: 0 });
+                        }}
+                      >
+                        Reset
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Thermal Image with Bounding Boxes */}
+                      <div className="space-y-2">
+                        <h3 className="font-medium text-center">
+                          Thermal Image
+                        </h3>
+                        <div
+                          className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px] select-none"
+                          style={{ cursor: isPanning ? "grabbing" : "grab" }}
+                          onMouseDown={(e) => {
+                            setIsPanning(true);
+                            setPanStart({
+                              x: e.clientX - panOffset.x,
+                              y: e.clientY - panOffset.y,
+                            });
                           }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-                    <p className="font-medium mb-1">💡 Tip:</p>
-                    <p>Click and drag to pan the images. Use the slider or +/- buttons to zoom in/out.</p>
-                  </div>
-                </div>
-              </TabsContent>
+                          onMouseMove={(e) => {
+                            if (isPanning) {
+                              setPanOffset({
+                                x: e.clientX - panStart.x,
+                                y: e.clientY - panStart.y,
+                              });
+                            }
+                          }}
+                          onMouseUp={() => setIsPanning(false)}
+                          onMouseLeave={() => setIsPanning(false)}
+                        >
+                          <div
+                            className="relative"
+                            style={{
+                              transform: `scale(${zoomLevel}) translate(${
+                                panOffset.x / zoomLevel
+                              }px, ${panOffset.y / zoomLevel}px)`,
+                              transformOrigin: "center center",
+                              transition: isPanning
+                                ? "none"
+                                : "transform 0.1s ease-out",
+                            }}
+                          >
+                            <img
+                              src={thermalImage}
+                              alt="Thermal Image"
+                              className="max-w-full max-h-[500px] object-contain pointer-events-none"
+                              draggable={false}
+                            />
 
-              {/* Usage Instructions */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 mt-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs">i</span>
-                  </div>
-                  <span className="font-medium">
-                    How to use image comparison:
-                  </span>
-                </div>
-                <ul className="list-disc list-inside space-y-1 ml-6">
-                  <li>Use "Side by Side" tab for annotation and detailed comparison</li>
-                  <li>Use "Slider" tab to overlay images with adjustable slider</li>
-                  <li>Use "Magnifier" tab for detailed inspection with adjustable magnification</li>
-                  <li>Use "Zoom & Pan" tab to zoom in and navigate both images simultaneously</li>
-                  <li>Click "View Full Size" buttons to open images in new tabs</li>
-                </ul>
-              </div>
+                            {/* Render bounding boxes */}
+                            {boundingBoxes
+                              .filter((box) => box.imageType === "thermal")
+                              .map((box) => {
+                                const left = Math.min(box.startX, box.endX);
+                                const top = Math.min(box.startY, box.endY);
+                                const width = Math.abs(box.endX - box.startX);
+                                const height = Math.abs(box.endY - box.startY);
 
-              {/* Analysis Summary */}
-              {analysisData && (
-                <div className="bg-gray-50 p-4 rounded-lg border">
-                  <h3 className="font-medium mb-3">Analysis Summary</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Status:</span>
-                      <div className="font-medium text-green-600">
-                        {analysisData.analysisStatus}
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Date:</span>
-                      <div className="font-medium">
-                        {new Date(
-                          analysisData.analysisDate
-                        ).toLocaleDateString()}
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Processing Time:</span>
-                      <div className="font-medium">
-                        {analysisData.processingTimeMs}ms
-                      </div>
-                    </div>
-                    {/* Anomalies count from normalized data */}
-                    {analysisData?.parsedAnalysisJson?.summary && (
-                      <div>
-                        <span className="text-gray-600">Anomalies:</span>
-                        <div className="font-medium text-red-600">
-                          {analysisData.parsedAnalysisJson.summary
-                            .total_anomalies || 0}{" "}
-                          found
+                                return (
+                                  <div
+                                    key={box.id}
+                                    className="absolute border-2 pointer-events-none"
+                                    style={{
+                                      left: `${left}%`,
+                                      top: `${top}%`,
+                                      width: `${width}%`,
+                                      height: `${height}%`,
+                                      borderColor:
+                                        box.anomalyState === "Faulty"
+                                          ? "#ef4444"
+                                          : box.anomalyState ===
+                                            "Potentially Faulty"
+                                          ? "#f97316"
+                                          : "#10b981",
+                                      backgroundColor:
+                                        box.anomalyState === "Faulty"
+                                          ? "rgba(239, 68, 68, 0.1)"
+                                          : box.anomalyState ===
+                                            "Potentially Faulty"
+                                          ? "rgba(249, 115, 22, 0.1)"
+                                          : "rgba(16, 185, 129, 0.1)",
+                                    }}
+                                  >
+                                    <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
+                                      {box.anomalyState} ({box.confidenceScore}
+                                      %)
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
                         </div>
                       </div>
-                    )}
-                    {/* Fallback for direct anomalies array */}
-                    {!analysisData?.parsedAnalysisJson?.summary &&
-                      analysisData?.parsedAnalysisJson?.anomalies && (
+
+                      {/* Analysis Result Image with Bounding Boxes */}
+                      <div className="space-y-2">
+                        <h3 className="font-medium text-center">
+                          Analysis Result (with annotations)
+                        </h3>
+                        <div
+                          className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px] select-none"
+                          style={{ cursor: isPanning ? "grabbing" : "grab" }}
+                          onMouseDown={(e) => {
+                            setIsPanning(true);
+                            setPanStart({
+                              x: e.clientX - panOffset.x,
+                              y: e.clientY - panOffset.y,
+                            });
+                          }}
+                          onMouseMove={(e) => {
+                            if (isPanning) {
+                              setPanOffset({
+                                x: e.clientX - panStart.x,
+                                y: e.clientY - panStart.y,
+                              });
+                            }
+                          }}
+                          onMouseUp={() => setIsPanning(false)}
+                          onMouseLeave={() => setIsPanning(false)}
+                        >
+                          <div
+                            className="relative"
+                            style={{
+                              transform: `scale(${zoomLevel}) translate(${
+                                panOffset.x / zoomLevel
+                              }px, ${panOffset.y / zoomLevel}px)`,
+                              transformOrigin: "center center",
+                              transition: isPanning
+                                ? "none"
+                                : "transform 0.1s ease-out",
+                            }}
+                          >
+                            <img
+                              src={thermalImage}
+                              alt="Analysis Result"
+                              className="max-w-full max-h-[500px] object-contain pointer-events-none"
+                              draggable={false}
+                              id="zoom-result-img"
+                            />
+
+                            {/* Bounding boxes on result/thermal image */}
+                            {boundingBoxes
+                              .filter((box) => box.imageType === "result")
+                              .map((box, index) => {
+                                const img = document.getElementById(
+                                  "zoom-result-img"
+                                ) as HTMLImageElement;
+                                if (!img) return null;
+
+                                const left = Math.min(box.startX, box.endX);
+                                const top = Math.min(box.startY, box.endY);
+                                const width = Math.abs(box.endX - box.startX);
+                                const height = Math.abs(box.endY - box.startY);
+
+                                const displayWidth = img.offsetWidth;
+                                const displayHeight = img.offsetHeight;
+
+                                return (
+                                  <div
+                                    key={`zoom-result-box-${box.id}`}
+                                    className="absolute border-2 pointer-events-none"
+                                    style={{
+                                      left: `${(left / 100) * displayWidth}px`,
+                                      top: `${(top / 100) * displayHeight}px`,
+                                      width: `${
+                                        (width / 100) * displayWidth
+                                      }px`,
+                                      height: `${
+                                        (height / 100) * displayHeight
+                                      }px`,
+                                      borderColor:
+                                        box.anomalyState === "Faulty"
+                                          ? "#ef4444"
+                                          : box.anomalyState ===
+                                            "Potentially Faulty"
+                                          ? "#f97316"
+                                          : "#10b981",
+                                      backgroundColor:
+                                        box.anomalyState === "Faulty"
+                                          ? "rgba(239, 68, 68, 0.1)"
+                                          : box.anomalyState ===
+                                            "Potentially Faulty"
+                                          ? "rgba(249, 115, 22, 0.1)"
+                                          : "rgba(16, 185, 129, 0.1)",
+                                    }}
+                                  >
+                                    <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
+                                      {box.anomalyState} ({box.confidenceScore}
+                                      %)
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                      <p className="font-medium mb-1">💡 Tip:</p>
+                      <p>
+                        Click and drag to pan the images. Use the slider or +/-
+                        buttons to zoom in/out.
+                      </p>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* Usage Instructions */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 mt-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs">i</span>
+                    </div>
+                    <span className="font-medium">
+                      How to use image comparison:
+                    </span>
+                  </div>
+                  <ul className="list-disc list-inside space-y-1 ml-6">
+                    <li>
+                      Use "Side by Side" tab for annotation and detailed
+                      comparison
+                    </li>
+                    <li>
+                      Use "Slider" tab to overlay images with adjustable slider
+                    </li>
+                    <li>
+                      Use "Magnifier" tab for detailed inspection with
+                      adjustable magnification
+                    </li>
+                    <li>
+                      Use "Zoom & Pan" tab to zoom in and navigate both images
+                      simultaneously
+                    </li>
+                    <li>
+                      Click "View Full Size" buttons to open images in new tabs
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Analysis Summary */}
+                {analysisData && (
+                  <div className="bg-gray-50 p-4 rounded-lg border">
+                    <h3 className="font-medium mb-3">Analysis Summary</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Status:</span>
+                        <div className="font-medium text-green-600">
+                          {analysisData.analysisStatus}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Date:</span>
+                        <div className="font-medium">
+                          {new Date(
+                            analysisData.analysisDate
+                          ).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Processing Time:</span>
+                        <div className="font-medium">
+                          {analysisData.processingTimeMs}ms
+                        </div>
+                      </div>
+                      {/* Anomalies count from normalized data */}
+                      {analysisData?.parsedAnalysisJson?.summary && (
                         <div>
                           <span className="text-gray-600">Anomalies:</span>
                           <div className="font-medium text-red-600">
-                            {analysisData.parsedAnalysisJson.anomalies.length}{" "}
+                            {analysisData.parsedAnalysisJson.summary
+                              .total_anomalies || 0}{" "}
                             found
                           </div>
                         </div>
                       )}
-                  </div>
+                      {/* Fallback for direct anomalies array */}
+                      {!analysisData?.parsedAnalysisJson?.summary &&
+                        analysisData?.parsedAnalysisJson?.anomalies && (
+                          <div>
+                            <span className="text-gray-600">Anomalies:</span>
+                            <div className="font-medium text-red-600">
+                              {analysisData.parsedAnalysisJson.anomalies.length}{" "}
+                              found
+                            </div>
+                          </div>
+                        )}
+                    </div>
 
-                  {/* Anomaly Details - Using normalized data */}
-                  {analysisData?.parsedAnalysisJson?.anomalies &&
-                    analysisData.parsedAnalysisJson.anomalies.length > 0 && (
-                      <div className="mt-4">
-                        <h4 className="font-medium mb-2">
-                          Detected Anomalies:
-                        </h4>
-                        <div className="space-y-2">
-                          {analysisData.parsedAnalysisJson.anomalies.map(
-                            (anomaly: any, index: number) => (
-                              <div
-                                key={`anomaly-${anomaly.id || index}`}
-                                className="bg-white p-3 rounded border-l-4 border-red-500"
-                              >
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <span className="font-medium text-red-600">
-                                      {anomaly.severity_level || "UNKNOWN"}{" "}
-                                      Severity
-                                    </span>
-                                    <p className="text-sm text-gray-600 mt-1">
-                                      {anomaly.reasoning ||
-                                        anomaly.description ||
-                                        "No description available"}
-                                    </p>
-                                  </div>
-                                  <div className="text-right text-sm">
+                    {/* Anomaly Details - Using normalized data */}
+                    {analysisData?.parsedAnalysisJson?.anomalies &&
+                      analysisData.parsedAnalysisJson.anomalies.length > 0 && (
+                        <div className="mt-4">
+                          <h4 className="font-medium mb-2">
+                            Detected Anomalies:
+                          </h4>
+                          <div className="space-y-2">
+                            {analysisData.parsedAnalysisJson.anomalies.map(
+                              (anomaly: any, index: number) => (
+                                <div
+                                  key={`anomaly-${anomaly.id || index}`}
+                                  className="bg-white p-3 rounded border-l-4 border-red-500"
+                                >
+                                  <div className="flex justify-between items-start">
                                     <div>
-                                      Confidence:{" "}
-                                      {anomaly.confidence
-                                        ? (anomaly.confidence * 100).toFixed(1)
-                                        : anomaly.confidenceScore || "N/A"}
-                                      %
+                                      <span className="font-medium text-red-600">
+                                        {anomaly.severity_level || "UNKNOWN"}{" "}
+                                        Severity
+                                      </span>
+                                      <p className="text-sm text-gray-600 mt-1">
+                                        {anomaly.reasoning ||
+                                          anomaly.description ||
+                                          "No description available"}
+                                      </p>
                                     </div>
-                                    <div>
-                                      Area:{" "}
-                                      {anomaly.area?.toLocaleString() || "N/A"}
+                                    <div className="text-right text-sm">
+                                      <div>
+                                        Confidence:{" "}
+                                        {anomaly.confidence
+                                          ? (anomaly.confidence * 100).toFixed(
+                                              1
+                                            )
+                                          : anomaly.confidenceScore || "N/A"}
+                                        %
+                                      </div>
+                                      <div>
+                                        Area:{" "}
+                                        {anomaly.area?.toLocaleString() ||
+                                          "N/A"}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            )
-                          )}
+                              )
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                </div>
-              )}
+                      )}
+                  </div>
+                )}
 
-              {/* Enhanced Action buttons */}
-              <div className="flex justify-between items-center pt-4 border-t bg-gray-50 p-4 rounded-lg">
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openInNewTab(thermalImage)}
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    View Thermal Full Size
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openInNewTab(analysisResult)}
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    View Result Full Size
-                  </Button>
+                {/* Enhanced Action buttons */}
+                <div className="flex justify-between items-center pt-4 border-t bg-gray-50 p-4 rounded-lg">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openInNewTab(thermalImage)}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      View Thermal Full Size
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openInNewTab(analysisResult)}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      View Result Full Size
+                    </Button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={onClose}>
+                      Close
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={onClose}>
-                    Close
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+              </>
+            )}
+          </div>
         </Tabs>
       </DialogContent>
 
