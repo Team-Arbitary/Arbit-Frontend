@@ -21,7 +21,7 @@ const dummyResponses = [
   "I can provide insights on your transformer fleet management.",
   "Need help navigating the dashboard? I'm here to guide you!",
   "Your anomaly detection rate has improved by 15% this month.",
-  "I can analyze patterns in your inspection data if you'd like."
+  "I can analyze patterns in your inspection data if you'd like.",
 ];
 
 export function Chatbot() {
@@ -61,7 +61,8 @@ export function Chatbot() {
 
     // Simulate bot response
     setTimeout(() => {
-      const randomResponse = dummyResponses[Math.floor(Math.random() * dummyResponses.length)];
+      const randomResponse =
+        dummyResponses[Math.floor(Math.random() * dummyResponses.length)];
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: randomResponse,
@@ -112,7 +113,9 @@ export function Chatbot() {
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                  className={`flex ${
+                    message.sender === "user" ? "justify-end" : "justify-start"
+                  }`}
                 >
                   <div
                     className={`max-w-[80%] rounded-2xl px-4 py-2 ${
@@ -135,9 +138,18 @@ export function Chatbot() {
                 <div className="flex justify-start">
                   <div className="backdrop-blur-sm bg-white/10 text-white border border-white/20 rounded-2xl px-4 py-2">
                     <div className="flex gap-1">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                      <div
+                        className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                        style={{ animationDelay: "0ms" }}
+                      />
+                      <div
+                        className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                        style={{ animationDelay: "150ms" }}
+                      />
+                      <div
+                        className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                        style={{ animationDelay: "300ms" }}
+                      />
                     </div>
                   </div>
                 </div>

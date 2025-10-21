@@ -4,16 +4,54 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { AddTransformerModal } from "@/components/AddTransformerModal";
 import { AddInspectionModal } from "@/components/AddInspectionModal";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Chatbot } from "@/components/Chatbot";
-import { Search, Filter, Star, Trash2, Activity, AlertTriangle, CheckCircle, TrendingUp, Zap, ThermometerSun } from "lucide-react";
+import {
+  Search,
+  Filter,
+  Star,
+  Trash2,
+  Activity,
+  AlertTriangle,
+  CheckCircle,
+  TrendingUp,
+  Zap,
+  ThermometerSun,
+} from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { API_ENDPOINTS } from "@/lib/api";
-import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 // --- Types for API data ---
 type Transformer = {
@@ -41,7 +79,8 @@ async function fetchUnwrap<T>(url: string): Promise<T> {
   const body = await res.json();
   if (body && Array.isArray(body.responseData)) return body.responseData as T;
   if (body && Array.isArray(body)) return body as T;
-  if (body && typeof body === "object" && Array.isArray(body.data)) return body.data as T;
+  if (body && typeof body === "object" && Array.isArray(body.data))
+    return body.data as T;
   if (body && Array.isArray(body.content)) return body.content as T;
   if (body && Array.isArray(body.result)) return body.result as T;
   return body as T;
@@ -72,7 +111,7 @@ const toInspection = (x: ApiItem): Inspection => {
           maintenanceDate = parsed.toLocaleDateString("en-GB", {
             day: "2-digit",
             month: "short",
-            year: "numeric"
+            year: "numeric",
           });
         } else {
           maintenanceDate = x.maintenanceDate;
@@ -87,7 +126,10 @@ const toInspection = (x: ApiItem): Inspection => {
     id: x.id,
     transformerNo: x.transformerNo,
     inspectionNo: x.id,
-    inspectedDate: x.dateOfInspection && x.time ? `${x.dateOfInspection} ${x.time}` : x.dateOfInspection ?? undefined,
+    inspectedDate:
+      x.dateOfInspection && x.time
+        ? `${x.dateOfInspection} ${x.time}`
+        : x.dateOfInspection ?? undefined,
     maintenanceDate,
     status: x.status,
   };
@@ -106,7 +148,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "overview";
-  
+
   const [transformers, setTransformers] = useState<Transformer[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -118,12 +160,15 @@ export default function Dashboard() {
   const [selectedRegion, setSelectedRegion] = useState<string>("all-regions");
   const [selectedType, setSelectedType] = useState<string>("all-types");
 
-  const [inspectionSearchQuery, setInspectionSearchQuery] = useState<string>("");
-  const [inspectionStatusFilter, setInspectionStatusFilter] = useState<string>("all-statuses");
+  const [inspectionSearchQuery, setInspectionSearchQuery] =
+    useState<string>("");
+  const [inspectionStatusFilter, setInspectionStatusFilter] =
+    useState<string>("all-statuses");
   const [currentInspectionPage, setCurrentInspectionPage] = useState<number>(1);
   const inspectionsPerPage = 10;
 
-  const [editingTransformer, setEditingTransformer] = useState<Transformer | null>(null);
+  const [editingTransformer, setEditingTransformer] =
+    useState<Transformer | null>(null);
   const [editId, setEditId] = useState<string>("");
   const [editTransformerNo, setEditTransformerNo] = useState<string>("");
   const [editPoleNo, setEditPoleNo] = useState<string>("");
@@ -134,17 +179,31 @@ export default function Dashboard() {
   const loadTransformers = async (region: string, type: string) => {
     const useFilter = region !== "all-regions" || type !== "all-types";
     if (!useFilter) {
-      const txRaw = await fetchUnwrap<ApiItem[]>(API_ENDPOINTS.TRANSFORMER_VIEW_ALL);
+      const txRaw = await fetchUnwrap<ApiItem[]>(
+        API_ENDPOINTS.TRANSFORMER_VIEW_ALL
+      );
       setTransformers((txRaw || []).map(toTransformer));
       return;
     }
 
-    const filterValues: Array<{ columnName: string; operation: string; value: any[] }> = [];
+    const filterValues: Array<{
+      columnName: string;
+      operation: string;
+      value: any[];
+    }> = [];
     if (region !== "all-regions") {
-      filterValues.push({ columnName: "regions", operation: "Equal", value: [region] });
+      filterValues.push({
+        columnName: "regions",
+        operation: "Equal",
+        value: [region],
+      });
     }
     if (type !== "all-types") {
-      filterValues.push({ columnName: "type", operation: "Equal", value: [type] });
+      filterValues.push({
+        columnName: "type",
+        operation: "Equal",
+        value: [type],
+      });
     }
 
     const payload = {
@@ -160,7 +219,11 @@ export default function Dashboard() {
     });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     const body = await res.json();
-    const data: ApiItem[] = Array.isArray(body?.responseData) ? body.responseData : Array.isArray(body) ? body : [];
+    const data: ApiItem[] = Array.isArray(body?.responseData)
+      ? body.responseData
+      : Array.isArray(body)
+      ? body
+      : [];
     setTransformers((data || []).map(toTransformer));
   };
 
@@ -202,14 +265,14 @@ export default function Dashboard() {
     const regions = Array.from(
       new Set(
         (transformers || [])
-          .map(t => t.region)
+          .map((t) => t.region)
           .filter((x): x is string => Boolean(x && x.trim().length > 0))
       )
     );
     const types = Array.from(
       new Set(
         (transformers || [])
-          .map(t => t.type)
+          .map((t) => t.type)
           .filter((x): x is string => Boolean(x && x.trim().length > 0))
       )
     );
@@ -222,17 +285,23 @@ export default function Dashboard() {
   };
 
   const handleDeleteTransformer = async (transformerId: string) => {
-    const ok = window.confirm("Are you sure you want to delete this transformer?");
+    const ok = window.confirm(
+      "Are you sure you want to delete this transformer?"
+    );
     if (!ok) return;
     try {
-      let res = await fetch(API_ENDPOINTS.TRANSFORMER_DELETE(transformerId), { method: 'DELETE' });
+      let res = await fetch(API_ENDPOINTS.TRANSFORMER_DELETE(transformerId), {
+        method: "DELETE",
+      });
       if (!res.ok) {
-        res = await fetch(API_ENDPOINTS.TRANSFORMER_DELETE(transformerId), { method: 'GET' });
+        res = await fetch(API_ENDPOINTS.TRANSFORMER_DELETE(transformerId), {
+          method: "GET",
+        });
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       }
-      setTransformers(prev => prev.filter(t => t.id !== transformerId));
+      setTransformers((prev) => prev.filter((t) => t.id !== transformerId));
     } catch (e: any) {
-      alert(`Failed to delete transformer: ${e?.message || 'Unknown error'}`);
+      alert(`Failed to delete transformer: ${e?.message || "Unknown error"}`);
     }
   };
 
@@ -241,27 +310,33 @@ export default function Dashboard() {
   };
 
   const handleDeleteInspection = async (inspectionId: string) => {
-    const ok = window.confirm("Are you sure you want to delete this inspection?");
+    const ok = window.confirm(
+      "Are you sure you want to delete this inspection?"
+    );
     if (!ok) return;
     try {
-      let res = await fetch(API_ENDPOINTS.INSPECTION_DELETE(inspectionId), { method: 'DELETE' });
+      let res = await fetch(API_ENDPOINTS.INSPECTION_DELETE(inspectionId), {
+        method: "DELETE",
+      });
       if (!res.ok) {
-        res = await fetch(API_ENDPOINTS.INSPECTION_DELETE(inspectionId), { method: 'GET' });
+        res = await fetch(API_ENDPOINTS.INSPECTION_DELETE(inspectionId), {
+          method: "GET",
+        });
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       }
-      setInspections(prev => prev.filter(i => i.id !== inspectionId));
+      setInspections((prev) => prev.filter((i) => i.id !== inspectionId));
     } catch (e: any) {
-      alert(`Failed to delete inspection: ${e?.message || 'Unknown error'}`);
+      alert(`Failed to delete inspection: ${e?.message || "Unknown error"}`);
     }
   };
 
   const addTransformer = (transformer: Transformer) => {
-    setTransformers(prev => [...prev, transformer]);
+    setTransformers((prev) => [...prev, transformer]);
     void refresh();
   };
 
   const addInspection = (inspection: Inspection) => {
-    setInspections(prev => [...prev, inspection]);
+    setInspections((prev) => [...prev, inspection]);
     void refresh();
   };
 
@@ -309,13 +384,16 @@ export default function Dashboard() {
   };
 
   // Calculate stats from real data
-  const activeInspectionsCount = inspections.filter(
-    (i) => {
-      const status = i.status?.toLowerCase();
-      return status === "in-progress" || status === "pending" || status === "in progress" || status === "not started";
-    }
-  ).length;
-  
+  const activeInspectionsCount = inspections.filter((i) => {
+    const status = i.status?.toLowerCase();
+    return (
+      status === "in-progress" ||
+      status === "pending" ||
+      status === "in progress" ||
+      status === "not started"
+    );
+  }).length;
+
   const completedInspectionsCount = inspections.filter(
     (i) => i.status?.toLowerCase() === "completed"
   ).length;
@@ -324,7 +402,7 @@ export default function Dashboard() {
   const anomalyStats = {
     faulty: 0,
     potentiallyFaulty: 0,
-    normal: 0
+    normal: 0,
   };
 
   // Calculate transformer status distribution
@@ -332,7 +410,7 @@ export default function Dashboard() {
     operational: transformers.length - activeInspectionsCount,
     underInspection: activeInspectionsCount,
     maintenance: 0,
-    critical: 0
+    critical: 0,
   };
 
   // Generate chart data from real inspections
@@ -340,21 +418,26 @@ export default function Dashboard() {
     const date = new Date();
     date.setMonth(date.getMonth() - (5 - i));
     return {
-      month: date.toLocaleDateString('en-US', { month: 'short' }),
+      month: date.toLocaleDateString("en-US", { month: "short" }),
       inspections: 0,
-      anomalies: 0
+      anomalies: 0,
     };
   });
 
   // Count inspections per month
-  inspections.forEach(inspection => {
+  inspections.forEach((inspection) => {
     if (inspection.inspectedDate) {
       try {
         const date = new Date(inspection.inspectedDate);
-        const monthIndex = last6Months.findIndex(m => {
+        const monthIndex = last6Months.findIndex((m) => {
           const checkDate = new Date();
-          checkDate.setMonth(checkDate.getMonth() - (5 - last6Months.indexOf(m)));
-          return date.getMonth() === checkDate.getMonth() && date.getFullYear() === checkDate.getFullYear();
+          checkDate.setMonth(
+            checkDate.getMonth() - (5 - last6Months.indexOf(m))
+          );
+          return (
+            date.getMonth() === checkDate.getMonth() &&
+            date.getFullYear() === checkDate.getFullYear()
+          );
         });
         if (monthIndex !== -1) {
           last6Months[monthIndex].inspections++;
@@ -366,55 +449,91 @@ export default function Dashboard() {
   });
 
   const anomalyDistribution = [
-    { name: 'Faulty', value: anomalyStats.faulty || 1, color: '#ef4444' },
-    { name: 'Potentially Faulty', value: anomalyStats.potentiallyFaulty || 1, color: '#f97316' },
-    { name: 'Normal', value: anomalyStats.normal || (completedInspectionsCount - anomalyStats.faulty - anomalyStats.potentiallyFaulty) || 1, color: '#10b981' },
+    { name: "Faulty", value: anomalyStats.faulty || 1, color: "#ef4444" },
+    {
+      name: "Potentially Faulty",
+      value: anomalyStats.potentiallyFaulty || 1,
+      color: "#f97316",
+    },
+    {
+      name: "Normal",
+      value:
+        anomalyStats.normal ||
+        completedInspectionsCount -
+          anomalyStats.faulty -
+          anomalyStats.potentiallyFaulty ||
+        1,
+      color: "#10b981",
+    },
   ];
 
   const transformerStatusData = [
-    { status: 'Operational', count: transformersByStatus.operational },
-    { status: 'Under Inspection', count: transformersByStatus.underInspection },
-    { status: 'Maintenance', count: transformersByStatus.maintenance },
-    { status: 'Critical', count: transformersByStatus.critical },
+    { status: "Operational", count: transformersByStatus.operational },
+    { status: "Under Inspection", count: transformersByStatus.underInspection },
+    { status: "Maintenance", count: transformersByStatus.maintenance },
+    { status: "Critical", count: transformersByStatus.critical },
   ];
 
   // Recent activity from latest inspections
-  const recentActivity = inspections
-    .slice(0, 4)
-    .map((inspection, index) => ({
-      id: index + 1,
-      transformer: inspection.transformerNo,
-      status: inspection.status || 'Pending',
-      time: inspection.inspectedDate || 'N/A'
-    }));
+  const recentActivity = inspections.slice(0, 4).map((inspection, index) => ({
+    id: index + 1,
+    transformer: inspection.transformerNo,
+    status: inspection.status || "Pending",
+    time: inspection.inspectedDate || "N/A",
+  }));
 
   // Calculate health score
   const totalAnomalies = anomalyStats.faulty + anomalyStats.potentiallyFaulty;
-  const healthScore = completedInspectionsCount > 0 
-    ? ((completedInspectionsCount - totalAnomalies) / completedInspectionsCount * 100).toFixed(1)
-    : "N/A";
+  const healthScore =
+    completedInspectionsCount > 0
+      ? (
+          ((completedInspectionsCount - totalAnomalies) /
+            completedInspectionsCount) *
+          100
+        ).toFixed(1)
+      : "N/A";
 
   return (
     <Layout>
       <div className="space-y-6">
         {/* Main Navigation Tabs */}
-        <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val })} className="w-full">
+        <Tabs
+          value={activeTab}
+          onValueChange={(val) => setSearchParams({ tab: val })}
+          className="w-full"
+        >
           <div className="flex items-center justify-between backdrop-blur-xl bg-black/20 border border-white/10 rounded-2xl p-4">
             <TabsList className="grid w-fit grid-cols-3 bg-black/40 backdrop-blur-sm border border-white/10">
-              <TabsTrigger value="overview" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-orange-500 data-[state=active]:text-white">
+              <TabsTrigger
+                value="overview"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-orange-500 data-[state=active]:text-white"
+              >
                 Overview
               </TabsTrigger>
-              <TabsTrigger value="transformers" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-orange-500 data-[state=active]:text-white">
+              <TabsTrigger
+                value="transformers"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-orange-500 data-[state=active]:text-white"
+              >
                 Transformers
               </TabsTrigger>
-              <TabsTrigger value="inspections" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-orange-500 data-[state=active]:text-white">
+              <TabsTrigger
+                value="inspections"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-orange-500 data-[state=active]:text-white"
+              >
                 Inspections
               </TabsTrigger>
             </TabsList>
             <div className="flex items-center gap-2">
-              {loading && <span className="text-xs text-gray-400">Loading…</span>}
+              {loading && (
+                <span className="text-xs text-gray-400">Loading…</span>
+              )}
               {error && <span className="text-xs text-red-400">{error}</span>}
-              <Button variant="outline" size="sm" onClick={refresh} className="backdrop-blur-sm bg-white/5 border-white/20 text-white hover:bg-white/10">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refresh}
+                className="backdrop-blur-sm bg-white/5 border-white/20 text-white hover:bg-white/10"
+              >
                 Refresh
               </Button>
             </div>
@@ -424,41 +543,59 @@ export default function Dashboard() {
           <TabsContent value="overview" className="space-y-6 mt-6">
             {/* Header */}
             <div className="backdrop-blur-xl bg-black/40 border border-white/10 rounded-2xl p-6">
-              <h1 className="text-3xl font-bold text-white mb-2">Analytics Overview</h1>
-              <p className="text-gray-400">Real-time insights into transformer health and inspection status</p>
+              <h1 className="text-3xl font-bold text-white mb-2">
+                Analytics Overview
+              </h1>
+              <p className="text-gray-400">
+                Real-time insights into transformer health and inspection status
+              </p>
             </div>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="backdrop-blur-xl bg-black/40 border border-white/10 hover:border-orange-500/50 transition-all">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400">Total Transformers</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-400">
+                    Total Transformers
+                  </CardTitle>
                   <ThermometerSun className="h-5 w-5 text-orange-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-white">{transformers.length}</div>
+                  <div className="text-3xl font-bold text-white">
+                    {transformers.length}
+                  </div>
                   <p className="text-xs text-gray-500 mt-1">Active in system</p>
                 </CardContent>
               </Card>
 
               <Card className="backdrop-blur-xl bg-black/40 border border-white/10 hover:border-orange-500/50 transition-all">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400">Total Inspections</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-400">
+                    Total Inspections
+                  </CardTitle>
                   <Activity className="h-5 w-5 text-blue-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-white">{inspections.length}</div>
-                  <p className="text-xs text-gray-500 mt-1">{activeInspectionsCount} in progress</p>
+                  <div className="text-3xl font-bold text-white">
+                    {inspections.length}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {activeInspectionsCount} in progress
+                  </p>
                 </CardContent>
               </Card>
 
               <Card className="backdrop-blur-xl bg-black/40 border border-white/10 hover:border-orange-500/50 transition-all">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400">Anomalies Detected</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-400">
+                    Anomalies Detected
+                  </CardTitle>
                   <AlertTriangle className="h-5 w-5 text-red-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-white">{totalAnomalies}</div>
+                  <div className="text-3xl font-bold text-white">
+                    {totalAnomalies}
+                  </div>
                   <p className="text-xs text-red-400 flex items-center mt-1">
                     <AlertTriangle className="h-3 w-3 mr-1" />
                     {anomalyStats.faulty} critical
@@ -468,14 +605,25 @@ export default function Dashboard() {
 
               <Card className="backdrop-blur-xl bg-black/40 border border-white/10 hover:border-orange-500/50 transition-all">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400">Health Score</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-400">
+                    Health Score
+                  </CardTitle>
                   <CheckCircle className="h-5 w-5 text-green-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-white">{healthScore}{typeof healthScore === 'string' && healthScore !== 'N/A' ? '%' : ''}</div>
+                  <div className="text-3xl font-bold text-white">
+                    {healthScore}
+                    {typeof healthScore === "string" && healthScore !== "N/A"
+                      ? "%"
+                      : ""}
+                  </div>
                   <p className="text-xs text-green-500 flex items-center mt-1">
                     <Zap className="h-3 w-3 mr-1" />
-                    {typeof healthScore === 'number' && parseFloat(healthScore) > 90 ? 'Excellent' : 'Good'} condition
+                    {typeof healthScore === "number" &&
+                    parseFloat(healthScore) > 90
+                      ? "Excellent"
+                      : "Good"}{" "}
+                    condition
                   </p>
                 </CardContent>
               </Card>
@@ -486,31 +634,77 @@ export default function Dashboard() {
               {/* Inspection Trend */}
               <Card className="backdrop-blur-xl bg-black/40 border border-white/10">
                 <CardHeader>
-                  <CardTitle className="text-white">Inspection Trends</CardTitle>
+                  <CardTitle className="text-white">
+                    Inspection Trends
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
                     <AreaChart data={last6Months}>
                       <defs>
-                        <linearGradient id="colorInspections" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#f97316" stopOpacity={0.8}/>
-                          <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
+                        <linearGradient
+                          id="colorInspections"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="5%"
+                            stopColor="#f97316"
+                            stopOpacity={0.8}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor="#f97316"
+                            stopOpacity={0}
+                          />
                         </linearGradient>
-                        <linearGradient id="colorAnomalies" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
-                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                        <linearGradient
+                          id="colorAnomalies"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="5%"
+                            stopColor="#ef4444"
+                            stopOpacity={0.8}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor="#ef4444"
+                            stopOpacity={0}
+                          />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#ffffff20" />
                       <XAxis dataKey="month" stroke="#9ca3af" />
                       <YAxis stroke="#9ca3af" />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
-                        labelStyle={{ color: '#f3f4f6' }}
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#1f2937",
+                          border: "1px solid #374151",
+                          borderRadius: "8px",
+                        }}
+                        labelStyle={{ color: "#f3f4f6" }}
                       />
-                      <Legend wrapperStyle={{ color: '#9ca3af' }} />
-                      <Area type="monotone" dataKey="inspections" stroke="#f97316" fillOpacity={1} fill="url(#colorInspections)" />
-                      <Area type="monotone" dataKey="anomalies" stroke="#ef4444" fillOpacity={1} fill="url(#colorAnomalies)" />
+                      <Legend wrapperStyle={{ color: "#9ca3af" }} />
+                      <Area
+                        type="monotone"
+                        dataKey="inspections"
+                        stroke="#f97316"
+                        fillOpacity={1}
+                        fill="url(#colorInspections)"
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="anomalies"
+                        stroke="#ef4444"
+                        fillOpacity={1}
+                        fill="url(#colorAnomalies)"
+                      />
                     </AreaChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -519,7 +713,9 @@ export default function Dashboard() {
               {/* Anomaly Distribution */}
               <Card className="backdrop-blur-xl bg-black/40 border border-white/10">
                 <CardHeader>
-                  <CardTitle className="text-white">Anomaly Distribution</CardTitle>
+                  <CardTitle className="text-white">
+                    Anomaly Distribution
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="flex items-center justify-center">
                   <ResponsiveContainer width="100%" height={300}>
@@ -529,7 +725,9 @@ export default function Dashboard() {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) =>
+                          `${name} ${(percent * 100).toFixed(0)}%`
+                        }
                         outerRadius={100}
                         fill="#8884d8"
                         dataKey="value"
@@ -538,8 +736,12 @@ export default function Dashboard() {
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#1f2937",
+                          border: "1px solid #374151",
+                          borderRadius: "8px",
+                        }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -552,7 +754,9 @@ export default function Dashboard() {
               {/* Transformer Status */}
               <Card className="backdrop-blur-xl bg-black/40 border border-white/10">
                 <CardHeader>
-                  <CardTitle className="text-white">Transformer Status</CardTitle>
+                  <CardTitle className="text-white">
+                    Transformer Status
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={250}>
@@ -560,11 +764,19 @@ export default function Dashboard() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#ffffff20" />
                       <XAxis dataKey="status" stroke="#9ca3af" />
                       <YAxis stroke="#9ca3af" />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
-                        labelStyle={{ color: '#f3f4f6' }}
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#1f2937",
+                          border: "1px solid #374151",
+                          borderRadius: "8px",
+                        }}
+                        labelStyle={{ color: "#f3f4f6" }}
                       />
-                      <Bar dataKey="count" fill="#f97316" radius={[8, 8, 0, 0]} />
+                      <Bar
+                        dataKey="count"
+                        fill="#f97316"
+                        radius={[8, 8, 0, 0]}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -577,23 +789,42 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {recentActivity.length > 0 ? recentActivity.map((activity) => (
-                      <div key={activity.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-2 h-2 rounded-full ${
-                            activity.status.toLowerCase() === 'critical' ? 'bg-red-500' :
-                            activity.status.toLowerCase().includes('progress') ? 'bg-orange-500' :
-                            'bg-green-500'
-                          }`} />
-                          <div>
-                            <p className="text-white font-medium">{activity.transformer}</p>
-                            <p className="text-gray-400 text-sm">{activity.status}</p>
+                    {recentActivity.length > 0 ? (
+                      recentActivity.map((activity) => (
+                        <div
+                          key={activity.id}
+                          className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-2 h-2 rounded-full ${
+                                activity.status.toLowerCase() === "critical"
+                                  ? "bg-red-500"
+                                  : activity.status
+                                      .toLowerCase()
+                                      .includes("progress")
+                                  ? "bg-orange-500"
+                                  : "bg-green-500"
+                              }`}
+                            />
+                            <div>
+                              <p className="text-white font-medium">
+                                {activity.transformer}
+                              </p>
+                              <p className="text-gray-400 text-sm">
+                                {activity.status}
+                              </p>
+                            </div>
                           </div>
+                          <span className="text-gray-500 text-sm">
+                            {activity.time}
+                          </span>
                         </div>
-                        <span className="text-gray-500 text-sm">{activity.time}</span>
-                      </div>
-                    )) : (
-                      <p className="text-gray-400 text-center py-8">No recent activity</p>
+                      ))
+                    ) : (
+                      <p className="text-gray-400 text-center py-8">
+                        No recent activity
+                      </p>
                     )}
                   </div>
                 </CardContent>
@@ -606,9 +837,15 @@ export default function Dashboard() {
             <Card className="backdrop-blur-xl bg-black/40 border border-white/10">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-white">Transformers</h2>
-                  <AddTransformerModal 
-                    trigger={<Button className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600">Add Transformer</Button>}
+                  <h2 className="text-xl font-semibold text-white">
+                    Transformers
+                  </h2>
+                  <AddTransformerModal
+                    trigger={
+                      <Button className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600">
+                        Add Transformer
+                      </Button>
+                    }
                     onAdd={addTransformer}
                   />
                 </div>
@@ -616,16 +853,24 @@ export default function Dashboard() {
                 <div className="flex items-center gap-4 mb-6">
                   <div className="relative flex-1 max-w-sm">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input placeholder="Search Transformer" className="pl-10 bg-white/5 border-white/20 text-white placeholder:text-gray-500" />
+                    <Input
+                      placeholder="Search Transformer"
+                      className="pl-10 bg-white/5 border-white/20 text-white placeholder:text-gray-500"
+                    />
                   </div>
-                  <Select value={selectedRegion} onValueChange={setSelectedRegion}>
+                  <Select
+                    value={selectedRegion}
+                    onValueChange={setSelectedRegion}
+                  >
                     <SelectTrigger className="w-48 bg-white/5 border-white/20 text-white">
                       <SelectValue placeholder="All Regions" />
                     </SelectTrigger>
                     <SelectContent className="bg-gray-900 border-white/20">
                       <SelectItem value="all-regions">All Regions</SelectItem>
                       {regionOptions.map((r) => (
-                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                        <SelectItem key={r} value={r}>
+                          {r}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -636,11 +881,20 @@ export default function Dashboard() {
                     <SelectContent className="bg-gray-900 border-white/20">
                       <SelectItem value="all-types">All Types</SelectItem>
                       {typeOptions.map((t) => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button variant="outline" onClick={() => { setSelectedRegion("all-regions"); setSelectedType("all-types"); }} className="bg-white/5 border-white/20 text-white hover:bg-white/10">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedRegion("all-regions");
+                      setSelectedType("all-types");
+                    }}
+                    className="bg-white/5 border-white/20 text-white hover:bg-white/10"
+                  >
                     Reset Filters
                   </Button>
                 </div>
@@ -650,8 +904,12 @@ export default function Dashboard() {
                     <TableHeader>
                       <TableRow className="border-white/10 hover:bg-white/5">
                         <TableHead className="text-gray-400"></TableHead>
-                        <TableHead className="text-gray-400">Transformer No.</TableHead>
-                        <TableHead className="text-gray-400">Pole No.</TableHead>
+                        <TableHead className="text-gray-400">
+                          Transformer No.
+                        </TableHead>
+                        <TableHead className="text-gray-400">
+                          Pole No.
+                        </TableHead>
                         <TableHead className="text-gray-400">Region</TableHead>
                         <TableHead className="text-gray-400">Type</TableHead>
                         <TableHead className="text-right text-gray-400"></TableHead>
@@ -659,17 +917,28 @@ export default function Dashboard() {
                     </TableHeader>
                     <TableBody>
                       {transformers.map((transformer) => (
-                        <TableRow key={transformer.id} className="border-white/10 hover:bg-white/5">
+                        <TableRow
+                          key={transformer.id}
+                          className="border-white/10 hover:bg-white/5"
+                        >
                           <TableCell>
                             <Star className="h-4 w-4 text-gray-500" />
                           </TableCell>
-                          <TableCell className="font-medium text-white">{transformer.transformerNo}</TableCell>
-                          <TableCell className="text-gray-300">{transformer.poleNo}</TableCell>
-                          <TableCell className="text-gray-300">{transformer.region}</TableCell>
-                          <TableCell className="text-gray-300">{transformer.type}</TableCell>
+                          <TableCell className="font-medium text-white">
+                            {transformer.transformerNo}
+                          </TableCell>
+                          <TableCell className="text-gray-300">
+                            {transformer.poleNo}
+                          </TableCell>
+                          <TableCell className="text-gray-300">
+                            {transformer.region}
+                          </TableCell>
+                          <TableCell className="text-gray-300">
+                            {transformer.type}
+                          </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <Button 
+                              <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => openEdit(transformer)}
@@ -677,19 +946,23 @@ export default function Dashboard() {
                               >
                                 Edit
                               </Button>
-                              <Button 
+                              <Button
                                 size="icon"
                                 variant="ghost"
-                                onClick={() => handleDeleteTransformer(transformer.id)}
+                                onClick={() =>
+                                  handleDeleteTransformer(transformer.id)
+                                }
                                 title="Delete transformer"
                                 aria-label="Delete transformer"
                                 className="text-red-400 hover:bg-red-500/20"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
-                              <Button 
-                                size="sm" 
-                                onClick={() => handleViewTransformer(transformer.id)}
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handleViewTransformer(transformer.id)
+                                }
                                 className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600"
                               >
                                 View
@@ -710,9 +983,15 @@ export default function Dashboard() {
             <Card className="backdrop-blur-xl bg-black/40 border border-white/10">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-white">All Inspections</h2>
-                  <AddInspectionModal 
-                    trigger={<Button className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600">Add Inspection</Button>}
+                  <h2 className="text-xl font-semibold text-white">
+                    All Inspections
+                  </h2>
+                  <AddInspectionModal
+                    trigger={
+                      <Button className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600">
+                        Add Inspection
+                      </Button>
+                    }
                     onAdd={addInspection}
                   />
                 </div>
@@ -755,10 +1034,18 @@ export default function Dashboard() {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-white/10 hover:bg-white/5">
-                        <TableHead className="text-gray-400">Inspection No</TableHead>
-                        <TableHead className="text-gray-400">Transformer No.</TableHead>
-                        <TableHead className="text-gray-400">Inspected Date</TableHead>
-                        <TableHead className="text-gray-400">Maintenance Date</TableHead>
+                        <TableHead className="text-gray-400">
+                          Inspection No
+                        </TableHead>
+                        <TableHead className="text-gray-400">
+                          Transformer No.
+                        </TableHead>
+                        <TableHead className="text-gray-400">
+                          Inspected Date
+                        </TableHead>
+                        <TableHead className="text-gray-400">
+                          Maintenance Date
+                        </TableHead>
                         <TableHead className="text-gray-400">Status</TableHead>
                         <TableHead className="text-gray-400"></TableHead>
                       </TableRow>
@@ -766,26 +1053,44 @@ export default function Dashboard() {
                     <TableBody>
                       {(() => {
                         let filtered = inspections.filter((inspection) => {
-                          const searchLower = inspectionSearchQuery.toLowerCase();
-                          const matchesSearch = !inspectionSearchQuery || 
-                            (inspection.inspectionNo || inspection.id).toLowerCase().includes(searchLower) ||
-                            inspection.transformerNo.toLowerCase().includes(searchLower);
+                          const searchLower =
+                            inspectionSearchQuery.toLowerCase();
+                          const matchesSearch =
+                            !inspectionSearchQuery ||
+                            (inspection.inspectionNo || inspection.id)
+                              .toLowerCase()
+                              .includes(searchLower) ||
+                            inspection.transformerNo
+                              .toLowerCase()
+                              .includes(searchLower);
 
-                          const matchesStatus = inspectionStatusFilter === "all-statuses" ||
-                            inspection.status?.toLowerCase() === inspectionStatusFilter.toLowerCase() ||
-                            (inspectionStatusFilter === "in-progress" && inspection.status?.toLowerCase().includes("progress"));
+                          const matchesStatus =
+                            inspectionStatusFilter === "all-statuses" ||
+                            inspection.status?.toLowerCase() ===
+                              inspectionStatusFilter.toLowerCase() ||
+                            (inspectionStatusFilter === "in-progress" &&
+                              inspection.status
+                                ?.toLowerCase()
+                                .includes("progress"));
 
                           return matchesSearch && matchesStatus;
                         });
 
-                        const startIndex = (currentInspectionPage - 1) * inspectionsPerPage;
+                        const startIndex =
+                          (currentInspectionPage - 1) * inspectionsPerPage;
                         const endIndex = startIndex + inspectionsPerPage;
-                        const paginatedInspections = filtered.slice(startIndex, endIndex);
+                        const paginatedInspections = filtered.slice(
+                          startIndex,
+                          endIndex
+                        );
 
                         if (paginatedInspections.length === 0) {
                           return (
                             <TableRow>
-                              <TableCell colSpan={6} className="text-center text-gray-400 py-8">
+                              <TableCell
+                                colSpan={6}
+                                className="text-center text-gray-400 py-8"
+                              >
                                 No inspections found matching your criteria.
                               </TableCell>
                             </TableRow>
@@ -793,29 +1098,44 @@ export default function Dashboard() {
                         }
 
                         return paginatedInspections.map((inspection) => (
-                          <TableRow key={inspection.id} className="border-white/10 hover:bg-white/5">
-                            <TableCell className="font-medium text-white">{inspection.inspectionNo || inspection.id}</TableCell>
-                            <TableCell className="text-gray-300">{inspection.transformerNo}</TableCell>
-                            <TableCell className="text-gray-300">{inspection.inspectedDate}</TableCell>
-                            <TableCell className="text-gray-300">{inspection.maintenanceDate || "-"}</TableCell>
+                          <TableRow
+                            key={inspection.id}
+                            className="border-white/10 hover:bg-white/5"
+                          >
+                            <TableCell className="font-medium text-white">
+                              {inspection.inspectionNo || inspection.id}
+                            </TableCell>
+                            <TableCell className="text-gray-300">
+                              {inspection.transformerNo}
+                            </TableCell>
+                            <TableCell className="text-gray-300">
+                              {inspection.inspectedDate}
+                            </TableCell>
+                            <TableCell className="text-gray-300">
+                              {inspection.maintenanceDate || "-"}
+                            </TableCell>
                             <TableCell>
                               <StatusBadge status={inspection.status as any} />
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-2">
-                                <Button 
+                                <Button
                                   size="icon"
                                   variant="ghost"
-                                  onClick={() => handleDeleteInspection(inspection.id)}
+                                  onClick={() =>
+                                    handleDeleteInspection(inspection.id)
+                                  }
                                   title="Delete inspection"
                                   aria-label="Delete inspection"
                                   className="text-red-400 hover:bg-red-500/20"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
-                                <Button 
+                                <Button
                                   size="sm"
-                                  onClick={() => handleViewInspection(inspection.id)}
+                                  onClick={() =>
+                                    handleViewInspection(inspection.id)
+                                  }
                                   className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600"
                                 >
                                   View
@@ -833,23 +1153,40 @@ export default function Dashboard() {
                 {(() => {
                   const filtered = inspections.filter((inspection) => {
                     const searchLower = inspectionSearchQuery.toLowerCase();
-                    const matchesSearch = !inspectionSearchQuery || 
-                      (inspection.inspectionNo || inspection.id).toLowerCase().includes(searchLower) ||
-                      inspection.transformerNo.toLowerCase().includes(searchLower);
-                    const matchesStatus = inspectionStatusFilter === "all-statuses" ||
-                      inspection.status?.toLowerCase() === inspectionStatusFilter.toLowerCase() ||
-                      (inspectionStatusFilter === "in-progress" && inspection.status?.toLowerCase().includes("progress"));
+                    const matchesSearch =
+                      !inspectionSearchQuery ||
+                      (inspection.inspectionNo || inspection.id)
+                        .toLowerCase()
+                        .includes(searchLower) ||
+                      inspection.transformerNo
+                        .toLowerCase()
+                        .includes(searchLower);
+                    const matchesStatus =
+                      inspectionStatusFilter === "all-statuses" ||
+                      inspection.status?.toLowerCase() ===
+                        inspectionStatusFilter.toLowerCase() ||
+                      (inspectionStatusFilter === "in-progress" &&
+                        inspection.status?.toLowerCase().includes("progress"));
                     return matchesSearch && matchesStatus;
                   });
 
-                  const totalPages = Math.ceil(filtered.length / inspectionsPerPage);
+                  const totalPages = Math.ceil(
+                    filtered.length / inspectionsPerPage
+                  );
 
                   if (totalPages <= 1) return null;
 
                   return (
                     <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
                       <div className="text-sm text-gray-400">
-                        Showing {((currentInspectionPage - 1) * inspectionsPerPage) + 1} to {Math.min(currentInspectionPage * inspectionsPerPage, filtered.length)} of {filtered.length} inspections
+                        Showing{" "}
+                        {(currentInspectionPage - 1) * inspectionsPerPage + 1}{" "}
+                        to{" "}
+                        {Math.min(
+                          currentInspectionPage * inspectionsPerPage,
+                          filtered.length
+                        )}{" "}
+                        of {filtered.length} inspections
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
@@ -864,46 +1201,66 @@ export default function Dashboard() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentInspectionPage(prev => Math.max(1, prev - 1))}
+                          onClick={() =>
+                            setCurrentInspectionPage((prev) =>
+                              Math.max(1, prev - 1)
+                            )
+                          }
                           disabled={currentInspectionPage === 1}
                           className="bg-white/5 border-white/20 text-white hover:bg-white/10 disabled:opacity-50"
                         >
                           Previous
                         </Button>
                         <div className="flex items-center gap-1">
-                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                            let pageNum;
-                            if (totalPages <= 5) {
-                              pageNum = i + 1;
-                            } else if (currentInspectionPage <= 3) {
-                              pageNum = i + 1;
-                            } else if (currentInspectionPage >= totalPages - 2) {
-                              pageNum = totalPages - 4 + i;
-                            } else {
-                              pageNum = currentInspectionPage - 2 + i;
-                            }
+                          {Array.from(
+                            { length: Math.min(5, totalPages) },
+                            (_, i) => {
+                              let pageNum;
+                              if (totalPages <= 5) {
+                                pageNum = i + 1;
+                              } else if (currentInspectionPage <= 3) {
+                                pageNum = i + 1;
+                              } else if (
+                                currentInspectionPage >=
+                                totalPages - 2
+                              ) {
+                                pageNum = totalPages - 4 + i;
+                              } else {
+                                pageNum = currentInspectionPage - 2 + i;
+                              }
 
-                            return (
-                              <Button
-                                key={pageNum}
-                                variant={currentInspectionPage === pageNum ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => setCurrentInspectionPage(pageNum)}
-                                className={`w-10 ${
-                                  currentInspectionPage === pageNum 
-                                    ? "bg-gradient-to-r from-orange-600 to-orange-500" 
-                                    : "bg-white/5 border-white/20 text-white hover:bg-white/10"
-                                }`}
-                              >
-                                {pageNum}
-                              </Button>
-                            );
-                          })}
+                              return (
+                                <Button
+                                  key={pageNum}
+                                  variant={
+                                    currentInspectionPage === pageNum
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  size="sm"
+                                  onClick={() =>
+                                    setCurrentInspectionPage(pageNum)
+                                  }
+                                  className={`w-10 ${
+                                    currentInspectionPage === pageNum
+                                      ? "bg-gradient-to-r from-orange-600 to-orange-500"
+                                      : "bg-white/5 border-white/20 text-white hover:bg-white/10"
+                                  }`}
+                                >
+                                  {pageNum}
+                                </Button>
+                              );
+                            }
+                          )}
                         </div>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentInspectionPage(prev => Math.min(totalPages, prev + 1))}
+                          onClick={() =>
+                            setCurrentInspectionPage((prev) =>
+                              Math.min(totalPages, prev + 1)
+                            )
+                          }
                           disabled={currentInspectionPage === totalPages}
                           className="bg-white/5 border-white/20 text-white hover:bg-white/10 disabled:opacity-50"
                         >
@@ -935,34 +1292,79 @@ export default function Dashboard() {
       {editingTransformer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
           <div className="backdrop-blur-xl bg-black/80 border border-white/20 rounded-2xl shadow-2xl w-full max-w-lg p-6">
-            <h3 className="text-lg font-semibold mb-4 text-white">Edit Transformer</h3>
+            <h3 className="text-lg font-semibold mb-4 text-white">
+              Edit Transformer
+            </h3>
             <form onSubmit={submitEdit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm mb-1 text-gray-400">Transformer No.</label>
-                  <Input value={editTransformerNo} onChange={(e) => setEditTransformerNo(e.target.value)} required className="bg-white/5 border-white/20 text-white" />
+                  <label className="block text-sm mb-1 text-gray-400">
+                    Transformer No.
+                  </label>
+                  <Input
+                    value={editTransformerNo}
+                    onChange={(e) => setEditTransformerNo(e.target.value)}
+                    required
+                    className="bg-white/5 border-white/20 text-white"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm mb-1 text-gray-400">Pole No.</label>
-                  <Input value={editPoleNo} onChange={(e) => setEditPoleNo(e.target.value)} className="bg-white/5 border-white/20 text-white" />
+                  <label className="block text-sm mb-1 text-gray-400">
+                    Pole No.
+                  </label>
+                  <Input
+                    value={editPoleNo}
+                    onChange={(e) => setEditPoleNo(e.target.value)}
+                    className="bg-white/5 border-white/20 text-white"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm mb-1 text-gray-400">Region</label>
-                  <Input value={editRegion} onChange={(e) => setEditRegion(e.target.value)} className="bg-white/5 border-white/20 text-white" />
+                  <label className="block text-sm mb-1 text-gray-400">
+                    Region
+                  </label>
+                  <Input
+                    value={editRegion}
+                    onChange={(e) => setEditRegion(e.target.value)}
+                    className="bg-white/5 border-white/20 text-white"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm mb-1 text-gray-400">Type</label>
-                  <Input value={editType} onChange={(e) => setEditType(e.target.value)} className="bg-white/5 border-white/20 text-white" />
+                  <label className="block text-sm mb-1 text-gray-400">
+                    Type
+                  </label>
+                  <Input
+                    value={editType}
+                    onChange={(e) => setEditType(e.target.value)}
+                    className="bg-white/5 border-white/20 text-white"
+                  />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm mb-1 text-gray-400">Location</label>
-                  <Input value={editLocation} onChange={(e) => setEditLocation(e.target.value)} className="bg-white/5 border-white/20 text-white" />
+                  <label className="block text-sm mb-1 text-gray-400">
+                    Location
+                  </label>
+                  <Input
+                    value={editLocation}
+                    onChange={(e) => setEditLocation(e.target.value)}
+                    className="bg-white/5 border-white/20 text-white"
+                  />
                 </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={closeEdit} className="bg-white/5 border-white/20 text-white hover:bg-white/10">Cancel</Button>
-                <Button type="submit" className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600">Save Changes</Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeEdit}
+                  className="bg-white/5 border-white/20 text-white hover:bg-white/10"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600"
+                >
+                  Save Changes
+                </Button>
               </div>
             </form>
           </div>
