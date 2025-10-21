@@ -2640,6 +2640,7 @@ export default function InspectionDetail() {
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [analysisData, setAnalysisData] = useState<any>(null);
+  const [hasAnalysisApiSuccess, setHasAnalysisApiSuccess] = useState(false); // Track if analysis API returned 200
   const [statusPolling, setStatusPolling] = useState<boolean>(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
@@ -3118,6 +3119,7 @@ export default function InspectionDetail() {
         const blob = await res.blob();
         const objUrl = URL.createObjectURL(blob);
         setAnalysisResult(objUrl);
+        setHasAnalysisApiSuccess(true); // Mark API as successful
         console.log("Analysis result image loaded successfully");
 
         // Update inspection status to completed when we get the result
@@ -3143,6 +3145,7 @@ export default function InspectionDetail() {
             imageUrl = `data:image/png;base64,${annotatedImageData}`;
           }
           setAnalysisResult(imageUrl);
+          setHasAnalysisApiSuccess(true); // Mark API as successful
 
           // Store the analysis data for display
           setAnalysisData(data);
@@ -3298,6 +3301,7 @@ export default function InspectionDetail() {
             } catch {}
           }
           setAnalysisResult(finalUrl);
+          setHasAnalysisApiSuccess(true); // Mark API as successful
 
           // Update inspection status to completed when we get the result
           setInspection((prev) => ({
@@ -3963,7 +3967,7 @@ export default function InspectionDetail() {
                     {/* Anomaly Annotation Tool Button - Centered below images */}
                     {(inspection.status === "Completed" ||
                       inspection.status === "completed") &&
-                      analysisResult && (
+                      hasAnalysisApiSuccess && (
                         <div className="flex justify-center mt-6">
                           <Button
                             onClick={openAnalysisModal}
@@ -4046,7 +4050,7 @@ export default function InspectionDetail() {
               {/* Analysis History and Summary - Only show when analysis is completed */}
               {(inspection.status === "Completed" ||
                 inspection.status === "completed") &&
-                analysisResult && (
+                hasAnalysisApiSuccess && (
                   <>
                     {/* Analysis History and Summary - Bounding Box Annotations */}
                     <Card className="mt-6">
