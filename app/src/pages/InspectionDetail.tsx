@@ -150,10 +150,20 @@ function AnalysisModal({
     height: 500,
   });
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
-  const [viewMode, setViewMode] = useState<"side-by-side" | "slider">(
-    "side-by-side"
-  );
+  const [viewMode, setViewMode] = useState<
+    "side-by-side" | "slider" | "magnifier" | "zoom"
+  >("side-by-side");
   const [isDragging, setIsDragging] = useState(false);
+
+  // Zoom and pan states
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+
+  // Magnifier state
+  const [magnifierSize, setMagnifierSize] = useState(150);
+  const [magnifierZoom, setMagnifierZoom] = useState(2.5);
 
   // Bounding box annotation states
   const [annotationMode, setAnnotationMode] = useState(false);
@@ -1209,24 +1219,20 @@ function AnalysisModal({
                   </Button>
                 </>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setViewMode(
-                    viewMode === "side-by-side" ? "slider" : "side-by-side"
-                  )
-                }
-              >
-                {viewMode === "side-by-side"
-                  ? "Slider Compare"
-                  : "Side by Side"}
-              </Button>
             </div>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 overflow-y-auto max-h-[calc(90vh-120px)]">
+        {/* View Mode Tabs */}
+        <Tabs value={viewMode} onValueChange={(value: any) => setViewMode(value)} className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="side-by-side">Side by Side</TabsTrigger>
+            <TabsTrigger value="slider">Slider</TabsTrigger>
+            <TabsTrigger value="magnifier">Magnifier</TabsTrigger>
+            <TabsTrigger value="zoom">Zoom & Pan</TabsTrigger>
+          </TabsList>
+
+        <div className="space-y-4 overflow-y-auto max-h-[calc(90vh-180px)] mt-4">
           {/* Annotation Mode Info Banner */}
           {annotationMode && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
@@ -1259,7 +1265,7 @@ function AnalysisModal({
 
           {analysisResult && thermalImage && (
             <>
-              {viewMode === "side-by-side" ? (
+              <TabsContent value="side-by-side" className="mt-0">
                 <div className="grid grid-cols-2 gap-4">
                   {/* Thermal Image */}
                   <div className="space-y-2">
@@ -1459,69 +1465,8 @@ function AnalysisModal({
                         />
                       )}
 
-                      {!annotationMode &&
-                        hoveredImage === "thermal" &&
-                        imageSize.width > 0 && (
-                          <>
-                            <div
-                              className="absolute pointer-events-none shadow-lg z-10 rounded-lg overflow-hidden"
-                              style={{
-                                left: Math.max(
-                                  10,
-                                  Math.min(
-                                    mousePosition.x - 75,
-                                    containerSize.width - 160
-                                  )
-                                ),
-                                top: Math.max(
-                                  10,
-                                  Math.min(
-                                    mousePosition.y - 75,
-                                    containerSize.height - 160
-                                  )
-                                ),
-                                width: 150,
-                                height: 150,
-                                backgroundImage: `url(${thermalImage})`,
-                                backgroundPosition: `${imagePosition.x}% ${imagePosition.y}%`,
-                                backgroundSize: `${imageSize.width * 3}px ${
-                                  imageSize.height * 3
-                                }px`,
-                                backgroundRepeat: "no-repeat",
-                                backgroundColor: "white",
-                                border: "3px solid #3b82f6",
-                                boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
-                              }}
-                            />
-                            <div
-                              className="absolute pointer-events-none bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium z-20"
-                              style={{
-                                left: Math.max(
-                                  10,
-                                  Math.min(
-                                    mousePosition.x - 20,
-                                    containerSize.width - 70
-                                  )
-                                ),
-                                top: Math.max(
-                                  165,
-                                  Math.min(
-                                    mousePosition.y + 80,
-                                    containerSize.height - 40
-                                  )
-                                ),
-                              }}
-                            >
-                              3x Zoom
-                            </div>
-                          </>
-                        )}
                       <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium">
                         Original
-                      </div>
-                      {/* Magnification hint */}
-                      <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                        🔍 Hover to zoom
                       </div>
                     </div>
                   </div>
@@ -1740,75 +1685,16 @@ function AnalysisModal({
                         />
                       )}
 
-                      {!annotationMode &&
-                        hoveredImage === "result" &&
-                        imageSize.width > 0 && (
-                          <>
-                            <div
-                              className="absolute pointer-events-none shadow-lg z-10 rounded-lg overflow-hidden"
-                              style={{
-                                left: Math.max(
-                                  10,
-                                  Math.min(
-                                    mousePosition.x - 75,
-                                    containerSize.width - 160
-                                  )
-                                ),
-                                top: Math.max(
-                                  10,
-                                  Math.min(
-                                    mousePosition.y - 75,
-                                    containerSize.height - 160
-                                  )
-                                ),
-                                width: 150,
-                                height: 150,
-                                backgroundImage: `url(${thermalImage})`,
-                                backgroundPosition: `${imagePosition.x}% ${imagePosition.y}%`,
-                                backgroundSize: `${imageSize.width * 3}px ${
-                                  imageSize.height * 3
-                                }px`,
-                                backgroundRepeat: "no-repeat",
-                                backgroundColor: "white",
-                                border: "3px solid #10b981",
-                                boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
-                              }}
-                            />
-                            <div
-                              className="absolute pointer-events-none bg-green-600 text-white px-2 py-1 rounded text-xs font-medium z-20"
-                              style={{
-                                left: Math.max(
-                                  10,
-                                  Math.min(
-                                    mousePosition.x - 20,
-                                    containerSize.width - 70
-                                  )
-                                ),
-                                top: Math.max(
-                                  165,
-                                  Math.min(
-                                    mousePosition.y + 80,
-                                    containerSize.height - 40
-                                  )
-                                ),
-                              }}
-                            >
-                              3x Zoom
-                            </div>
-                          </>
-                        )}
                       <div className="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-xs font-medium">
                         Result
-                      </div>
-                      {/* Magnification hint */}
-                      <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                        🔍 Hover to zoom
                       </div>
                     </div>
                   </div>
                 </div>
-              ) : (
-                /* Slider Comparison View */
+              </TabsContent>
+              
+              <TabsContent value="slider" className="mt-0">
+                {/* Slider Comparison View */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-lg">
                     <label className="text-sm font-medium whitespace-nowrap">
@@ -1854,6 +1740,12 @@ function AnalysisModal({
                         const imageHeight = img.naturalHeight;
                         const displayWidth = img.offsetWidth;
                         const displayHeight = img.offsetHeight;
+                        
+                        // Get image's actual position within the centered container
+                        const imgRect = img.getBoundingClientRect();
+                        const containerRect = img.parentElement?.getBoundingClientRect();
+                        const offsetX = containerRect ? imgRect.left - containerRect.left : 0;
+                        const offsetY = containerRect ? imgRect.top - containerRect.top : 0;
 
                         return analysisData.parsedAnalysisJson.anomalies
                           .filter(
@@ -1888,8 +1780,8 @@ function AnalysisModal({
                                 key={`slider-anomaly-${anomaly.id}-${index}`}
                                 className="absolute border-2 pointer-events-none"
                                 style={{
-                                  left: `${displayX}px`,
-                                  top: `${displayY}px`,
+                                  left: `${offsetX + displayX}px`,
+                                  top: `${offsetY + displayY}px`,
                                   width: `${displayW}px`,
                                   height: `${displayH}px`,
                                   borderColor: borderColor,
@@ -1947,7 +1839,312 @@ function AnalysisModal({
                     </div>
                   </div>
                 </div>
-              )}
+              </TabsContent>
+
+              <TabsContent value="magnifier" className="mt-0">
+                {/* Magnifier Comparison View - Separate tab, not in annotation mode */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-lg">
+                    <label className="text-sm font-medium">Magnifier Size:</label>
+                    <Slider
+                      value={[magnifierSize]}
+                      onValueChange={(value) => setMagnifierSize(value[0])}
+                      min={100}
+                      max={300}
+                      step={10}
+                      className="flex-1 max-w-xs"
+                    />
+                    <span className="text-sm text-muted-foreground">{magnifierSize}px</span>
+                    <label className="text-sm font-medium ml-4">Zoom:</label>
+                    <Slider
+                      value={[magnifierZoom]}
+                      onValueChange={(value) => setMagnifierZoom(value[0])}
+                      min={1.5}
+                      max={5}
+                      step={0.5}
+                      className="flex-1 max-w-xs"
+                    />
+                    <span className="text-sm text-muted-foreground">{magnifierZoom}x</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Thermal Image with Bounding Boxes */}
+                    <div className="space-y-2">
+                      <h3 className="font-medium text-center">Thermal Image (with annotations)</h3>
+                      <div 
+                        className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px]"
+                        onMouseMove={handleMouseMove}
+                        onMouseEnter={() => setHoveredImage("thermal")}
+                        onMouseLeave={() => setHoveredImage(null)}
+                      >
+                        <img
+                          src={thermalImage}
+                          alt="Thermal Image"
+                          className="max-w-full max-h-[500px] object-contain"
+                          id="magnifier-thermal-img"
+                        />
+                        
+                        {/* Render bounding boxes */}
+                        {boundingBoxes
+                          .filter((box) => box.imageType === "thermal")
+                          .map((box, index) => {
+                            const left = Math.min(box.startX, box.endX);
+                            const top = Math.min(box.startY, box.endY);
+                            const width = Math.abs(box.endX - box.startX);
+                            const height = Math.abs(box.endY - box.startY);
+
+                            return (
+                              <div
+                                key={box.id}
+                                className="absolute border-2 pointer-events-none"
+                                style={{
+                                  left: `${left}%`,
+                                  top: `${top}%`,
+                                  width: `${width}%`,
+                                  height: `${height}%`,
+                                  borderColor: box.anomalyState === "Faulty"
+                                    ? "#ef4444"
+                                    : box.anomalyState === "Potentially Faulty"
+                                    ? "#f97316"
+                                    : "#10b981",
+                                  backgroundColor: box.anomalyState === "Faulty"
+                                    ? "rgba(239, 68, 68, 0.1)"
+                                    : box.anomalyState === "Potentially Faulty"
+                                    ? "rgba(249, 115, 22, 0.1)"
+                                    : "rgba(16, 185, 129, 0.1)",
+                                }}
+                              >
+                                <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
+                                  {box.anomalyState} ({box.confidenceScore}%)
+                                </div>
+                              </div>
+                            );
+                          })}
+                        
+                        {/* Magnifier overlay */}
+                        {hoveredImage === "thermal" && imageSize.width > 0 && (
+                          <div
+                            className="absolute border-2 border-blue-500 rounded-full pointer-events-none shadow-lg"
+                            style={{
+                              width: `${magnifierSize}px`,
+                              height: `${magnifierSize}px`,
+                              left: `${mousePosition.x - magnifierSize / 2}px`,
+                              top: `${mousePosition.y - magnifierSize / 2}px`,
+                              backgroundImage: `url(${thermalImage})`,
+                              backgroundPosition: `${imagePosition.x}% ${imagePosition.y}%`,
+                              backgroundSize: `${imageSize.width * magnifierZoom}px ${imageSize.height * magnifierZoom}px`,
+                              backgroundRepeat: "no-repeat",
+                              backgroundColor: "white",
+                            }}
+                          />
+                        )}
+                        
+                        <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                          🔍 Hover to magnify {magnifierZoom}x
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Analysis Result Image */}
+                    <div className="space-y-2">
+                      <h3 className="font-medium text-center">Analysis Result</h3>
+                      <div 
+                        className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px]"
+                        onMouseMove={handleMouseMove}
+                        onMouseEnter={() => setHoveredImage("result")}
+                        onMouseLeave={() => setHoveredImage(null)}
+                      >
+                        <img
+                          src={analysisResult}
+                          alt="Analysis Result"
+                          className="max-w-full max-h-[500px] object-contain"
+                        />
+                        
+                        {/* Magnifier overlay */}
+                        {hoveredImage === "result" && imageSize.width > 0 && (
+                          <div
+                            className="absolute border-2 border-green-500 rounded-full pointer-events-none shadow-lg"
+                            style={{
+                              width: `${magnifierSize}px`,
+                              height: `${magnifierSize}px`,
+                              left: `${mousePosition.x - magnifierSize / 2}px`,
+                              top: `${mousePosition.y - magnifierSize / 2}px`,
+                              backgroundImage: `url(${analysisResult})`,
+                              backgroundPosition: `${imagePosition.x}% ${imagePosition.y}%`,
+                              backgroundSize: `${imageSize.width * magnifierZoom}px ${imageSize.height * magnifierZoom}px`,
+                              backgroundRepeat: "no-repeat",
+                              backgroundColor: "white",
+                            }}
+                          />
+                        )}
+                        
+                        <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                          🔍 Hover to magnify {magnifierZoom}x
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="zoom" className="mt-0">
+                {/* Zoom & Pan View */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-lg">
+                    <label className="text-sm font-medium">Zoom:</label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setZoomLevel(Math.max(1, zoomLevel - 0.25))}
+                    >
+                      -
+                    </Button>
+                    <Slider
+                      value={[zoomLevel]}
+                      onValueChange={(value) => setZoomLevel(value[0])}
+                      min={1}
+                      max={5}
+                      step={0.25}
+                      className="flex-1 max-w-xs"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setZoomLevel(Math.min(5, zoomLevel + 0.25))}
+                    >
+                      +
+                    </Button>
+                    <span className="text-sm text-muted-foreground font-mono">{zoomLevel.toFixed(2)}x</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setZoomLevel(1);
+                        setPanOffset({ x: 0, y: 0 });
+                      }}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Thermal Image with Bounding Boxes */}
+                    <div className="space-y-2">
+                      <h3 className="font-medium text-center">Thermal Image (with annotations)</h3>
+                      <div
+                        className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px] select-none"
+                        style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
+                        onMouseDown={(e) => {
+                          setIsPanning(true);
+                          setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+                        }}
+                        onMouseMove={(e) => {
+                          if (isPanning) {
+                            setPanOffset({
+                              x: e.clientX - panStart.x,
+                              y: e.clientY - panStart.y,
+                            });
+                          }
+                        }}
+                        onMouseUp={() => setIsPanning(false)}
+                        onMouseLeave={() => setIsPanning(false)}
+                      >
+                        <div
+                          className="relative"
+                          style={{
+                            transform: `scale(${zoomLevel}) translate(${panOffset.x / zoomLevel}px, ${panOffset.y / zoomLevel}px)`,
+                            transformOrigin: 'center center',
+                            transition: isPanning ? 'none' : 'transform 0.1s ease-out',
+                          }}
+                        >
+                          <img
+                            src={thermalImage}
+                            alt="Thermal Image"
+                            className="max-w-full max-h-[500px] object-contain pointer-events-none"
+                            draggable={false}
+                          />
+                          
+                          {/* Render bounding boxes */}
+                          {boundingBoxes
+                            .filter((box) => box.imageType === "thermal")
+                            .map((box) => {
+                              const left = Math.min(box.startX, box.endX);
+                              const top = Math.min(box.startY, box.endY);
+                              const width = Math.abs(box.endX - box.startX);
+                              const height = Math.abs(box.endY - box.startY);
+
+                              return (
+                                <div
+                                  key={box.id}
+                                  className="absolute border-2 pointer-events-none"
+                                  style={{
+                                    left: `${left}%`,
+                                    top: `${top}%`,
+                                    width: `${width}%`,
+                                    height: `${height}%`,
+                                    borderColor: box.anomalyState === "Faulty"
+                                      ? "#ef4444"
+                                      : box.anomalyState === "Potentially Faulty"
+                                      ? "#f97316"
+                                      : "#10b981",
+                                    backgroundColor: box.anomalyState === "Faulty"
+                                      ? "rgba(239, 68, 68, 0.1)"
+                                      : box.anomalyState === "Potentially Faulty"
+                                      ? "rgba(249, 115, 22, 0.1)"
+                                      : "rgba(16, 185, 129, 0.1)",
+                                  }}
+                                >
+                                  <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
+                                    {box.anomalyState} ({box.confidenceScore}%)
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Analysis Result Image */}
+                    <div className="space-y-2">
+                      <h3 className="font-medium text-center">Analysis Result</h3>
+                      <div
+                        className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px] select-none"
+                        style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
+                        onMouseDown={(e) => {
+                          setIsPanning(true);
+                          setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+                        }}
+                        onMouseMove={(e) => {
+                          if (isPanning) {
+                            setPanOffset({
+                              x: e.clientX - panStart.x,
+                              y: e.clientY - panStart.y,
+                            });
+                          }
+                        }}
+                        onMouseUp={() => setIsPanning(false)}
+                        onMouseLeave={() => setIsPanning(false)}
+                      >
+                        <img
+                          src={analysisResult}
+                          alt="Analysis Result"
+                          className="max-w-full max-h-[500px] object-contain pointer-events-none"
+                          draggable={false}
+                          style={{
+                            transform: `scale(${zoomLevel}) translate(${panOffset.x / zoomLevel}px, ${panOffset.y / zoomLevel}px)`,
+                            transformOrigin: 'center center',
+                            transition: isPanning ? 'none' : 'transform 0.1s ease-out',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                    <p className="font-medium mb-1">💡 Tip:</p>
+                    <p>Click and drag to pan the images. Use the slider or +/- buttons to zoom in/out.</p>
+                  </div>
+                </div>
+              </TabsContent>
 
               {/* Usage Instructions */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 mt-4">
@@ -1960,15 +2157,11 @@ function AnalysisModal({
                   </span>
                 </div>
                 <ul className="list-disc list-inside space-y-1 ml-6">
-                  <li>Hover over images to activate 2x magnification zoom</li>
-                  <li>Use "Side by Side" view for detailed comparison</li>
-                  <li>
-                    Use "Slider Compare" view to overlay images with adjustable
-                    slider
-                  </li>
-                  <li>
-                    Click "View Full Size" buttons to open images in new tabs
-                  </li>
+                  <li>Use "Side by Side" tab for annotation and detailed comparison</li>
+                  <li>Use "Slider" tab to overlay images with adjustable slider</li>
+                  <li>Use "Magnifier" tab for detailed inspection with adjustable magnification</li>
+                  <li>Use "Zoom & Pan" tab to zoom in and navigate both images simultaneously</li>
+                  <li>Click "View Full Size" buttons to open images in new tabs</li>
                 </ul>
               </div>
 
@@ -2099,6 +2292,7 @@ function AnalysisModal({
             </>
           )}
         </div>
+        </Tabs>
       </DialogContent>
 
       {/* Metadata Form Dialog */}
@@ -3708,7 +3902,7 @@ export default function InspectionDetail() {
                           {analysisData?.parsedAnalysisJson?.anomalies && (
                             <div className="space-y-3 mb-6">
                               <h4 className="font-semibold text-lg">
-                                AI Detected Anomalies
+                                Detected Anomalies
                               </h4>
                               <div className="space-y-2">
                                 {analysisData.parsedAnalysisJson.anomalies.map(
