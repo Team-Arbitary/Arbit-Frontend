@@ -15,13 +15,14 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="system" storageKey="Arbit V1-theme">
+    <ThemeProvider defaultTheme="dark" storageKey="Arbit V1-theme" forcedTheme="dark">
       <TooltipProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Vision />} />
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/vision" element={<Vision />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/transformer/:id" element={<TransformerDetail />} />
             <Route path="/inspection/:id" element={<InspectionDetail />} />
