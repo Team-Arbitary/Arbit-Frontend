@@ -4110,18 +4110,21 @@ export default function InspectionDetail() {
                                 {analysisData.parsedAnalysisJson.anomalies.map(
                                   (anomaly: any, index: number) => {
                                     // Determine styling based on severity
-                                    let bgColor = "bg-green-500/10 backdrop-blur-sm0/10 backdrop-blur-sm";
+                                    let bgColor =
+                                      "bg-green-500/10 backdrop-blur-sm0/10 backdrop-blur-sm";
                                     let borderColor = "border-green-400";
                                     let statusColor = "text-green-400";
 
                                     if (anomaly.severity_level === "HIGH") {
-                                      bgColor = "bg-red-500/10 backdrop-blur-sm0/10 backdrop-blur-sm";
+                                      bgColor =
+                                        "bg-red-500/10 backdrop-blur-sm0/10 backdrop-blur-sm";
                                       borderColor = "border-red-500";
                                       statusColor = "text-red-400";
                                     } else if (
                                       anomaly.severity_level === "MEDIUM"
                                     ) {
-                                      bgColor = "bg-orange-500/10 backdrop-blur-sm0/10 backdrop-blur-sm";
+                                      bgColor =
+                                        "bg-orange-500/10 backdrop-blur-sm0/10 backdrop-blur-sm";
                                       borderColor = "border-orange-400";
                                       statusColor = "text-orange-400";
                                     }
@@ -4249,7 +4252,8 @@ export default function InspectionDetail() {
                                   .filter((box) => !box.isDeleted)
                                   .map((box) => {
                                     // Determine background color based on status
-                                    let bgColor = "bg-black/20 backdrop-blur-sm text-white"; // Unconfirmed AI (white)
+                                    let bgColor =
+                                      "bg-black/20 backdrop-blur-sm text-white"; // Unconfirmed AI (white)
                                     let borderColor = "border-gray-300";
                                     let statusLabel =
                                       "Unconfirmed AI Detection";
@@ -4257,7 +4261,8 @@ export default function InspectionDetail() {
 
                                     if (box.source === "ai-rejected") {
                                       // AI box marked as false by user (light yellow)
-                                      bgColor = "bg-yellow-500/10 backdrop-blur-sm0/10 backdrop-blur-sm";
+                                      bgColor =
+                                        "bg-yellow-500/10 backdrop-blur-sm0/10 backdrop-blur-sm";
                                       borderColor = "border-yellow-400";
                                       statusLabel =
                                         "AI Detection - Rejected by User";
@@ -4268,7 +4273,8 @@ export default function InspectionDetail() {
                                         "not confirmed by the user"
                                     ) {
                                       // User-confirmed or manually added (light green)
-                                      bgColor = "bg-green-500/10 backdrop-blur-sm0/10 backdrop-blur-sm";
+                                      bgColor =
+                                        "bg-green-500/10 backdrop-blur-sm0/10 backdrop-blur-sm";
                                       borderColor = "border-green-400";
                                       statusLabel =
                                         box.source === "manual"
@@ -4632,7 +4638,8 @@ export default function InspectionDetail() {
                         case "completed":
                           return {
                             icon: "✓",
-                            bgColor: "bg-green-500/10 backdrop-blur-sm0/10 backdrop-blur-sm0",
+                            bgColor:
+                              "bg-green-500/10 backdrop-blur-sm0/10 backdrop-blur-sm0",
                             textColor: "text-white",
                           };
                         case "in-progress":
@@ -4650,7 +4657,8 @@ export default function InspectionDetail() {
                         case "waiting":
                           return {
                             icon: "⋯",
-                            bgColor: "bg-yellow-500/10 backdrop-blur-sm0/10 backdrop-blur-sm0",
+                            bgColor:
+                              "bg-yellow-500/10 backdrop-blur-sm0/10 backdrop-blur-sm0",
                             textColor: "text-white",
                           };
                         case "not-ready":
