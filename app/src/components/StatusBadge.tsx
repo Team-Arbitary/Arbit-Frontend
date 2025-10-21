@@ -2,7 +2,13 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface StatusBadgeProps {
-  status: "Not started" | "Not Started" | "in-progress" | "pending" | "completed" | "Completed";
+  status:
+    | "Not started"
+    | "Not Started"
+    | "in-progress"
+    | "pending"
+    | "completed"
+    | "Completed";
   className?: string;
 }
 
@@ -28,7 +34,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       label: "Completed",
       className: "bg-green-500/20 text-green-300 border border-green-500/30",
     },
-    "Completed": {
+    Completed: {
       label: "Completed",
       className: "bg-green-500/20 text-green-300 border border-green-500/30",
     },
@@ -39,15 +45,18 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
   // Fallback if status is not found in config
   if (!config) {
     return (
-      <Badge className={cn("bg-gray-500/20 text-gray-300 border border-gray-500/30", className)}>
+      <Badge
+        className={cn(
+          "bg-gray-500/20 text-gray-300 border border-gray-500/30",
+          className
+        )}
+      >
         {status}
       </Badge>
     );
   }
 
   return (
-    <Badge className={cn(config.className, className)}>
-      {config.label}
-    </Badge>
+    <Badge className={cn(config.className, className)}>{config.label}</Badge>
   );
 }
