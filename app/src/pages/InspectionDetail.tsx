@@ -187,21 +187,41 @@ function AnalysisModal({
   // Use ref to track if we've already initialized to prevent re-adding AI boxes
   const hasInitialized = useRef(false);
 
+  // Reset initialization when modal opens
   useEffect(() => {
-    // Start with initial annotations (manual ones)
+    if (isOpen) {
+      hasInitialized.current = false;
+      setBoundingBoxes([]); // Clear existing boxes when modal opens
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    // Only run initialization when modal opens
+    if (!isOpen || hasInitialized.current) return;
+
+    // Start with initial annotations (should be empty for fresh start)
     let allBoxes = [...initialAnnotations];
 
-    // Convert AI-detected anomalies to bounding box format (only once)
-    if (
-      analysisData?.parsedAnalysisJson?.anomalies &&
-      !hasInitialized.current
-    ) {
+    // Convert AI-detected anomalies to bounding box format
+    if (analysisData?.parsedAnalysisJson?.anomalies) {
       const img = document.querySelector(
         "#modal-analysis-img"
       ) as HTMLImageElement;
       if (img && img.naturalWidth > 0) {
         const imageWidth = img.naturalWidth;
         const imageHeight = img.naturalHeight;
+
+        // Find the highest existing box number to continue incrementing
+        const existingBoxNumbers = boundingBoxes
+          .map((box) => {
+            const match = box.id.match(/^(?:box-|ai-box-)?(\d+)$/);
+            return match ? parseInt(match[1], 10) : 0;
+          })
+          .filter((num) => !isNaN(num));
+        
+        let nextBoxId = existingBoxNumbers.length > 0 
+          ? Math.max(...existingBoxNumbers) + 1 
+          : 1;
 
         const aiBoxes: BoundingBox[] = analysisData.parsedAnalysisJson.anomalies
           .filter((anomaly: any) => anomaly.bbox && Array.isArray(anomaly.bbox))
@@ -224,9 +244,13 @@ function AnalysisModal({
               | "Normal" = "Normal";
 
             // Get severity level from either format
-            const severityLevel = anomaly.severity_level || 
-              (anomaly.anomalyState === "Faulty" ? "HIGH" :
-               anomaly.anomalyState === "Potentially Faulty" ? "MEDIUM" : "LOW");
+            const severityLevel =
+              anomaly.severity_level ||
+              (anomaly.anomalyState === "Faulty"
+                ? "HIGH"
+                : anomaly.anomalyState === "Potentially Faulty"
+                ? "MEDIUM"
+                : "LOW");
 
             if (severityLevel === "HIGH") {
               anomalyState = "Faulty";
@@ -254,19 +278,21 @@ function AnalysisModal({
             }
 
             // Get confidence score from either format
-            const confidenceScore = anomaly.confidenceScore || 
+            const confidenceScore =
+              anomaly.confidenceScore ||
               Math.round((anomaly.confidence || 1) * 100);
 
             // Get description from either format
-            const description = anomaly.description || 
-              anomaly.reasoning || 
+            const description =
+              anomaly.description ||
+              anomaly.reasoning ||
               `${anomalyState} anomaly detected - ${riskType}`;
 
-            // Use stable ID based on anomaly.id from API
-            const stableId = `ai-box-${anomaly.id}`;
+            // Use incremental ID for consistency
+            const boxId = nextBoxId++;
 
             const box: BoundingBox = {
-              id: stableId,
+              id: `${boxId}`,
               startX: startXPercent,
               startY: startYPercent,
               endX: endXPercent,
@@ -294,13 +320,10 @@ function AnalysisModal({
 
         allBoxes = [...allBoxes, ...aiBoxes];
         hasInitialized.current = true;
+        setBoundingBoxes(allBoxes);
       }
     }
-
-    if (allBoxes.length > 0 || initialAnnotations.length === 0) {
-      setBoundingBoxes(allBoxes);
-    }
-  }, [initialAnnotations, analysisData]);
+  }, [initialAnnotations, analysisData, isOpen]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const container = e.currentTarget;
@@ -362,9 +385,20 @@ function AnalysisModal({
     const y = ((e.clientY - imgRect.top) / imgRect.height) * 100;
 
     if (!isDrawing) {
-      // Start drawing
+      // Start drawing - generate incremental ID
+      const existingBoxNumbers = boundingBoxes
+        .map((box) => {
+          const match = box.id.match(/^(\d+)$/);
+          return match ? parseInt(match[1], 10) : 0;
+        })
+        .filter((num) => !isNaN(num));
+      
+      const nextId = existingBoxNumbers.length > 0 
+        ? Math.max(...existingBoxNumbers) + 1 
+        : 1;
+
       const newBox: Partial<BoundingBox> = {
-        id: `box-${Date.now()}`,
+        id: `${nextId}`,
         startX: x,
         startY: y,
         endX: x,
@@ -718,37 +752,47 @@ function AnalysisModal({
           const img = document.querySelector(
             "#modal-analysis-img"
           ) as HTMLImageElement;
-          
+
           let pixelBbox: [number, number, number, number];
-          
+
           if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
             // Convert percentages to pixel coordinates
             const imageWidth = img.naturalWidth;
             const imageHeight = img.naturalHeight;
-            
+
             const startXPixels = (box.startX / 100) * imageWidth;
             const startYPixels = (box.startY / 100) * imageHeight;
             const endXPixels = (box.endX / 100) * imageWidth;
             const endYPixels = (box.endY / 100) * imageHeight;
-            
+
             const x = Math.min(startXPixels, endXPixels);
             const y = Math.min(startYPixels, endYPixels);
             const w = Math.abs(endXPixels - startXPixels);
             const h = Math.abs(endYPixels - startYPixels);
-            
-            pixelBbox = [Math.round(x), Math.round(y), Math.round(w), Math.round(h)];
+
+            pixelBbox = [
+              Math.round(x),
+              Math.round(y),
+              Math.round(w),
+              Math.round(h),
+            ];
           } else {
             // Fallback: treat current values as percentages and estimate pixel coords
             // This is a safety measure if image is not loaded
             const estimatedWidth = 640; // Default assumed width
             const estimatedHeight = 480; // Default assumed height
-            
+
             const x = (Math.min(box.startX, box.endX) / 100) * estimatedWidth;
             const y = (Math.min(box.startY, box.endY) / 100) * estimatedHeight;
             const w = (Math.abs(box.endX - box.startX) / 100) * estimatedWidth;
             const h = (Math.abs(box.endY - box.startY) / 100) * estimatedHeight;
-            
-            pixelBbox = [Math.round(x), Math.round(y), Math.round(w), Math.round(h)];
+
+            pixelBbox = [
+              Math.round(x),
+              Math.round(y),
+              Math.round(w),
+              Math.round(h),
+            ];
           }
 
           // Map anomaly state to severity level
@@ -794,7 +838,10 @@ function AnalysisModal({
           return {
             id: getBackendId(box.id),
             bbox: pixelBbox,
-            center: [pixelBbox[0] + pixelBbox[2] / 2, pixelBbox[1] + pixelBbox[3] / 2],
+            center: [
+              pixelBbox[0] + pixelBbox[2] / 2,
+              pixelBbox[1] + pixelBbox[3] / 2,
+            ],
             area: pixelBbox[2] * pixelBbox[3],
             anomalyState: box.anomalyState,
             confidenceScore: box.confidenceScore,
@@ -1104,22 +1151,17 @@ function AnalysisModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) {
-        // When modal is closing, discard unsaved annotations
-        // Keep only annotations that have serverSynced=true or are from initialAnnotations
-        const savedAnnotations = boundingBoxes.filter(
-          box => box.serverSynced || initialAnnotations.some(initial => initial.id === box.id)
-        );
-        
-        // If any annotations were discarded, reset the state
-        if (savedAnnotations.length !== boundingBoxes.length) {
-          setBoundingBoxes(savedAnnotations);
-          console.log(`Discarded ${boundingBoxes.length - savedAnnotations.length} unsaved annotations on modal close`);
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          // When modal closes without saving, annotations are discarded
+          // They will be regenerated fresh from API response next time
+          console.log("Modal closed - unsaved annotations will be discarded");
         }
-      }
-      onClose();
-    }}>
+        onClose();
+      }}
+    >
       <DialogContent className="max-w-6xl w-full max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
@@ -1960,65 +2002,71 @@ function AnalysisModal({
                       <div>
                         <span className="text-gray-600">Anomalies:</span>
                         <div className="font-medium text-red-600">
-                          {analysisData.parsedAnalysisJson.summary.total_anomalies || 0} found
+                          {analysisData.parsedAnalysisJson.summary
+                            .total_anomalies || 0}{" "}
+                          found
                         </div>
                       </div>
                     )}
                     {/* Fallback for direct anomalies array */}
-                    {!analysisData?.parsedAnalysisJson?.summary && 
-                     analysisData?.parsedAnalysisJson?.anomalies && (
-                      <div>
-                        <span className="text-gray-600">Anomalies:</span>
-                        <div className="font-medium text-red-600">
-                          {analysisData.parsedAnalysisJson.anomalies.length} found
+                    {!analysisData?.parsedAnalysisJson?.summary &&
+                      analysisData?.parsedAnalysisJson?.anomalies && (
+                        <div>
+                          <span className="text-gray-600">Anomalies:</span>
+                          <div className="font-medium text-red-600">
+                            {analysisData.parsedAnalysisJson.anomalies.length}{" "}
+                            found
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                   </div>
 
                   {/* Anomaly Details - Using normalized data */}
-                  {analysisData?.parsedAnalysisJson?.anomalies && 
-                   analysisData.parsedAnalysisJson.anomalies.length > 0 && (
-                    <div className="mt-4">
-                      <h4 className="font-medium mb-2">
-                        Detected Anomalies:
-                      </h4>
-                      <div className="space-y-2">
-                        {analysisData.parsedAnalysisJson.anomalies.map(
-                          (anomaly: any, index: number) => (
-                            <div
-                              key={`anomaly-${anomaly.id || index}`}
-                              className="bg-white p-3 rounded border-l-4 border-red-500"
-                            >
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <span className="font-medium text-red-600">
-                                    {anomaly.severity_level || "UNKNOWN"} Severity
-                                  </span>
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    {anomaly.reasoning || anomaly.description || "No description available"}
-                                  </p>
-                                </div>
-                                <div className="text-right text-sm">
+                  {analysisData?.parsedAnalysisJson?.anomalies &&
+                    analysisData.parsedAnalysisJson.anomalies.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="font-medium mb-2">
+                          Detected Anomalies:
+                        </h4>
+                        <div className="space-y-2">
+                          {analysisData.parsedAnalysisJson.anomalies.map(
+                            (anomaly: any, index: number) => (
+                              <div
+                                key={`anomaly-${anomaly.id || index}`}
+                                className="bg-white p-3 rounded border-l-4 border-red-500"
+                              >
+                                <div className="flex justify-between items-start">
                                   <div>
-                                    Confidence:{" "}
-                                    {anomaly.confidence 
-                                      ? (anomaly.confidence * 100).toFixed(1)
-                                      : anomaly.confidenceScore || "N/A"
-                                    }%
+                                    <span className="font-medium text-red-600">
+                                      {anomaly.severity_level || "UNKNOWN"}{" "}
+                                      Severity
+                                    </span>
+                                    <p className="text-sm text-gray-600 mt-1">
+                                      {anomaly.reasoning ||
+                                        anomaly.description ||
+                                        "No description available"}
+                                    </p>
                                   </div>
-                                  <div>
-                                    Area:{" "}
-                                    {anomaly.area?.toLocaleString() || "N/A"}
+                                  <div className="text-right text-sm">
+                                    <div>
+                                      Confidence:{" "}
+                                      {anomaly.confidence
+                                        ? (anomaly.confidence * 100).toFixed(1)
+                                        : anomaly.confidenceScore || "N/A"}
+                                      %
+                                    </div>
+                                    <div>
+                                      Area:{" "}
+                                      {anomaly.area?.toLocaleString() || "N/A"}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          )
-                        )}
+                            )
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </div>
               )}
 
@@ -2723,30 +2771,42 @@ export default function InspectionDetail() {
                 let anomalies: any[] = [];
                 let summary: any = null;
                 let status: string = "success";
-                let formatType: "array" | "object" | "single" | "unknown" = "unknown";
+                let formatType: "array" | "object" | "single" | "unknown" =
+                  "unknown";
 
                 // Format 1: Direct array of anomalies (like inspection 76)
                 if (Array.isArray(jsonData)) {
                   console.log("Format 1: Direct array of anomalies detected");
                   anomalies = jsonData;
                   formatType = "array";
-                  
+
                   // Create summary from array data
                   summary = {
                     total_anomalies: anomalies.length,
-                    severity_distribution: anomalies.reduce((acc: any, anomaly: any) => {
-                      const level = anomaly.severity_level || "UNKNOWN";
-                      acc[level] = (acc[level] || 0) + 1;
-                      return acc;
-                    }, {}),
-                    average_confidence: anomalies.length > 0 
-                      ? anomalies.reduce((sum: number, a: any) => sum + (a.confidence || 0), 0) / anomalies.length 
-                      : 0,
-                    detection_quality: "HIGH"
+                    severity_distribution: anomalies.reduce(
+                      (acc: any, anomaly: any) => {
+                        const level = anomaly.severity_level || "UNKNOWN";
+                        acc[level] = (acc[level] || 0) + 1;
+                        return acc;
+                      },
+                      {}
+                    ),
+                    average_confidence:
+                      anomalies.length > 0
+                        ? anomalies.reduce(
+                            (sum: number, a: any) => sum + (a.confidence || 0),
+                            0
+                          ) / anomalies.length
+                        : 0,
+                    detection_quality: "HIGH",
                   };
                 }
                 // Format 2: Object with anomalies array and summary (like inspection 72)
-                else if (jsonData && typeof jsonData === 'object' && jsonData.anomalies) {
+                else if (
+                  jsonData &&
+                  typeof jsonData === "object" &&
+                  jsonData.anomalies
+                ) {
                   console.log("Format 2: Object with anomalies array detected");
                   anomalies = jsonData.anomalies || [];
                   summary = jsonData.summary || null;
@@ -2754,36 +2814,55 @@ export default function InspectionDetail() {
                   formatType = "object";
                 }
                 // Format 3: Single anomaly object (fallback)
-                else if (jsonData && typeof jsonData === 'object' && jsonData.bbox) {
+                else if (
+                  jsonData &&
+                  typeof jsonData === "object" &&
+                  jsonData.bbox
+                ) {
                   console.log("Format 3: Single anomaly object detected");
                   anomalies = [jsonData];
                   summary = { total_anomalies: 1 };
                   formatType = "single";
-                }
-                else {
+                } else {
                   console.warn("Unknown analysis data format:", jsonData);
-                  return { anomalies: [], summary: null, status: "unknown", formatType: "unknown" };
+                  return {
+                    anomalies: [],
+                    summary: null,
+                    status: "unknown",
+                    formatType: "unknown",
+                  };
                 }
 
                 return { anomalies, summary, status, formatType };
               };
 
               const parsedData = parseAnalysisData(analysisJson);
-              
+
               console.log("Analysis format detection:");
-              console.log("- Original data type:", Array.isArray(analysisJson) ? "Array" : "Object");
+              console.log(
+                "- Original data type:",
+                Array.isArray(analysisJson) ? "Array" : "Object"
+              );
               console.log("- Format type:", parsedData.formatType);
-              console.log("- Detected anomalies count:", parsedData.anomalies.length);
+              console.log(
+                "- Detected anomalies count:",
+                parsedData.anomalies.length
+              );
               console.log("- Has summary:", !!parsedData.summary);
-              console.log("- Sample anomaly fields:", parsedData.anomalies[0] ? Object.keys(parsedData.anomalies[0]) : "None");
-              
+              console.log(
+                "- Sample anomaly fields:",
+                parsedData.anomalies[0]
+                  ? Object.keys(parsedData.anomalies[0])
+                  : "None"
+              );
+
               // Store the normalized analysis JSON for later use
               setAnalysisData({
                 ...data,
                 parsedAnalysisJson: {
                   ...parsedData,
                   original: analysisJson, // Keep original for reference
-                  format: Array.isArray(analysisJson) ? "array" : "object"
+                  format: Array.isArray(analysisJson) ? "array" : "object",
                 },
               });
 
@@ -2800,7 +2879,7 @@ export default function InspectionDetail() {
                   anomalies: [],
                   summary: null,
                   status: "error",
-                  error: parseError
+                  error: parseError,
                 },
               });
             }
@@ -3275,9 +3354,8 @@ export default function InspectionDetail() {
                     <CardTitle className="flex items-center justify-between">
                       <span>Thermal Image Comparison</span>
                       <div className="flex gap-2">
-                        {/* Analyze Button - Show when not yet completed */}
-                        {inspection.status !== "Completed" &&
-                          inspection.status !== "completed" && (
+                        {/* Analyze Button - Always show */}
+                        {baselineImage && thermalImage && (
                             <Button
                               onClick={handleAnalyze}
                               disabled={isAnalyzing}
@@ -3821,6 +3899,8 @@ export default function InspectionDetail() {
                                                     ? "border-yellow-500 text-yellow-700"
                                                     : box.source === "manual"
                                                     ? "border-green-500 text-green-700"
+                                                    : box.source === "ai-modified"
+                                                    ? "border-blue-500 text-blue-700"
                                                     : box.confirmedBy !==
                                                       "not confirmed by the user"
                                                     ? "border-green-500 text-green-700"
@@ -3829,6 +3909,8 @@ export default function InspectionDetail() {
                                               >
                                                 {box.source === "manual"
                                                   ? "Manual"
+                                                  : box.source === "ai-modified"
+                                                  ? "Adjusted"
                                                   : "AI"}
                                               </Badge>
                                               {box.annotationType && (
@@ -4240,7 +4322,7 @@ export default function InspectionDetail() {
         analysisResult={analysisResult}
         inspection={inspection}
         analysisData={analysisData}
-        initialAnnotations={cachedAnnotations}
+        initialAnnotations={[]}
         onAnalysisDataUpdate={setAnalysisData}
       />
     </Layout>
