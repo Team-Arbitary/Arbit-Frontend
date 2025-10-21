@@ -218,10 +218,11 @@ function AnalysisModal({
             return match ? parseInt(match[1], 10) : 0;
           })
           .filter((num) => !isNaN(num));
-        
-        let nextBoxId = existingBoxNumbers.length > 0 
-          ? Math.max(...existingBoxNumbers) + 1 
-          : 1;
+
+        let nextBoxId =
+          existingBoxNumbers.length > 0
+            ? Math.max(...existingBoxNumbers) + 1
+            : 1;
 
         const aiBoxes: BoundingBox[] = analysisData.parsedAnalysisJson.anomalies
           .filter((anomaly: any) => anomaly.bbox && Array.isArray(anomaly.bbox))
@@ -392,10 +393,9 @@ function AnalysisModal({
           return match ? parseInt(match[1], 10) : 0;
         })
         .filter((num) => !isNaN(num));
-      
-      const nextId = existingBoxNumbers.length > 0 
-        ? Math.max(...existingBoxNumbers) + 1 
-        : 1;
+
+      const nextId =
+        existingBoxNumbers.length > 0 ? Math.max(...existingBoxNumbers) + 1 : 1;
 
       const newBox: Partial<BoundingBox> = {
         id: `${nextId}`,
@@ -3356,24 +3356,24 @@ export default function InspectionDetail() {
                       <div className="flex gap-2">
                         {/* Analyze Button - Always show */}
                         {baselineImage && thermalImage && (
-                            <Button
-                              onClick={handleAnalyze}
-                              disabled={isAnalyzing}
-                              size="sm"
-                            >
-                              {isAnalyzing ? (
-                                <>
-                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                                  Analyzing...
-                                </>
-                              ) : (
-                                <>
-                                  <ZoomIn className="h-4 w-4 mr-2" />
-                                  Analyze Images
-                                </>
-                              )}
-                            </Button>
-                          )}
+                          <Button
+                            onClick={handleAnalyze}
+                            disabled={isAnalyzing}
+                            size="sm"
+                          >
+                            {isAnalyzing ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                                Analyzing...
+                              </>
+                            ) : (
+                              <>
+                                <ZoomIn className="h-4 w-4 mr-2" />
+                                Analyze Images
+                              </>
+                            )}
+                          </Button>
+                        )}
                       </div>
                     </CardTitle>
                   </CardHeader>
@@ -3899,7 +3899,8 @@ export default function InspectionDetail() {
                                                     ? "border-yellow-500 text-yellow-700"
                                                     : box.source === "manual"
                                                     ? "border-green-500 text-green-700"
-                                                    : box.source === "ai-modified"
+                                                    : box.source ===
+                                                      "ai-modified"
                                                     ? "border-blue-500 text-blue-700"
                                                     : box.confirmedBy !==
                                                       "not confirmed by the user"
