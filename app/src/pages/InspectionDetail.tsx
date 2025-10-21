@@ -1185,7 +1185,7 @@ function AnalysisModal({
                 Image Analysis Comparison - Inspection #{inspection.id}
               </span>
               {analysisData && (
-                <div className="text-sm font-normal text-gray-600 mt-1">
+                <div className="text-sm font-normal text-gray-300 mt-1">
                   Analysis completed on{" "}
                   {new Date(analysisData.analysisDate).toLocaleString()}
                 </div>
@@ -1244,7 +1244,7 @@ function AnalysisModal({
           <div className="space-y-4 overflow-y-auto max-h-[calc(90vh-180px)] mt-4">
             {/* Annotation Mode Info Banner */}
             {annotationMode && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+              <div className="bg-blue-500/10 border border-blue-500/30 backdrop-blur-sm rounded-lg p-3 text-sm">
                 <div className="flex items-start gap-2">
                   <Square className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div>
@@ -1282,7 +1282,7 @@ function AnalysisModal({
                         Thermal Image (Original)
                       </h3>
                       <div
-                        className={`relative bg-gray-100 rounded-lg overflow-hidden group border-2 transition-colors flex items-center justify-center min-h-[300px] ${
+                        className={`relative bg-black/20 backdrop-blur-sm rounded-lg overflow-hidden group border-2 transition-colors flex items-center justify-center min-h-[300px] ${
                           annotationMode
                             ? "cursor-crosshair border-blue-500 hover:border-blue-600"
                             : "cursor-crosshair border-gray-200 hover:border-blue-400"
@@ -1487,7 +1487,7 @@ function AnalysisModal({
                         Analysis Result
                       </h3>
                       <div
-                        className={`relative bg-gray-100 rounded-lg overflow-hidden group border-2 transition-colors flex items-center justify-center min-h-[300px] ${
+                        className={`relative bg-black/20 backdrop-blur-sm rounded-lg overflow-hidden group border-2 transition-colors flex items-center justify-center min-h-[300px] ${
                           annotationMode
                             ? "cursor-crosshair border-green-500 hover:border-green-600"
                             : "cursor-crosshair border-gray-200 hover:border-green-400"
@@ -1677,7 +1677,7 @@ function AnalysisModal({
                         {/* Render current drawing box */}
                         {currentBox && currentBox.imageType === "result" && (
                           <div
-                            className="absolute border-2 border-dashed border-green-500 bg-green-500/20 pointer-events-none"
+                            className="absolute border-2 border-dashed border-green-500 bg-green-500/10 backdrop-blur-sm0/20 pointer-events-none"
                             style={{
                               left: `${Math.min(
                                 currentBox.startX!,
@@ -1709,7 +1709,7 @@ function AnalysisModal({
                 <TabsContent value="slider" className="mt-0">
                   {/* Slider Comparison View */}
                   <div className="space-y-4">
-                    <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-lg">
+                    <div className="flex items-center gap-4 bg-black/10 backdrop-blur-sm p-3 rounded-lg">
                       <label className="text-sm font-medium whitespace-nowrap">
                         Comparison Slider:
                       </label>
@@ -1728,7 +1728,7 @@ function AnalysisModal({
                     </div>
 
                     <div
-                      className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 cursor-col-resize flex items-center justify-center min-h-[400px]"
+                      className="relative bg-black/20 backdrop-blur-sm rounded-lg overflow-hidden border-2 border-gray-200 cursor-col-resize flex items-center justify-center min-h-[400px]"
                       onClick={handleSliderClick}
                       onMouseDown={() => setIsDragging(true)}
                       onMouseUp={() => setIsDragging(false)}
@@ -1866,7 +1866,7 @@ function AnalysisModal({
                 <TabsContent value="magnifier" className="mt-0">
                   {/* Magnifier Comparison View - Separate tab, not in annotation mode */}
                   <div className="space-y-4">
-                    <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-lg">
+                    <div className="flex items-center gap-4 bg-black/10 backdrop-blur-sm p-3 rounded-lg">
                       <label className="text-sm font-medium">
                         Magnifier Size:
                       </label>
@@ -1902,7 +1902,7 @@ function AnalysisModal({
                           Thermal Image
                         </h3>
                         <div
-                          className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px]"
+                          className="relative bg-black/20 backdrop-blur-sm rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px]"
                           onMouseMove={handleMouseMove}
                           onMouseEnter={() => setHoveredImage("thermal")}
                           onMouseLeave={() => setHoveredImage(null)}
@@ -1992,7 +1992,7 @@ function AnalysisModal({
                           Analysis Result (with annotations)
                         </h3>
                         <div
-                          className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px]"
+                          className="relative bg-black/20 backdrop-blur-sm rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px]"
                           onMouseMove={handleMouseMove}
                           onMouseEnter={() => setHoveredImage("result")}
                           onMouseLeave={() => setHoveredImage(null)}
@@ -2081,7 +2081,7 @@ function AnalysisModal({
                 <TabsContent value="zoom" className="mt-0">
                   {/* Zoom & Pan View */}
                   <div className="space-y-4">
-                    <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-lg">
+                    <div className="flex items-center gap-4 bg-black/10 backdrop-blur-sm p-3 rounded-lg">
                       <label className="text-sm font-medium">Zoom:</label>
                       <Button
                         variant="outline"
@@ -2131,7 +2131,7 @@ function AnalysisModal({
                           Thermal Image
                         </h3>
                         <div
-                          className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px] select-none"
+                          className="relative bg-black/20 backdrop-blur-sm rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px] select-none"
                           style={{ cursor: isPanning ? "grabbing" : "grab" }}
                           onMouseDown={(e) => {
                             setIsPanning(true);
@@ -2221,7 +2221,7 @@ function AnalysisModal({
                           Analysis Result (with annotations)
                         </h3>
                         <div
-                          className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px] select-none"
+                          className="relative bg-black/20 backdrop-blur-sm rounded-lg overflow-hidden border-2 border-gray-200 flex items-center justify-center min-h-[400px] select-none"
                           style={{ cursor: isPanning ? "grabbing" : "grab" }}
                           onMouseDown={(e) => {
                             setIsPanning(true);
@@ -2318,7 +2318,7 @@ function AnalysisModal({
                         </div>
                       </div>
                     </div>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                    <div className="bg-blue-500/10 border border-blue-500/30 backdrop-blur-sm rounded-lg p-3 text-sm text-blue-300">
                       <p className="font-medium mb-1">💡 Tip:</p>
                       <p>
                         Click and drag to pan the images. Use the slider or +/-
@@ -2329,7 +2329,7 @@ function AnalysisModal({
                 </TabsContent>
 
                 {/* Usage Instructions */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 mt-4">
+                <div className="bg-blue-500/10 border border-blue-500/30 backdrop-blur-sm rounded-lg p-3 text-sm text-blue-300 mt-4">
                   <div className="flex items-center gap-2 mb-1">
                     <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
                       <span className="text-white text-xs">i</span>
@@ -2362,17 +2362,17 @@ function AnalysisModal({
 
                 {/* Analysis Summary */}
                 {analysisData && (
-                  <div className="bg-gray-50 p-4 rounded-lg border">
+                  <div className="bg-black/10 backdrop-blur-sm p-4 rounded-lg border">
                     <h3 className="font-medium mb-3">Analysis Summary</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div>
-                        <span className="text-gray-600">Status:</span>
+                        <span className="text-gray-300">Status:</span>
                         <div className="font-medium text-green-600">
                           {analysisData.analysisStatus}
                         </div>
                       </div>
                       <div>
-                        <span className="text-gray-600">Date:</span>
+                        <span className="text-gray-300">Date:</span>
                         <div className="font-medium">
                           {new Date(
                             analysisData.analysisDate
@@ -2380,7 +2380,7 @@ function AnalysisModal({
                         </div>
                       </div>
                       <div>
-                        <span className="text-gray-600">Processing Time:</span>
+                        <span className="text-gray-300">Processing Time:</span>
                         <div className="font-medium">
                           {analysisData.processingTimeMs}ms
                         </div>
@@ -2388,7 +2388,7 @@ function AnalysisModal({
                       {/* Anomalies count from normalized data */}
                       {analysisData?.parsedAnalysisJson?.summary && (
                         <div>
-                          <span className="text-gray-600">Anomalies:</span>
+                          <span className="text-gray-300">Anomalies:</span>
                           <div className="font-medium text-red-600">
                             {analysisData.parsedAnalysisJson.summary
                               .total_anomalies || 0}{" "}
@@ -2400,7 +2400,7 @@ function AnalysisModal({
                       {!analysisData?.parsedAnalysisJson?.summary &&
                         analysisData?.parsedAnalysisJson?.anomalies && (
                           <div>
-                            <span className="text-gray-600">Anomalies:</span>
+                            <span className="text-gray-300">Anomalies:</span>
                             <div className="font-medium text-red-600">
                               {analysisData.parsedAnalysisJson.anomalies.length}{" "}
                               found
@@ -2429,7 +2429,7 @@ function AnalysisModal({
                                         {anomaly.severity_level || "UNKNOWN"}{" "}
                                         Severity
                                       </span>
-                                      <p className="text-sm text-gray-600 mt-1">
+                                      <p className="text-sm text-gray-300 mt-1">
                                         {anomaly.reasoning ||
                                           anomaly.description ||
                                           "No description available"}
@@ -2462,7 +2462,7 @@ function AnalysisModal({
                 )}
 
                 {/* Enhanced Action buttons */}
-                <div className="flex justify-between items-center pt-4 border-t bg-gray-50 p-4 rounded-lg">
+                <div className="flex justify-between items-center pt-4 border-t bg-black/10 backdrop-blur-sm p-4 rounded-lg">
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
@@ -3689,7 +3689,7 @@ export default function InspectionDetail() {
           !analyzeError &&
           inspection.status !== "Completed" &&
           inspection.status !== "completed" && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-blue-500/10 border border-blue-500/30 backdrop-blur-sm rounded-lg p-4">
               <div className="flex items-start gap-3">
                 <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-white text-xs font-bold">i</span>
@@ -3698,7 +3698,7 @@ export default function InspectionDetail() {
                   <h4 className="font-medium text-blue-900 mb-1">
                     Ready for Analysis
                   </h4>
-                  <p className="text-sm text-blue-800">
+                  <p className="text-sm text-blue-300">
                     Both thermal and baseline images are uploaded. Click
                     "Analyze Images" to start the AI analysis and detect
                     anomalies.
@@ -4062,16 +4062,16 @@ export default function InspectionDetail() {
                         <div className="max-h-[400px] overflow-y-auto space-y-4">
                           {/* Analysis Metadata */}
                           {analysisData && (
-                            <div className="bg-gray-50 p-4 rounded-lg border">
+                            <div className="bg-black/10 backdrop-blur-sm p-4 rounded-lg border">
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-2">
                                 <div>
-                                  <span className="text-gray-600">Status:</span>
+                                  <span className="text-gray-300">Status:</span>
                                   <div className="font-medium text-green-600">
                                     {analysisData.analysisStatus}
                                   </div>
                                 </div>
                                 <div>
-                                  <span className="text-gray-600">
+                                  <span className="text-gray-300">
                                     Analysis Date:
                                   </span>
                                   <div className="font-medium">
@@ -4081,7 +4081,7 @@ export default function InspectionDetail() {
                                   </div>
                                 </div>
                                 <div>
-                                  <span className="text-gray-600">
+                                  <span className="text-gray-300">
                                     Processing Time:
                                   </span>
                                   <div className="font-medium">
@@ -4089,7 +4089,7 @@ export default function InspectionDetail() {
                                   </div>
                                 </div>
                                 <div>
-                                  <span className="text-gray-600">
+                                  <span className="text-gray-300">
                                     Annotations:
                                   </span>
                                   <div className="font-medium text-blue-600">
@@ -4110,20 +4110,20 @@ export default function InspectionDetail() {
                                 {analysisData.parsedAnalysisJson.anomalies.map(
                                   (anomaly: any, index: number) => {
                                     // Determine styling based on severity
-                                    let bgColor = "bg-green-50";
+                                    let bgColor = "bg-green-500/10 backdrop-blur-sm";
                                     let borderColor = "border-green-400";
-                                    let statusColor = "text-green-700";
+                                    let statusColor = "text-green-400";
 
                                     if (anomaly.severity_level === "HIGH") {
-                                      bgColor = "bg-red-50";
+                                      bgColor = "bg-red-500/10 backdrop-blur-sm";
                                       borderColor = "border-red-500";
-                                      statusColor = "text-red-700";
+                                      statusColor = "text-red-400";
                                     } else if (
                                       anomaly.severity_level === "MEDIUM"
                                     ) {
-                                      bgColor = "bg-orange-50";
+                                      bgColor = "bg-orange-500/10 backdrop-blur-sm";
                                       borderColor = "border-orange-400";
-                                      statusColor = "text-orange-700";
+                                      statusColor = "text-orange-400";
                                     }
 
                                     return (
@@ -4143,20 +4143,20 @@ export default function InspectionDetail() {
                                               </span>
                                               <Badge
                                                 variant="outline"
-                                                className="text-xs border-blue-500 text-blue-700"
+                                                className="text-xs border-blue-500 text-blue-400"
                                               >
                                                 AI Detected
                                               </Badge>
                                             </div>
-                                            <p className="text-sm text-gray-700 mb-1">
+                                            <p className="text-sm text-gray-200 mb-1">
                                               <strong>Type:</strong>{" "}
                                               {anomaly.type}
                                             </p>
-                                            <p className="text-sm text-gray-600">
+                                            <p className="text-sm text-gray-300">
                                               {anomaly.reasoning}
                                             </p>
                                           </div>
-                                          <div className="text-xs text-gray-600 text-right">
+                                          <div className="text-xs text-gray-300 text-right">
                                             <div className="font-semibold mb-1">
                                               Confidence:{" "}
                                               {Math.round(
@@ -4249,32 +4249,32 @@ export default function InspectionDetail() {
                                   .filter((box) => !box.isDeleted)
                                   .map((box) => {
                                     // Determine background color based on status
-                                    let bgColor = "bg-white"; // Unconfirmed AI (white)
+                                    let bgColor = "bg-black/20 backdrop-blur-sm text-white"; // Unconfirmed AI (white)
                                     let borderColor = "border-gray-300";
                                     let statusLabel =
                                       "Unconfirmed AI Detection";
-                                    let statusColor = "text-gray-600";
+                                    let statusColor = "text-gray-300";
 
                                     if (box.source === "ai-rejected") {
                                       // AI box marked as false by user (light yellow)
-                                      bgColor = "bg-yellow-50";
+                                      bgColor = "bg-yellow-500/10 backdrop-blur-sm";
                                       borderColor = "border-yellow-400";
                                       statusLabel =
                                         "AI Detection - Rejected by User";
-                                      statusColor = "text-yellow-700";
+                                      statusColor = "text-yellow-400";
                                     } else if (
                                       box.source === "manual" ||
                                       box.confirmedBy !==
                                         "not confirmed by the user"
                                     ) {
                                       // User-confirmed or manually added (light green)
-                                      bgColor = "bg-green-50";
+                                      bgColor = "bg-green-500/10 backdrop-blur-sm";
                                       borderColor = "border-green-400";
                                       statusLabel =
                                         box.source === "manual"
                                           ? "Manually Added"
                                           : "Confirmed by User";
-                                      statusColor = "text-green-700";
+                                      statusColor = "text-green-400";
                                     }
 
                                     return (
@@ -4285,23 +4285,23 @@ export default function InspectionDetail() {
                                         <div className="flex justify-between items-start mb-2">
                                           <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-1">
-                                              <span className="font-semibold text-gray-900">
+                                              <span className="font-semibold text-white">
                                                 {box.anomalyState}
                                               </span>
                                               <Badge
                                                 variant="outline"
                                                 className={`text-xs ${
                                                   box.source === "ai-rejected"
-                                                    ? "border-yellow-500 text-yellow-700"
+                                                    ? "border-yellow-500 text-yellow-400"
                                                     : box.source === "manual"
-                                                    ? "border-green-500 text-green-700"
+                                                    ? "border-green-500 text-green-400"
                                                     : box.source ===
                                                       "ai-modified"
-                                                    ? "border-blue-500 text-blue-700"
+                                                    ? "border-blue-500 text-blue-400"
                                                     : box.confirmedBy !==
                                                       "not confirmed by the user"
-                                                    ? "border-green-500 text-green-700"
-                                                    : "border-gray-400 text-gray-600"
+                                                    ? "border-green-500 text-green-400"
+                                                    : "border-gray-400 text-gray-300"
                                                 }`}
                                               >
                                                 {box.source === "manual"
@@ -4319,14 +4319,14 @@ export default function InspectionDetail() {
                                                 </Badge>
                                               )}
                                             </div>
-                                            <p className="text-sm text-gray-700">
+                                            <p className="text-sm text-gray-200">
                                               Risk: {box.riskType}
                                               {box.description &&
                                                 ` • ${box.description}`}
                                             </p>
                                           </div>
                                           <div className="flex flex-col items-end gap-2">
-                                            <div className="text-xs text-gray-600 text-right">
+                                            <div className="text-xs text-gray-300 text-right">
                                               <div>
                                                 Confidence:{" "}
                                                 {box.confidenceScore}%
@@ -4342,7 +4342,7 @@ export default function InspectionDetail() {
                                                 <div
                                                   className={`w-2 h-2 rounded-full ${
                                                     box.serverSynced
-                                                      ? "bg-green-500"
+                                                      ? "bg-green-500/10 backdrop-blur-sm0"
                                                       : "bg-gray-400"
                                                   }`}
                                                   title={
@@ -4443,7 +4443,7 @@ export default function InspectionDetail() {
                                               <span className="font-medium">
                                                 Notes:
                                               </span>
-                                              <p className="text-gray-600 mt-1">
+                                              <p className="text-gray-300 mt-1">
                                                 {box.description}
                                               </p>
                                             </div>
@@ -4454,7 +4454,7 @@ export default function InspectionDetail() {
                                   })}
                               </div>
                             ) : (
-                              <div className="text-center py-8 text-muted-foreground bg-gray-50 rounded-lg border">
+                              <div className="text-center py-8 text-muted-foreground bg-black/10 backdrop-blur-sm rounded-lg border">
                                 <p>No bounding box annotations yet.</p>
                                 <p className="text-sm mt-1">
                                   Use the Anomaly Annotation Tool to add
@@ -4480,7 +4480,7 @@ export default function InspectionDetail() {
                       </CardHeader>
                       <CardContent>
                         {/* Chat Messages - Reverse order (newest on top) - Fixed height with scroll */}
-                        <div className="border rounded-lg bg-gray-50 h-[280px] overflow-y-auto flex flex-col-reverse p-4 space-y-reverse space-y-3 mb-3">
+                        <div className="border rounded-lg bg-black/10 backdrop-blur-sm h-[280px] overflow-y-auto flex flex-col-reverse p-4 space-y-reverse space-y-3 mb-3">
                           {chatMessages.length === 0 ? (
                             <div className="text-center text-muted-foreground text-sm py-8">
                               <Bot className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -4503,7 +4503,7 @@ export default function InspectionDetail() {
                                   className={`max-w-[80%] rounded-lg px-4 py-2 ${
                                     msg.role === "user"
                                       ? "bg-primary text-primary-foreground"
-                                      : "bg-white border"
+                                      : "bg-black/20 backdrop-blur-sm border border-white/10 text-white"
                                   }`}
                                 >
                                   <p className="text-sm">{msg.content}</p>
@@ -4632,7 +4632,7 @@ export default function InspectionDetail() {
                         case "completed":
                           return {
                             icon: "✓",
-                            bgColor: "bg-green-500",
+                            bgColor: "bg-green-500/10 backdrop-blur-sm0",
                             textColor: "text-white",
                           };
                         case "in-progress":
@@ -4645,12 +4645,12 @@ export default function InspectionDetail() {
                           return {
                             icon: "✓",
                             bgColor: "bg-green-100",
-                            textColor: "text-green-700",
+                            textColor: "text-green-400",
                           };
                         case "waiting":
                           return {
                             icon: "⋯",
-                            bgColor: "bg-yellow-500",
+                            bgColor: "bg-yellow-500/10 backdrop-blur-sm0",
                             textColor: "text-white",
                           };
                         case "not-ready":
@@ -4658,7 +4658,7 @@ export default function InspectionDetail() {
                           return {
                             icon: "○",
                             bgColor: "bg-gray-300",
-                            textColor: "text-gray-600",
+                            textColor: "text-gray-300",
                           };
                       }
                     };
