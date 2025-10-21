@@ -40,7 +40,7 @@ export const API_ENDPOINTS = {
   ANALYSIS_ANALYZE: (inspectionNo: string) =>
     `${API_BASE_URL}/transformer-thermal-inspection/image-analysis/analyze/${inspectionNo}`,
   ANALYSIS_UPDATE_ANNOTATIONS: (inspectionNo: string, transformerNo: string) =>
-    `${API_BASE_URL}/api/v1/image-analysis/result/${inspectionNo}/${transformerNo}`,
+    `${API_BASE_URL}/api/v1/image-analysis/result/update/${inspectionNo}/${transformerNo}`,
 } as const;
 
 /**
