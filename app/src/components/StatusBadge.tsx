@@ -10,27 +10,27 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
   const statusConfig = {
     "Not started": {
       label: "Not Started",
-      className: "bg-muted text-muted-foreground",
+      className: "bg-gray-500/20 text-gray-300 border border-gray-500/30",
     },
     "Not Started": {
       label: "Not Started",
-      className: "bg-muted text-muted-foreground",
+      className: "bg-gray-500/20 text-gray-300 border border-gray-500/30",
     },
     "in-progress": {
       label: "In Progress",
-      className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+      className: "bg-blue-500/20 text-blue-300 border border-blue-500/30",
     },
     pending: {
       label: "Pending",
-      className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+      className: "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30",
     },
     completed: {
       label: "Completed",
-      className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+      className: "bg-green-500/20 text-green-300 border border-green-500/30",
     },
     "Completed": {
       label: "Completed",
-      className: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+      className: "bg-green-500/20 text-green-300 border border-green-500/30",
     },
   };
 
@@ -39,7 +39,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
   // Fallback if status is not found in config
   if (!config) {
     return (
-      <Badge className={cn("bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300", className)}>
+      <Badge className={cn("bg-gray-500/20 text-gray-300 border border-gray-500/30", className)}>
         {status}
       </Badge>
     );
