@@ -502,7 +502,9 @@ export default function Dashboard() {
           onValueChange={(val) => setSearchParams({ tab: val })}
           className="w-full"
         >
+
           <div className="flex items-center justify-between backdrop-blur-xl bg-card/50 border border-border/50 rounded-2xl p-4">
+
             <TabsList className="grid w-fit grid-cols-3 bg-black/40 backdrop-blur-sm border border-white/10">
               <TabsTrigger
                 value="overview"
@@ -525,14 +527,18 @@ export default function Dashboard() {
             </TabsList>
             <div className="flex items-center gap-2">
               {loading && (
+
                 <span className="text-xs text-muted-foreground">Loading…</span>
+
               )}
               {error && <span className="text-xs text-red-400">{error}</span>}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={refresh}
+
                 className="backdrop-blur-sm bg-secondary/50 border-border text-foreground hover:bg-secondary"
+
               >
                 Refresh
               </Button>
@@ -542,25 +548,30 @@ export default function Dashboard() {
           {/* OVERVIEW TAB - Analytics Dashboard */}
           <TabsContent value="overview" className="space-y-6 mt-6">
             {/* Header */}
+
             <div className="backdrop-blur-xl bg-card/80 border border-border/50 rounded-2xl p-6">
               <h1 className="text-3xl font-bold text-foreground mb-2">
                 Analytics Overview
               </h1>
               <p className="text-muted-foreground">
+
                 Real-time insights into transformer health and inspection status
               </p>
             </div>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
               <Card className="backdrop-blur-xl bg-card/80 border border-border/50 hover:border-orange-500/50 transition-all">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
+
                     Total Transformers
                   </CardTitle>
                   <ThermometerSun className="h-5 w-5 text-orange-500" />
                 </CardHeader>
                 <CardContent>
+
                   <div className="text-3xl font-bold text-foreground">
                     {transformers.length}
                   </div>
@@ -571,29 +582,36 @@ export default function Dashboard() {
               <Card className="backdrop-blur-xl bg-card/80 border border-border/50 hover:border-orange-500/50 transition-all">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
+
                     Total Inspections
                   </CardTitle>
                   <Activity className="h-5 w-5 text-blue-500" />
                 </CardHeader>
                 <CardContent>
+
                   <div className="text-3xl font-bold text-foreground">
                     {inspections.length}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
+
                     {activeInspectionsCount} in progress
                   </p>
                 </CardContent>
               </Card>
 
+
               <Card className="backdrop-blur-xl bg-card/80 border border-border/50 hover:border-orange-500/50 transition-all">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
+
                     Anomalies Detected
                   </CardTitle>
                   <AlertTriangle className="h-5 w-5 text-red-500" />
                 </CardHeader>
                 <CardContent>
+
                   <div className="text-3xl font-bold text-foreground">
+
                     {totalAnomalies}
                   </div>
                   <p className="text-xs text-red-400 flex items-center mt-1">
@@ -603,15 +621,19 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
+
               <Card className="backdrop-blur-xl bg-card/80 border border-border/50 hover:border-orange-500/50 transition-all">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
+
                     Health Score
                   </CardTitle>
                   <CheckCircle className="h-5 w-5 text-green-500" />
                 </CardHeader>
                 <CardContent>
+
                   <div className="text-3xl font-bold text-foreground">
+
                     {healthScore}
                     {typeof healthScore === "string" && healthScore !== "N/A"
                       ? "%"
@@ -632,7 +654,9 @@ export default function Dashboard() {
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Inspection Trend */}
+
               <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
+
                 <CardHeader>
                   <CardTitle className="text-white">
                     Inspection Trends
@@ -752,7 +776,9 @@ export default function Dashboard() {
             {/* Bottom Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Transformer Status */}
+
               <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
+
                 <CardHeader>
                   <CardTitle className="text-white">
                     Transformer Status
@@ -783,7 +809,9 @@ export default function Dashboard() {
               </Card>
 
               {/* Recent Activity */}
+
               <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
+
                 <CardHeader>
                   <CardTitle className="text-white">Recent Activity</CardTitle>
                 </CardHeader>
@@ -793,7 +821,9 @@ export default function Dashboard() {
                       recentActivity.map((activity) => (
                         <div
                           key={activity.id}
+
                           className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
+
                         >
                           <div className="flex items-center gap-3">
                             <div
@@ -811,7 +841,9 @@ export default function Dashboard() {
                               <p className="text-white font-medium">
                                 {activity.transformer}
                               </p>
+
                               <p className="text-muted-foreground text-sm">
+
                                 {activity.status}
                               </p>
                             </div>
@@ -999,7 +1031,7 @@ export default function Dashboard() {
                 {/* Search and Filter Tools */}
                 <div className="flex items-center gap-4 mb-4">
                   <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
                       placeholder="Search by Inspection ID or Transformer No..."
                       value={inspectionSearchQuery}

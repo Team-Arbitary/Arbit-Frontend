@@ -15,7 +15,9 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+
     <ThemeProvider defaultTheme="dark" storageKey="Arbit V1-theme">
+
       <TooltipProvider>
         <Toaster />
         <Sonner />
