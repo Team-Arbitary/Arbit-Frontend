@@ -6,23 +6,24 @@
 
 @layer base {
   :root {
-    --background: 0 0% 5%;
-    --foreground: 0 0% 98%;
+    /* Light Theme - Clean White & Orange */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%;
 
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
 
     --primary: 24 100% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 24 100% 96%;
+    --secondary-foreground: 24 100% 9%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 65%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
 
     --accent: 24 100% 50%;
     --accent-foreground: 0 0% 100%;
@@ -30,8 +31,8 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
     --ring: 24 100% 50%;
 
     --success: 142 76% 36%;
@@ -45,17 +46,18 @@
 
     --radius: 1rem;
 
-    --sidebar-background: 0 0% 3%;
-    --sidebar-foreground: 0 0% 85%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 9%;
     --sidebar-primary: 24 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 10%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 15%;
+    --sidebar-accent: 24 100% 96%;
+    --sidebar-accent-foreground: 24 100% 9%;
+    --sidebar-border: 0 0% 89.8%;
     --sidebar-ring: 24 100% 50%;
   }
 
   .dark {
+    /* Dark Theme - Black & Orange */
     --background: 0 0% 5%;
     --foreground: 0 0% 98%;
 
@@ -101,8 +103,20 @@
   }
 
   body {
-    @apply bg-black text-foreground;
+    @apply bg-background text-foreground;
+  }
+
+  /* Dark theme gradient background */
+  body.dark,
+  :root.dark body {
     background: linear-gradient(135deg, #000000 0%, #1a0a00 50%, #000000 100%);
+    background-attachment: fixed;
+  }
+
+  /* Light theme gradient background */
+  body:not(.dark),
+  :root:not(.dark) body {
+    background: linear-gradient(135deg, #ffffff 0%, #fff5f0 50%, #ffffff 100%);
     background-attachment: fixed;
   }
 }

@@ -85,23 +85,23 @@ export function Chatbot() {
     <>
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 w-96 h-[500px] backdrop-blur-xl bg-black/60 border border-white/20 rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden">
+        <div className="fixed bottom-24 right-6 w-96 h-[500px] backdrop-blur-xl bg-card/90 border border-border rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-white/10 bg-gradient-to-r from-orange-600/20 to-orange-500/10">
+          <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-orange-600/20 to-orange-500/10">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
                 <MessageCircle className="h-5 w-5 text-white" />
               </div>
               <div>
                 <h3 className="font-semibold text-white">AI Assistant</h3>
-                <p className="text-xs text-gray-400">Always here to help</p>
+                <p className="text-xs text-muted-foreground">Always here to help</p>
               </div>
             </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setIsOpen(false)}
-              className="hover:bg-white/10 text-white"
+              className="hover:bg-secondary text-foreground"
             >
               <X className="h-5 w-5" />
             </Button>
@@ -121,7 +121,7 @@ export function Chatbot() {
                     className={`max-w-[80%] rounded-2xl px-4 py-2 ${
                       message.sender === "user"
                         ? "bg-gradient-to-br from-orange-600 to-orange-500 text-white"
-                        : "backdrop-blur-sm bg-white/10 text-white border border-white/20"
+                        : "backdrop-blur-sm bg-secondary text-foreground border border-border"
                     }`}
                   >
                     <p className="text-sm">{message.text}</p>
@@ -136,7 +136,7 @@ export function Chatbot() {
               ))}
               {isTyping && (
                 <div className="flex justify-start">
-                  <div className="backdrop-blur-sm bg-white/10 text-white border border-white/20 rounded-2xl px-4 py-2">
+                  <div className="backdrop-blur-sm bg-secondary text-foreground border border-border rounded-2xl px-4 py-2">
                     <div className="flex gap-1">
                       <div
                         className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
@@ -158,14 +158,14 @@ export function Chatbot() {
           </ScrollArea>
 
           {/* Input */}
-          <div className="p-4 border-t border-white/10 bg-black/20">
+          <div className="p-4 border-t border-border bg-secondary/50">
             <div className="flex gap-2">
               <Input
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Type your message..."
-                className="flex-1 bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus-visible:ring-orange-500"
+                className="flex-1 bg-input border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-orange-500"
               />
               <Button
                 onClick={handleSend}

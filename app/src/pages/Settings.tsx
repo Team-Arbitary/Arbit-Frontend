@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/ThemeProvider";
 import { User, Mail, Building } from "lucide-react";
 
 export default function Settings() {

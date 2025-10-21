@@ -38,12 +38,12 @@ export function AppSidebar() {
 
   const getNavClassName = (path: string) =>
     isActive(path) 
-      ? "bg-gradient-to-r from-orange-600/20 to-orange-500/20 text-orange-500 font-medium border-l-2 border-orange-500" 
-      : "hover:bg-white/5 text-gray-300";
+      ? "bg-gradient-to-r from-orange-600/20 to-orange-500/20 text-orange-500 dark:text-orange-400 font-medium border-l-2 border-orange-500" 
+      : "hover:bg-white/5 dark:hover:bg-white/5 hover:bg-black/5 text-gray-700 dark:text-gray-300";
 
   return (
-    <Sidebar collapsible="icon" className="[--sidebar-width-icon:60px] backdrop-blur-xl bg-black/60 border-r border-white/10">
-      <SidebarHeader className="p-4 border-b border-white/10">
+    <Sidebar collapsible="icon" className="[--sidebar-width-icon:60px] backdrop-blur-xl bg-white/80 dark:bg-black/60 border-r border-gray-200 dark:border-white/10">
+      <SidebarHeader className="p-4 border-b border-gray-200 dark:border-white/10">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-br from-orange-600 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg">
             <span className="text-white font-bold text-lg">A</span>
@@ -51,7 +51,7 @@ export function AppSidebar() {
           {!isCollapsed && (
             <div>
               <span className="text-xl font-bold bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">Arbit</span>
-              <p className="text-xs text-gray-400">Thermal Analytics</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Thermal Analytics</p>
             </div>
           )}
         </div>
@@ -59,7 +59,7 @@ export function AppSidebar() {
 
       <SidebarContent className="py-4">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-gray-500 text-xs uppercase px-4">Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-gray-500 dark:text-gray-500 text-xs uppercase px-4">Navigation</SidebarGroupLabel>
           <SidebarGroupContent className="mt-2">
             <SidebarMenu className="space-y-1">
               {navItems.map((item) => (
@@ -80,15 +80,15 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-white/10">
+      <SidebarFooter className="p-4 border-t border-gray-200 dark:border-white/10">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-gradient-to-br from-orange-600 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
             <span className="text-sm font-semibold text-white">HG</span>
           </div>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-white truncate">Hasitha Gallella</div>
-              <div className="text-xs text-gray-400 truncate">hasitha@gmail.com</div>
+              <div className="text-sm font-medium text-gray-900 dark:text-white truncate">Hasitha Gallella</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 truncate">hasitha@gmail.com</div>
             </div>
           )}
         </div>

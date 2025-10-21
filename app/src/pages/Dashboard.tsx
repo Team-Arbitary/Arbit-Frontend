@@ -502,7 +502,7 @@ export default function Dashboard() {
           onValueChange={(val) => setSearchParams({ tab: val })}
           className="w-full"
         >
-          <div className="flex items-center justify-between backdrop-blur-xl bg-black/20 border border-white/10 rounded-2xl p-4">
+          <div className="flex items-center justify-between backdrop-blur-xl bg-card/50 border border-border/50 rounded-2xl p-4">
             <TabsList className="grid w-fit grid-cols-3 bg-black/40 backdrop-blur-sm border border-white/10">
               <TabsTrigger
                 value="overview"
@@ -525,14 +525,14 @@ export default function Dashboard() {
             </TabsList>
             <div className="flex items-center gap-2">
               {loading && (
-                <span className="text-xs text-gray-400">Loading…</span>
+                <span className="text-xs text-muted-foreground">Loading…</span>
               )}
               {error && <span className="text-xs text-red-400">{error}</span>}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={refresh}
-                className="backdrop-blur-sm bg-white/5 border-white/20 text-white hover:bg-white/10"
+                className="backdrop-blur-sm bg-secondary/50 border-border text-foreground hover:bg-secondary"
               >
                 Refresh
               </Button>
@@ -542,58 +542,58 @@ export default function Dashboard() {
           {/* OVERVIEW TAB - Analytics Dashboard */}
           <TabsContent value="overview" className="space-y-6 mt-6">
             {/* Header */}
-            <div className="backdrop-blur-xl bg-black/40 border border-white/10 rounded-2xl p-6">
-              <h1 className="text-3xl font-bold text-white mb-2">
+            <div className="backdrop-blur-xl bg-card/80 border border-border/50 rounded-2xl p-6">
+              <h1 className="text-3xl font-bold text-foreground mb-2">
                 Analytics Overview
               </h1>
-              <p className="text-gray-400">
+              <p className="text-muted-foreground">
                 Real-time insights into transformer health and inspection status
               </p>
             </div>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="backdrop-blur-xl bg-black/40 border border-white/10 hover:border-orange-500/50 transition-all">
+              <Card className="backdrop-blur-xl bg-card/80 border border-border/50 hover:border-orange-500/50 transition-all">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
                     Total Transformers
                   </CardTitle>
                   <ThermometerSun className="h-5 w-5 text-orange-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-white">
+                  <div className="text-3xl font-bold text-foreground">
                     {transformers.length}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Active in system</p>
+                  <p className="text-xs text-muted-foreground mt-1">Active in system</p>
                 </CardContent>
               </Card>
 
-              <Card className="backdrop-blur-xl bg-black/40 border border-white/10 hover:border-orange-500/50 transition-all">
+              <Card className="backdrop-blur-xl bg-card/80 border border-border/50 hover:border-orange-500/50 transition-all">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
                     Total Inspections
                   </CardTitle>
                   <Activity className="h-5 w-5 text-blue-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-white">
+                  <div className="text-3xl font-bold text-foreground">
                     {inspections.length}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {activeInspectionsCount} in progress
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="backdrop-blur-xl bg-black/40 border border-white/10 hover:border-orange-500/50 transition-all">
+              <Card className="backdrop-blur-xl bg-card/80 border border-border/50 hover:border-orange-500/50 transition-all">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
                     Anomalies Detected
                   </CardTitle>
                   <AlertTriangle className="h-5 w-5 text-red-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-white">
+                  <div className="text-3xl font-bold text-foreground">
                     {totalAnomalies}
                   </div>
                   <p className="text-xs text-red-400 flex items-center mt-1">
@@ -603,15 +603,15 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="backdrop-blur-xl bg-black/40 border border-white/10 hover:border-orange-500/50 transition-all">
+              <Card className="backdrop-blur-xl bg-card/80 border border-border/50 hover:border-orange-500/50 transition-all">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-400">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
                     Health Score
                   </CardTitle>
                   <CheckCircle className="h-5 w-5 text-green-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-white">
+                  <div className="text-3xl font-bold text-foreground">
                     {healthScore}
                     {typeof healthScore === "string" && healthScore !== "N/A"
                       ? "%"
@@ -632,7 +632,7 @@ export default function Dashboard() {
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Inspection Trend */}
-              <Card className="backdrop-blur-xl bg-black/40 border border-white/10">
+              <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
                 <CardHeader>
                   <CardTitle className="text-white">
                     Inspection Trends
@@ -711,7 +711,7 @@ export default function Dashboard() {
               </Card>
 
               {/* Anomaly Distribution */}
-              <Card className="backdrop-blur-xl bg-black/40 border border-white/10">
+              <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
                 <CardHeader>
                   <CardTitle className="text-white">
                     Anomaly Distribution
@@ -752,7 +752,7 @@ export default function Dashboard() {
             {/* Bottom Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Transformer Status */}
-              <Card className="backdrop-blur-xl bg-black/40 border border-white/10">
+              <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
                 <CardHeader>
                   <CardTitle className="text-white">
                     Transformer Status
@@ -783,7 +783,7 @@ export default function Dashboard() {
               </Card>
 
               {/* Recent Activity */}
-              <Card className="backdrop-blur-xl bg-black/40 border border-white/10">
+              <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
                 <CardHeader>
                   <CardTitle className="text-white">Recent Activity</CardTitle>
                 </CardHeader>
@@ -793,7 +793,7 @@ export default function Dashboard() {
                       recentActivity.map((activity) => (
                         <div
                           key={activity.id}
-                          className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+                          className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
                         >
                           <div className="flex items-center gap-3">
                             <div
@@ -811,18 +811,18 @@ export default function Dashboard() {
                               <p className="text-white font-medium">
                                 {activity.transformer}
                               </p>
-                              <p className="text-gray-400 text-sm">
+                              <p className="text-muted-foreground text-sm">
                                 {activity.status}
                               </p>
                             </div>
                           </div>
-                          <span className="text-gray-500 text-sm">
+                          <span className="text-muted-foreground text-sm">
                             {activity.time}
                           </span>
                         </div>
                       ))
                     ) : (
-                      <p className="text-gray-400 text-center py-8">
+                      <p className="text-muted-foreground text-center py-8">
                         No recent activity
                       </p>
                     )}
@@ -834,10 +834,10 @@ export default function Dashboard() {
 
           {/* TRANSFORMERS TAB */}
           <TabsContent value="transformers" className="space-y-4 mt-6">
-            <Card className="backdrop-blur-xl bg-black/40 border border-white/10">
+            <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-white">
+                  <h2 className="text-xl font-semibold text-foreground">
                     Transformers
                   </h2>
                   <AddTransformerModal
@@ -852,20 +852,20 @@ export default function Dashboard() {
 
                 <div className="flex items-center gap-4 mb-6">
                   <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                     <Input
                       placeholder="Search Transformer"
-                      className="pl-10 bg-white/5 border-white/20 text-white placeholder:text-gray-500"
+                      className="pl-10 bg-secondary/50 border-border text-foreground placeholder:text-muted-foreground"
                     />
                   </div>
                   <Select
                     value={selectedRegion}
                     onValueChange={setSelectedRegion}
                   >
-                    <SelectTrigger className="w-48 bg-white/5 border-white/20 text-white">
+                    <SelectTrigger className="w-48 bg-secondary/50 border-border text-foreground">
                       <SelectValue placeholder="All Regions" />
                     </SelectTrigger>
-                    <SelectContent className="bg-gray-900 border-white/20">
+                    <SelectContent className="bg-gray-900 border-border">
                       <SelectItem value="all-regions">All Regions</SelectItem>
                       {regionOptions.map((r) => (
                         <SelectItem key={r} value={r}>
@@ -875,10 +875,10 @@ export default function Dashboard() {
                     </SelectContent>
                   </Select>
                   <Select value={selectedType} onValueChange={setSelectedType}>
-                    <SelectTrigger className="w-48 bg-white/5 border-white/20 text-white">
+                    <SelectTrigger className="w-48 bg-secondary/50 border-border text-foreground">
                       <SelectValue placeholder="All Types" />
                     </SelectTrigger>
-                    <SelectContent className="bg-gray-900 border-white/20">
+                    <SelectContent className="bg-gray-900 border-border">
                       <SelectItem value="all-types">All Types</SelectItem>
                       {typeOptions.map((t) => (
                         <SelectItem key={t} value={t}>
@@ -893,7 +893,7 @@ export default function Dashboard() {
                       setSelectedRegion("all-regions");
                       setSelectedType("all-types");
                     }}
-                    className="bg-white/5 border-white/20 text-white hover:bg-white/10"
+                    className="bg-secondary/50 border-border text-foreground hover:bg-secondary"
                   >
                     Reset Filters
                   </Button>
@@ -902,29 +902,29 @@ export default function Dashboard() {
                 <div className="rounded-lg border border-white/10 overflow-hidden">
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-white/10 hover:bg-white/5">
-                        <TableHead className="text-gray-400"></TableHead>
-                        <TableHead className="text-gray-400">
+                      <TableRow className="border-white/10 hover:bg-secondary/50">
+                        <TableHead className="text-muted-foreground"></TableHead>
+                        <TableHead className="text-muted-foreground">
                           Transformer No.
                         </TableHead>
-                        <TableHead className="text-gray-400">
+                        <TableHead className="text-muted-foreground">
                           Pole No.
                         </TableHead>
-                        <TableHead className="text-gray-400">Region</TableHead>
-                        <TableHead className="text-gray-400">Type</TableHead>
-                        <TableHead className="text-right text-gray-400"></TableHead>
+                        <TableHead className="text-muted-foreground">Region</TableHead>
+                        <TableHead className="text-muted-foreground">Type</TableHead>
+                        <TableHead className="text-right text-muted-foreground"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {transformers.map((transformer) => (
                         <TableRow
                           key={transformer.id}
-                          className="border-white/10 hover:bg-white/5"
+                          className="border-white/10 hover:bg-secondary/50"
                         >
                           <TableCell>
-                            <Star className="h-4 w-4 text-gray-500" />
+                            <Star className="h-4 w-4 text-muted-foreground" />
                           </TableCell>
-                          <TableCell className="font-medium text-white">
+                          <TableCell className="font-medium text-foreground">
                             {transformer.transformerNo}
                           </TableCell>
                           <TableCell className="text-gray-300">
@@ -942,7 +942,7 @@ export default function Dashboard() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => openEdit(transformer)}
-                                className="bg-white/5 border-white/20 text-white hover:bg-white/10"
+                                className="bg-secondary/50 border-border text-foreground hover:bg-secondary"
                               >
                                 Edit
                               </Button>
@@ -980,10 +980,10 @@ export default function Dashboard() {
 
           {/* INSPECTIONS TAB */}
           <TabsContent value="inspections" className="space-y-4 mt-6">
-            <Card className="backdrop-blur-xl bg-black/40 border border-white/10">
+            <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-white">
+                  <h2 className="text-xl font-semibold text-foreground">
                     All Inspections
                   </h2>
                   <AddInspectionModal
@@ -999,7 +999,7 @@ export default function Dashboard() {
                 {/* Search and Filter Tools */}
                 <div className="flex items-center gap-4 mb-4">
                   <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Search by Inspection ID or Transformer No..."
                       value={inspectionSearchQuery}
@@ -1007,7 +1007,7 @@ export default function Dashboard() {
                         setInspectionSearchQuery(e.target.value);
                         setCurrentInspectionPage(1);
                       }}
-                      className="pl-10 bg-white/5 border-white/20 text-white placeholder:text-gray-500"
+                      className="pl-10 bg-secondary/50 border-border text-foreground placeholder:text-muted-foreground"
                     />
                   </div>
                   <Select
@@ -1017,11 +1017,11 @@ export default function Dashboard() {
                       setCurrentInspectionPage(1);
                     }}
                   >
-                    <SelectTrigger className="w-[180px] bg-white/5 border-white/20 text-white">
+                    <SelectTrigger className="w-[180px] bg-secondary/50 border-border text-foreground">
                       <Filter className="h-4 w-4 mr-2" />
                       <SelectValue placeholder="Filter by status" />
                     </SelectTrigger>
-                    <SelectContent className="bg-gray-900 border-white/20">
+                    <SelectContent className="bg-gray-900 border-border">
                       <SelectItem value="all-statuses">All Statuses</SelectItem>
                       <SelectItem value="completed">Completed</SelectItem>
                       <SelectItem value="in-progress">In Progress</SelectItem>
@@ -1033,21 +1033,21 @@ export default function Dashboard() {
                 <div className="rounded-lg border border-white/10 overflow-hidden">
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-white/10 hover:bg-white/5">
-                        <TableHead className="text-gray-400">
+                      <TableRow className="border-white/10 hover:bg-secondary/50">
+                        <TableHead className="text-muted-foreground">
                           Inspection No
                         </TableHead>
-                        <TableHead className="text-gray-400">
+                        <TableHead className="text-muted-foreground">
                           Transformer No.
                         </TableHead>
-                        <TableHead className="text-gray-400">
+                        <TableHead className="text-muted-foreground">
                           Inspected Date
                         </TableHead>
-                        <TableHead className="text-gray-400">
+                        <TableHead className="text-muted-foreground">
                           Maintenance Date
                         </TableHead>
-                        <TableHead className="text-gray-400">Status</TableHead>
-                        <TableHead className="text-gray-400"></TableHead>
+                        <TableHead className="text-muted-foreground">Status</TableHead>
+                        <TableHead className="text-muted-foreground"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1089,7 +1089,7 @@ export default function Dashboard() {
                             <TableRow>
                               <TableCell
                                 colSpan={6}
-                                className="text-center text-gray-400 py-8"
+                                className="text-center text-muted-foreground py-8"
                               >
                                 No inspections found matching your criteria.
                               </TableCell>
@@ -1100,9 +1100,9 @@ export default function Dashboard() {
                         return paginatedInspections.map((inspection) => (
                           <TableRow
                             key={inspection.id}
-                            className="border-white/10 hover:bg-white/5"
+                            className="border-white/10 hover:bg-secondary/50"
                           >
-                            <TableCell className="font-medium text-white">
+                            <TableCell className="font-medium text-foreground">
                               {inspection.inspectionNo || inspection.id}
                             </TableCell>
                             <TableCell className="text-gray-300">
@@ -1178,7 +1178,7 @@ export default function Dashboard() {
 
                   return (
                     <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
-                      <div className="text-sm text-gray-400">
+                      <div className="text-sm text-muted-foreground">
                         Showing{" "}
                         {(currentInspectionPage - 1) * inspectionsPerPage + 1}{" "}
                         to{" "}
@@ -1194,7 +1194,7 @@ export default function Dashboard() {
                           size="sm"
                           onClick={() => setCurrentInspectionPage(1)}
                           disabled={currentInspectionPage === 1}
-                          className="bg-white/5 border-white/20 text-white hover:bg-white/10 disabled:opacity-50"
+                          className="bg-secondary/50 border-border text-foreground hover:bg-secondary disabled:opacity-50"
                         >
                           First
                         </Button>
@@ -1207,7 +1207,7 @@ export default function Dashboard() {
                             )
                           }
                           disabled={currentInspectionPage === 1}
-                          className="bg-white/5 border-white/20 text-white hover:bg-white/10 disabled:opacity-50"
+                          className="bg-secondary/50 border-border text-foreground hover:bg-secondary disabled:opacity-50"
                         >
                           Previous
                         </Button>
@@ -1244,7 +1244,7 @@ export default function Dashboard() {
                                   className={`w-10 ${
                                     currentInspectionPage === pageNum
                                       ? "bg-gradient-to-r from-orange-600 to-orange-500"
-                                      : "bg-white/5 border-white/20 text-white hover:bg-white/10"
+                                      : "bg-secondary/50 border-border text-foreground hover:bg-secondary"
                                   }`}
                                 >
                                   {pageNum}
@@ -1262,7 +1262,7 @@ export default function Dashboard() {
                             )
                           }
                           disabled={currentInspectionPage === totalPages}
-                          className="bg-white/5 border-white/20 text-white hover:bg-white/10 disabled:opacity-50"
+                          className="bg-secondary/50 border-border text-foreground hover:bg-secondary disabled:opacity-50"
                         >
                           Next
                         </Button>
@@ -1271,7 +1271,7 @@ export default function Dashboard() {
                           size="sm"
                           onClick={() => setCurrentInspectionPage(totalPages)}
                           disabled={currentInspectionPage === totalPages}
-                          className="bg-white/5 border-white/20 text-white hover:bg-white/10 disabled:opacity-50"
+                          className="bg-secondary/50 border-border text-foreground hover:bg-secondary disabled:opacity-50"
                         >
                           Last
                         </Button>
@@ -1291,61 +1291,61 @@ export default function Dashboard() {
       {/* Edit Transformer Modal */}
       {editingTransformer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
-          <div className="backdrop-blur-xl bg-black/80 border border-white/20 rounded-2xl shadow-2xl w-full max-w-lg p-6">
-            <h3 className="text-lg font-semibold mb-4 text-white">
+          <div className="backdrop-blur-xl bg-black/80 border border-border rounded-2xl shadow-2xl w-full max-w-lg p-6">
+            <h3 className="text-lg font-semibold mb-4 text-foreground">
               Edit Transformer
             </h3>
             <form onSubmit={submitEdit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm mb-1 text-gray-400">
+                  <label className="block text-sm mb-1 text-muted-foreground">
                     Transformer No.
                   </label>
                   <Input
                     value={editTransformerNo}
                     onChange={(e) => setEditTransformerNo(e.target.value)}
                     required
-                    className="bg-white/5 border-white/20 text-white"
+                    className="bg-secondary/50 border-border text-foreground"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm mb-1 text-gray-400">
+                  <label className="block text-sm mb-1 text-muted-foreground">
                     Pole No.
                   </label>
                   <Input
                     value={editPoleNo}
                     onChange={(e) => setEditPoleNo(e.target.value)}
-                    className="bg-white/5 border-white/20 text-white"
+                    className="bg-secondary/50 border-border text-foreground"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm mb-1 text-gray-400">
+                  <label className="block text-sm mb-1 text-muted-foreground">
                     Region
                   </label>
                   <Input
                     value={editRegion}
                     onChange={(e) => setEditRegion(e.target.value)}
-                    className="bg-white/5 border-white/20 text-white"
+                    className="bg-secondary/50 border-border text-foreground"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm mb-1 text-gray-400">
+                  <label className="block text-sm mb-1 text-muted-foreground">
                     Type
                   </label>
                   <Input
                     value={editType}
                     onChange={(e) => setEditType(e.target.value)}
-                    className="bg-white/5 border-white/20 text-white"
+                    className="bg-secondary/50 border-border text-foreground"
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm mb-1 text-gray-400">
+                  <label className="block text-sm mb-1 text-muted-foreground">
                     Location
                   </label>
                   <Input
                     value={editLocation}
                     onChange={(e) => setEditLocation(e.target.value)}
-                    className="bg-white/5 border-white/20 text-white"
+                    className="bg-secondary/50 border-border text-foreground"
                   />
                 </div>
               </div>
@@ -1355,7 +1355,7 @@ export default function Dashboard() {
                   type="button"
                   variant="outline"
                   onClick={closeEdit}
-                  className="bg-white/5 border-white/20 text-white hover:bg-white/10"
+                  className="bg-secondary/50 border-border text-foreground hover:bg-secondary"
                 >
                   Cancel
                 </Button>
