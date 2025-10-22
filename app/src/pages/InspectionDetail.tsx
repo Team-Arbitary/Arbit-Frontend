@@ -2380,7 +2380,9 @@ function AnalysisModal({
                         </div>
                       </div>
                       <div>
-                        <span className="text-foreground">Processing Time:</span>
+                        <span className="text-foreground">
+                          Processing Time:
+                        </span>
                         <div className="font-medium">
                           {analysisData.processingTimeMs}ms
                         </div>
@@ -2655,7 +2657,9 @@ export default function InspectionDetail() {
   const [cachedAnnotations, setCachedAnnotations] = useState<BoundingBox[]>([]);
 
   // Confirmed AI anomalies state - stores which anomalies have been confirmed by the user
-  const [confirmedAnomalies, setConfirmedAnomalies] = useState<Set<string | number>>(new Set());
+  const [confirmedAnomalies, setConfirmedAnomalies] = useState<
+    Set<string | number>
+  >(new Set());
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<
@@ -3565,11 +3569,11 @@ export default function InspectionDetail() {
     setConfirmedAnomalies((prev) => {
       const newSet = new Set(prev);
       newSet.add(anomalyId);
-      
+
       // Store in localStorage for persistence
       const storageKey = `confirmed-anomalies-${inspection.id}`;
       localStorage.setItem(storageKey, JSON.stringify(Array.from(newSet)));
-      
+
       return newSet;
     });
 
@@ -4103,7 +4107,9 @@ export default function InspectionDetail() {
                             <div className="bg-secondary/30 backdrop-blur-sm p-4 rounded-lg border">
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-2">
                                 <div>
-                                  <span className="text-foreground">Status:</span>
+                                  <span className="text-foreground">
+                                    Status:
+                                  </span>
                                   <div className="font-medium text-green-600">
                                     {analysisData.analysisStatus}
                                   </div>
@@ -4148,8 +4154,10 @@ export default function InspectionDetail() {
                                 {analysisData.parsedAnalysisJson.anomalies.map(
                                   (anomaly: any, index: number) => {
                                     // Check if this anomaly has been confirmed
-                                    const isConfirmed = confirmedAnomalies.has(anomaly.id);
-                                    
+                                    const isConfirmed = confirmedAnomalies.has(
+                                      anomaly.id
+                                    );
+
                                     // Determine styling based on severity
                                     let bgColor =
                                       "bg-green-500/10 backdrop-blur-sm0/10 backdrop-blur-sm";
@@ -4174,7 +4182,9 @@ export default function InspectionDetail() {
                                       <div
                                         key={`anomaly-${anomaly.id}-${index}`}
                                         className={`${bgColor} p-3 rounded-lg border-l-4 ${borderColor} border ${
-                                          isConfirmed ? 'ring-2 ring-green-500/50' : ''
+                                          isConfirmed
+                                            ? "ring-2 ring-green-500/50"
+                                            : ""
                                         }`}
                                       >
                                         <div className="flex justify-between items-start mb-2">
@@ -4215,7 +4225,8 @@ export default function InspectionDetail() {
                                               <div className="font-semibold mb-1">
                                                 Confidence:{" "}
                                                 {Math.round(
-                                                  (anomaly.confidence || 1) * 100
+                                                  (anomaly.confidence || 1) *
+                                                    100
                                                 )}
                                                 %
                                               </div>
@@ -4237,7 +4248,11 @@ export default function InspectionDetail() {
                                               <Button
                                                 variant="default"
                                                 size="sm"
-                                                onClick={() => handleConfirmAnomaly(anomaly.id)}
+                                                onClick={() =>
+                                                  handleConfirmAnomaly(
+                                                    anomaly.id
+                                                  )
+                                                }
                                                 className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700"
                                               >
                                                 Confirm
