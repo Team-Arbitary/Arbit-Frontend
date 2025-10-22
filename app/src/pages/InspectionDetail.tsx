@@ -2654,6 +2654,9 @@ export default function InspectionDetail() {
   // Cached annotations state
   const [cachedAnnotations, setCachedAnnotations] = useState<BoundingBox[]>([]);
 
+  // Confirmed AI anomalies state - stores which anomalies have been confirmed by the user
+  const [confirmedAnomalies, setConfirmedAnomalies] = useState<Set<string | number>>(new Set());
+
   // Chat state
   const [chatMessages, setChatMessages] = useState<
     Array<{
@@ -3557,6 +3560,25 @@ export default function InspectionDetail() {
     }
   };
 
+  // Handle confirming AI detected anomalies
+  const handleConfirmAnomaly = (anomalyId: string | number) => {
+    setConfirmedAnomalies((prev) => {
+      const newSet = new Set(prev);
+      newSet.add(anomalyId);
+      
+      // Store in localStorage for persistence
+      const storageKey = `confirmed-anomalies-${inspection.id}`;
+      localStorage.setItem(storageKey, JSON.stringify(Array.from(newSet)));
+      
+      return newSet;
+    });
+
+    toast({
+      title: "Anomaly Confirmed",
+      description: `AI detected anomaly #${anomalyId} has been confirmed`,
+    });
+  };
+
   // Load cached annotations on component mount
   useEffect(() => {
     const cached = loadAnnotationsFromCache();
@@ -3564,6 +3586,22 @@ export default function InspectionDetail() {
       setCachedAnnotations(cached);
     }
   }, [id]);
+
+  // Load confirmed anomalies from localStorage on mount
+  useEffect(() => {
+    if (inspection.id) {
+      const storageKey = `confirmed-anomalies-${inspection.id}`;
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setConfirmedAnomalies(new Set(parsed));
+        } catch (error) {
+          console.error("Failed to load confirmed anomalies:", error);
+        }
+      }
+    }
+  }, [inspection.id]);
 
   // Listen for annotation updates from the modal
   useEffect(() => {
@@ -4104,11 +4142,14 @@ export default function InspectionDetail() {
                           {analysisData?.parsedAnalysisJson?.anomalies && (
                             <div className="space-y-3 mb-6">
                               <h4 className="font-semibold text-lg">
-                                Detected Anomalies
+                                AI Detected Anomalies
                               </h4>
                               <div className="space-y-2">
                                 {analysisData.parsedAnalysisJson.anomalies.map(
                                   (anomaly: any, index: number) => {
+                                    // Check if this anomaly has been confirmed
+                                    const isConfirmed = confirmedAnomalies.has(anomaly.id);
+                                    
                                     // Determine styling based on severity
                                     let bgColor =
                                       "bg-green-500/10 backdrop-blur-sm0/10 backdrop-blur-sm";
@@ -4132,7 +4173,9 @@ export default function InspectionDetail() {
                                     return (
                                       <div
                                         key={`anomaly-${anomaly.id}-${index}`}
-                                        className={`${bgColor} p-3 rounded-lg border-l-4 ${borderColor} border`}
+                                        className={`${bgColor} p-3 rounded-lg border-l-4 ${borderColor} border ${
+                                          isConfirmed ? 'ring-2 ring-green-500/50' : ''
+                                        }`}
                                       >
                                         <div className="flex justify-between items-start mb-2">
                                           <div className="flex-1">
@@ -4150,6 +4193,14 @@ export default function InspectionDetail() {
                                               >
                                                 AI Detected
                                               </Badge>
+                                              {isConfirmed && (
+                                                <Badge
+                                                  variant="outline"
+                                                  className="text-xs border-green-500 text-green-400"
+                                                >
+                                                  ✓ Confirmed
+                                                </Badge>
+                                              )}
                                             </div>
                                             <p className="text-sm text-gray-200 mb-1">
                                               <strong>Type:</strong>{" "}
@@ -4159,26 +4210,38 @@ export default function InspectionDetail() {
                                               {anomaly.reasoning}
                                             </p>
                                           </div>
-                                          <div className="text-xs text-foreground text-right">
-                                            <div className="font-semibold mb-1">
-                                              Confidence:{" "}
-                                              {Math.round(
-                                                (anomaly.confidence || 1) * 100
-                                              )}
-                                              %
-                                            </div>
-                                            <div>
-                                              Area:{" "}
-                                              {anomaly.area?.toLocaleString()}{" "}
-                                              px²
-                                            </div>
-                                            {anomaly.bbox && (
-                                              <div className="mt-1 text-[10px] text-gray-500">
-                                                Box: [{anomaly.bbox[0]},{" "}
-                                                {anomaly.bbox[1]},{" "}
-                                                {anomaly.bbox[2]},{" "}
-                                                {anomaly.bbox[3]}]
+                                          <div className="flex flex-col items-end gap-2">
+                                            <div className="text-xs text-foreground text-right">
+                                              <div className="font-semibold mb-1">
+                                                Confidence:{" "}
+                                                {Math.round(
+                                                  (anomaly.confidence || 1) * 100
+                                                )}
+                                                %
                                               </div>
+                                              <div>
+                                                Area:{" "}
+                                                {anomaly.area?.toLocaleString()}{" "}
+                                                px²
+                                              </div>
+                                              {anomaly.bbox && (
+                                                <div className="mt-1 text-[10px] text-gray-500">
+                                                  Box: [{anomaly.bbox[0]},{" "}
+                                                  {anomaly.bbox[1]},{" "}
+                                                  {anomaly.bbox[2]},{" "}
+                                                  {anomaly.bbox[3]}]
+                                                </div>
+                                              )}
+                                            </div>
+                                            {!isConfirmed && (
+                                              <Button
+                                                variant="default"
+                                                size="sm"
+                                                onClick={() => handleConfirmAnomaly(anomaly.id)}
+                                                className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700"
+                                              >
+                                                Confirm
+                                              </Button>
                                             )}
                                           </div>
                                         </div>
