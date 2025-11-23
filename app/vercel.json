@@ -1,17 +1,12 @@
 {
     "rewrites": [
-        // Allow API or other server endpoints to be handled separately if present
         {
             "source": "/api/(.*)",
-            "destination": "/api/$1"{
-                "rewrites": [
-                    {
-                        "source": "/api/(.*)",
-                        "destination": "/api/$1"
-                    },
-                    {
-                        "source": "/(.*)",
-                        "destination": "/index.html"
-                    }
-                ]
-            }
+            "destination": "/api/$1"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ]
+}
