@@ -1,8 +1,14 @@
 {
-  "rewrites": [
-    // Allow API or other server endpoints to be handled separately if present
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    // Fallback - serve index.html for all client-side routes (SPA)
-    { "source": "/*", "destination": "/index.html" }
-  ]
+    "rewrites": [
+        // Allow API or other server endpoints to be handled separately if present
+        {
+            "source": "/api/(.*)",
+            "destination": "/api/$1"
+        },
+        // Fallback - serve index.html for all client-side routes (SPA)
+        {
+            "source": "/*",
+            "destination": "/index.html"
+        }
+    ]
 }
