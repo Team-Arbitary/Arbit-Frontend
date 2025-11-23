@@ -164,3 +164,28 @@
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
+
+/* Print Styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-content, .print-content * {
+    visibility: visible;
+  }
+  .print-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  /* Hide dialog overlay/backdrop */
+  [role="dialog"] {
+    position: static !important;
+    background: none !important;
+  }
+  /* Hide scrollbars */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+}

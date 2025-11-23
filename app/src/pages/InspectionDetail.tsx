@@ -27,6 +27,7 @@ import {
   Pencil,
   Send,
   Bot,
+  FileText,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -41,6 +42,7 @@ import { API_ENDPOINTS, api } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { MaintenanceRecordForm } from "@/components/MaintenanceRecordForm";
 
 const openInNewTab = (url?: string | null) => {
   if (!url) return;
@@ -2037,26 +2039,29 @@ function AnalysisModal({
                             })}
 
                           {/* Magnifier overlay */}
-                          {hoveredImage === "result" && imageSize.width > 0 && (
-                            <div
-                              className="absolute border-2 border-green-500 rounded-full pointer-events-none shadow-lg"
-                              style={{
-                                width: `${magnifierSize}px`,
-                                height: `${magnifierSize}px`,
-                                left: `${
-                                  mousePosition.x - magnifierSize / 2
-                                }px`,
-                                top: `${mousePosition.y - magnifierSize / 2}px`,
-                                backgroundImage: `url(${thermalImage})`,
-                                backgroundPosition: `${imagePosition.x}% ${imagePosition.y}%`,
-                                backgroundSize: `${
-                                  imageSize.width * magnifierZoom
-                                }px ${imageSize.height * magnifierZoom}px`,
-                                backgroundRepeat: "no-repeat",
-                                backgroundColor: "white",
-                              }}
-                            />
-                          )}
+                          {hoveredImage === "result" &&
+                            imageSize.width > 0 && (
+                              <div
+                                className="absolute border-2 border-green-500 rounded-full pointer-events-none shadow-lg"
+                                style={{
+                                  width: `${magnifierSize}px`,
+                                  height: `${magnifierSize}px`,
+                                  left: `${
+                                    mousePosition.x - magnifierSize / 2
+                                  }px`,
+                                  top: `${
+                                    mousePosition.y - magnifierSize / 2
+                                  }px`,
+                                  backgroundImage: `url(${thermalImage})`,
+                                  backgroundPosition: `${imagePosition.x}% ${imagePosition.y}%`,
+                                  backgroundSize: `${
+                                    imageSize.width * magnifierZoom
+                                  }px ${imageSize.height * magnifierZoom}px`,
+                                  backgroundRepeat: "no-repeat",
+                                  backgroundColor: "white",
+                                }}
+                              />
+                            )}
 
                           <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
                             🔍 Hover to magnify {magnifierZoom}x
@@ -2194,8 +2199,7 @@ function AnalysisModal({
                                     }}
                                   >
                                     <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
-                                      {box.anomalyState} ({box.confidenceScore}
-                                      %)
+                                      {box.anomalyState} ({box.confidenceScore}%)
                                     </div>
                                   </div>
                                 );
@@ -2297,8 +2301,7 @@ function AnalysisModal({
                                     }}
                                   >
                                     <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
-                                      {box.anomalyState} ({box.confidenceScore}
-                                      %)
+                                      {box.anomalyState} ({box.confidenceScore}%)
                                     </div>
                                   </div>
                                 );
@@ -2642,6 +2645,7 @@ export default function InspectionDetail() {
   // Analysis state
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [hasAnalysisApiSuccess, setHasAnalysisApiSuccess] = useState(false); // Track if analysis API returned 200
   const [statusPolling, setStatusPolling] = useState<boolean>(false);
@@ -2967,7 +2971,7 @@ export default function InspectionDetail() {
         const raw: ApiEnvelope<any> = res.data;
         const data: any = (raw as any)?.responseData ?? raw;
         uploadedUrl = data?.url || data?.imageUrl || null;
-      } catch (_) {
+      } catch (error) {
         // ignore parse errors; we'll still show a local preview
       }
 
@@ -3670,6 +3674,10 @@ export default function InspectionDetail() {
               <Search className="h-4 w-4 mr-2" />
               View Analysis
             </Button> */}
+            <Button onClick={() => setShowMaintenanceModal(true)} variant="outline">
+              <FileText className="h-4 w-4 mr-2" />
+              Maintenance Record
+            </Button>
             <Button onClick={() => handleUpload("baseline")}>
               <Upload className="h-4 w-4 mr-2" />
               Baseline Image
@@ -3923,9 +3931,7 @@ export default function InspectionDetail() {
                                       if (anomaly.severity_level === "HIGH") {
                                         borderColor = "#ef4444"; // red
                                         bgColor = "rgba(239, 68, 68, 0.15)";
-                                      } else if (
-                                        anomaly.severity_level === "MEDIUM"
-                                      ) {
+                                      } else if (anomaly.severity_level === "MEDIUM") {
                                         borderColor = "#f97316"; // orange
                                         bgColor = "rgba(249, 115, 22, 0.15)";
                                       }
@@ -3982,7 +3988,6 @@ export default function InspectionDetail() {
                         </div>
                       </div>
                     </div>
-
                     {/* Anomaly Annotation Tool Button - Centered below images */}
                     {(inspection.status === "Completed" ||
                       inspection.status === "completed") &&
@@ -4213,7 +4218,7 @@ export default function InspectionDetail() {
                                           </div>
                                           <div className="flex flex-col items-end gap-2">
                                             <div className="text-xs text-foreground text-right">
-                                              <div className="font-semibold mb-1">
+                                              <div>
                                                 Confidence:{" "}
                                                 {displayConfidence}%
                                               </div>
@@ -4795,6 +4800,19 @@ export default function InspectionDetail() {
         initialAnnotations={[]}
         onAnalysisDataUpdate={setAnalysisData}
       />
+
+      {/* Maintenance Record Modal */}
+      <Dialog open={showMaintenanceModal} onOpenChange={setShowMaintenanceModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <MaintenanceRecordForm
+            inspectionId={inspection.id}
+            transformerNo={inspection.transformerNo || ""}
+            inspectionDate={inspection.lastUpdated}
+            imageUrl={thermalImage || undefined}
+            anomalies={cachedAnnotations}
+          />
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
