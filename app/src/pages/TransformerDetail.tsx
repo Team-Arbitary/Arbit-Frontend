@@ -11,7 +11,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { AddInspectionModal } from "@/components/AddInspectionModal";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Star, Eye, Trash2, Upload, Search, Filter } from "lucide-react";
-import { API_ENDPOINTS, type ApiEnvelope } from "@/lib/api";
+import { api, API_ENDPOINTS, type ApiEnvelope } from "@/lib/api";
 
 type TransformerView = {
   id: string;
@@ -57,9 +57,8 @@ export default function TransformerDetail() {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(API_ENDPOINTS.TRANSFORMER_DETAIL(id));
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-        const raw: ApiEnvelope<any> = await res.json();
+        const res = await api.get(API_ENDPOINTS.TRANSFORMER_DETAIL(id));
+        const raw: ApiEnvelope<any> = res.data;
         const data = (raw as any)?.responseData ?? raw;
         if (!data) throw new Error("Empty response");
         const mapped: TransformerView = {
@@ -92,9 +91,8 @@ export default function TransformerDetail() {
     const run = async () => {
       if (!transformer) return;
       try {
-        const res = await fetch(API_ENDPOINTS.INSPECTION_VIEW_ALL);
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-        const raw: ApiEnvelope<any> = await res.json();
+        const res = await api.get(API_ENDPOINTS.INSPECTION_VIEW_ALL);
+        const raw: ApiEnvelope<any> = res.data;
         const data: any[] = (raw as any)?.responseData ?? (Array.isArray(raw) ? raw : []);
 
         const sameTx = (item: any) => {
@@ -195,27 +193,24 @@ export default function TransformerDetail() {
     const checkBaseline = async () => {
       if (!transformer?.transformerNo) return;
       try {
-        const res = await fetch(API_ENDPOINTS.IMAGE_BASELINE(transformer.transformerNo));
-        if (res.ok) {
-          const ct = res.headers.get('content-type') || '';
-          if (ct.startsWith('image/')) {
-            if (!cancelled) setHasBaseline(true);
-          } else {
-            try {
-              const raw: ApiEnvelope<any> = await res.json();
-              const data: any = (raw as any)?.responseData ?? raw;
-              const possible = data?.imageBase64 || data?.url || data?.imageUrl;
-              if (possible && typeof possible === 'string') {
-                if (!cancelled) setHasBaseline(true);
-              } else {
-                if (!cancelled) setHasBaseline(false);
-              }
-            } catch {
+        const res = await api.get(API_ENDPOINTS.IMAGE_BASELINE(transformer.transformerNo), { responseType: 'blob' });
+        const ct = res.headers['content-type'] || '';
+        if (ct.startsWith('image/')) {
+          if (!cancelled) setHasBaseline(true);
+        } else {
+          try {
+            const text = await res.data.text();
+            const raw: ApiEnvelope<any> = JSON.parse(text);
+            const data: any = (raw as any)?.responseData ?? raw;
+            const possible = data?.imageBase64 || data?.url || data?.imageUrl;
+            if (possible && typeof possible === 'string') {
+              if (!cancelled) setHasBaseline(true);
+            } else {
               if (!cancelled) setHasBaseline(false);
             }
+          } catch {
+            if (!cancelled) setHasBaseline(false);
           }
-        } else {
-          if (!cancelled) setHasBaseline(false);
         }
       } catch {
         if (!cancelled) setHasBaseline(false);
@@ -240,8 +235,7 @@ export default function TransformerDetail() {
       form.append('inspectionNo', String(firstInsp));
       form.append('imageFile', file, "file_name");
   
-      const res = await fetch(API_ENDPOINTS.IMAGE_UPLOAD, { method: 'POST', body: form });
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      await api.post(API_ENDPOINTS.IMAGE_UPLOAD, form);
   
       setHasBaseline(true);
       toast({ title: "Baseline uploaded", description: "Baseline image uploaded successfully (status: In-progress)." });
@@ -303,9 +297,24 @@ export default function TransformerDetail() {
       return;
     }
     try {
-      const res = await fetch(API_ENDPOINTS.IMAGE_BASELINE(transformer.transformerNo));
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      const src = await resolveImageFromResponse(res);
+      const res = await api.get(API_ENDPOINTS.IMAGE_BASELINE(transformer.transformerNo), { responseType: 'blob' });
+      
+      const ct = res.headers['content-type'] || '';
+      let src = null;
+      if (ct.startsWith('image/')) {
+         const blob = res.data;
+         src = URL.createObjectURL(blob);
+      } else {
+         const text = await res.data.text();
+         const raw = JSON.parse(text);
+         const data = (raw as any)?.responseData ?? raw;
+         const possible = data?.imageBase64 || data?.url || data?.imageUrl;
+         if (typeof possible === 'string') {
+            if (/^data:|^https?:\/\//i.test(possible)) src = possible;
+            else try { src = new URL(possible, window.location.origin).toString(); } catch {}
+         }
+      }
+
       if (!src) throw new Error("No baseline image available");
       setBaselinePreview(src);
       setIsViewingBaseline(true);
@@ -330,8 +339,7 @@ export default function TransformerDetail() {
     if (!ok) return;
     try {
       setIsDeletingBaseline(true);
-      const res = await fetch(API_ENDPOINTS.IMAGE_BASELINE(transformer.transformerNo), { method: "DELETE" });
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      await api.delete(API_ENDPOINTS.IMAGE_BASELINE(transformer.transformerNo));
       setHasBaseline(false);
       toast({ title: "Deleted", description: "Baseline image deleted successfully." });
       // If a preview is open, close it
@@ -374,11 +382,7 @@ export default function TransformerDetail() {
     const ok = window.confirm("Are you sure you want to delete this inspection?");
     if (!ok) return;
     try {
-      let res = await fetch(API_ENDPOINTS.INSPECTION_DELETE(inspectionId), { method: 'DELETE' });
-      if (!res.ok) {
-        res = await fetch(API_ENDPOINTS.INSPECTION_DELETE(inspectionId), { method: 'GET' });
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      }
+      await api.delete(API_ENDPOINTS.INSPECTION_DELETE(inspectionId));
       setInspections(prev => prev.filter(i => i.id !== inspectionId));
     } catch (e: any) {
       alert(`Failed to delete inspection: ${e?.message || 'Unknown error'}`);
@@ -391,9 +395,8 @@ export default function TransformerDetail() {
     
     // Refetch the inspections list to get the actual data from server
     try {
-      const res = await fetch(INSPECTION_LIST_URL);
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      const raw: ApiEnvelope<any> = await res.json();
+      const res = await api.get(API_ENDPOINTS.INSPECTION_VIEW_ALL);
+      const raw: ApiEnvelope<any> = res.data;
       const data: any[] = (raw as any)?.responseData ?? (Array.isArray(raw) ? raw : []);
 
       const sameTx = (item: any) => {

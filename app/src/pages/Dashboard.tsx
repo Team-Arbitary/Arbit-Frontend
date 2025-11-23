@@ -36,7 +36,7 @@ import {
   ThermometerSun,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { API_ENDPOINTS } from "@/lib/api";
+import { api, API_ENDPOINTS } from "@/lib/api";
 import {
   AreaChart,
   Area,
@@ -74,9 +74,8 @@ type Inspection = {
 
 // Helper to safely unwrap ApiResponse<T> or return the raw payload if it's already a list
 async function fetchUnwrap<T>(url: string): Promise<T> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  const body = await res.json();
+  const res = await api.get(url);
+  const body = res.data;
   if (body && Array.isArray(body.responseData)) return body.responseData as T;
   if (body && Array.isArray(body)) return body as T;
   if (body && typeof body === "object" && Array.isArray(body.data))
@@ -212,13 +211,8 @@ export default function Dashboard() {
       offset: 0,
     };
 
-    const res = await fetch(API_ENDPOINTS.TRANSFORMER_FILTER, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    const body = await res.json();
+    const res = await api.post(API_ENDPOINTS.TRANSFORMER_FILTER, payload);
+    const body = res.data;
     const data: ApiItem[] = Array.isArray(body?.responseData)
       ? body.responseData
       : Array.isArray(body)
@@ -290,15 +284,7 @@ export default function Dashboard() {
     );
     if (!ok) return;
     try {
-      let res = await fetch(API_ENDPOINTS.TRANSFORMER_DELETE(transformerId), {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        res = await fetch(API_ENDPOINTS.TRANSFORMER_DELETE(transformerId), {
-          method: "GET",
-        });
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      }
+      await api.delete(API_ENDPOINTS.TRANSFORMER_DELETE(transformerId));
       setTransformers((prev) => prev.filter((t) => t.id !== transformerId));
     } catch (e: any) {
       alert(`Failed to delete transformer: ${e?.message || "Unknown error"}`);
@@ -315,15 +301,7 @@ export default function Dashboard() {
     );
     if (!ok) return;
     try {
-      let res = await fetch(API_ENDPOINTS.INSPECTION_DELETE(inspectionId), {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        res = await fetch(API_ENDPOINTS.INSPECTION_DELETE(inspectionId), {
-          method: "GET",
-        });
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      }
+      await api.delete(API_ENDPOINTS.INSPECTION_DELETE(inspectionId));
       setInspections((prev) => prev.filter((i) => i.id !== inspectionId));
     } catch (e: any) {
       alert(`Failed to delete inspection: ${e?.message || "Unknown error"}`);
@@ -366,15 +344,7 @@ export default function Dashboard() {
         location: editLocation,
       };
 
-      const res = await fetch(API_ENDPOINTS.TRANSFORMER_UPDATE, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        throw new Error(`${res.status} ${res.statusText}`);
-      }
+      await api.put(API_ENDPOINTS.TRANSFORMER_UPDATE, payload);
 
       await refresh();
       closeEdit();

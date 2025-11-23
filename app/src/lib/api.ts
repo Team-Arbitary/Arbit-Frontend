@@ -1,3 +1,5 @@
+import axios from "axios";
+
 /**
  * API Configuration
  * Centralized API base URL management
@@ -5,6 +7,18 @@
 
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5509";
+
+export const api = axios.create({
+  baseURL: API_BASE_URL,
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 export const API_ENDPOINTS = {
   // Transformer Management
@@ -36,11 +50,16 @@ export const API_ENDPOINTS = {
 
   // Image Analysis
   ANALYSIS_RESULT: (inspectionNo: string) =>
-    `${API_BASE_URL}/transformer-thermal-inspection/image-analysis/result/${inspectionNo}`,
+    `${API_BASE_URL}/transformer-thermal-inspection/api/v1/image-analysis/result/${inspectionNo}`,
   ANALYSIS_ANALYZE: (inspectionNo: string) =>
-    `${API_BASE_URL}/transformer-thermal-inspection/image-analysis/analyze/${inspectionNo}`,
+    `${API_BASE_URL}/transformer-thermal-inspection/api/v1/image-analysis/analyze/${inspectionNo}`,
   ANALYSIS_UPDATE_ANNOTATIONS: (inspectionNo: string, transformerNo: string) =>
-    `${API_BASE_URL}/api/v1/image-analysis/result/update/${inspectionNo}/${transformerNo}`,
+    `${API_BASE_URL}/transformer-thermal-inspection/api/v1/image-analysis/result/update/${inspectionNo}/${transformerNo}`,
+
+  // User Management
+  USER_PROFILE: `${API_BASE_URL}/transformer-thermal-inspection/api/user/profile`,
+  USER_LOGIN: `${API_BASE_URL}/transformer-thermal-inspection/api/auth/login`,
+  USER_SIGNUP: `${API_BASE_URL}/transformer-thermal-inspection/api/auth/signup`,
 } as const;
 
 /**

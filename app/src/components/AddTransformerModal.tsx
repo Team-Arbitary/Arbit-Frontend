@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { X } from "lucide-react";
-import { API_ENDPOINTS, type ApiEnvelope } from "@/lib/api";
+import { API_ENDPOINTS, type ApiEnvelope, api } from "@/lib/api";
 
 interface AddTransformerModalProps {
   trigger?: React.ReactNode;
@@ -46,17 +46,8 @@ export function AddTransformerModal({ trigger, onAdd }: AddTransformerModalProps
     };
 
     try {
-      const res = await fetch(API_ENDPOINTS.TRANSFORMER_CREATE, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        throw new Error(`${res.status} ${res.statusText}`);
-      }
-
-      const raw: ApiEnvelope<any> = await res.json();
+      const res = await api.post(API_ENDPOINTS.TRANSFORMER_CREATE, payload);
+      const raw: ApiEnvelope<any> = res.data;
       const created = (raw as any)?.responseData ?? raw;
 
       // Build an item for UI list update

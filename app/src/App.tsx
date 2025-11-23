@@ -10,6 +10,9 @@ import TransformerDetail from "./pages/TransformerDetail";
 import InspectionDetail from "./pages/InspectionDetail";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -21,12 +24,18 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/vision" element={<Vision />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/transformer/:id" element={<TransformerDetail />} />
-            <Route path="/inspection/:id" element={<InspectionDetail />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            
+            <Route element={<ProtectedRoute />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/vision" element={<Vision />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/transformer/:id" element={<TransformerDetail />} />
+              <Route path="/inspection/:id" element={<InspectionDetail />} />
+              <Route path="/settings" element={<Settings />} />
+            </Route>
+
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

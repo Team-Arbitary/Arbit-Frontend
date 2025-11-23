@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { API_ENDPOINTS } from "@/lib/api";
+import { API_ENDPOINTS, api } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -912,37 +912,15 @@ function AnalysisModal({
         inspection.transformerNo
       );
 
-      const response = await fetch(
+      const response = await api.put(
         API_ENDPOINTS.ANALYSIS_UPDATE_ANNOTATIONS(
           inspection.id,
           inspection.transformerNo!
         ),
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include", // Include credentials for authentication
-          body: JSON.stringify(formattedAnnotations),
-        }
+        formattedAnnotations
       );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errorMessage = `${response.status} ${response.statusText}`;
-
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage =
-            errorData.message || errorData.responseDescription || errorMessage;
-        } catch {
-          errorMessage = errorText || errorMessage;
-        }
-
-        throw new Error(errorMessage);
-      }
-
-      const result = await response.json();
+      const result = response.data;
       console.log("Annotations saved successfully:", result);
 
       // Handle different response formats from backend
@@ -2709,9 +2687,8 @@ export default function InspectionDetail() {
     const run = async () => {
       if (!id) return;
       try {
-        const res = await fetch(API_ENDPOINTS.INSPECTION_DETAIL(id));
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-        const raw: ApiEnvelope<any> = await res.json();
+        const res = await api.get(API_ENDPOINTS.INSPECTION_DETAIL(id));
+        const raw: ApiEnvelope<any> = res.data;
         const data: any = (raw as any)?.responseData ?? raw;
         const iso =
           data?.dateOfInspection && data?.time
@@ -2806,12 +2783,11 @@ export default function InspectionDetail() {
 
     (async () => {
       try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-        const ct = res.headers.get("content-type") || "";
+        const res = await api.get(url, { responseType: 'blob' });
+        const ct = res.headers["content-type"] || "";
 
         if (ct.startsWith("image/")) {
-          const blob = await res.blob();
+          const blob = res.data;
           const objUrl = URL.createObjectURL(blob);
           setBaselineImage(objUrl);
           return;
@@ -2819,7 +2795,8 @@ export default function InspectionDetail() {
 
         // Try JSON shape
         try {
-          const raw: ApiEnvelope<any> = await res.json();
+          const text = await res.data.text();
+          const raw: ApiEnvelope<any> = JSON.parse(text);
           const data: any = (raw as any)?.responseData ?? raw;
           const possible = data?.imageBase64;
 
@@ -2853,12 +2830,11 @@ export default function InspectionDetail() {
 
     (async () => {
       try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-        const ct = res.headers.get("content-type") || "";
+        const res = await api.get(url, { responseType: 'blob' });
+        const ct = res.headers["content-type"] || "";
 
         if (ct.startsWith("image/")) {
-          const blob = await res.blob();
+          const blob = res.data;
           const objUrl = URL.createObjectURL(blob);
           setThermalImage(objUrl);
           return;
@@ -2866,7 +2842,8 @@ export default function InspectionDetail() {
 
         // Try JSON response with possible URL/base64 fields
         try {
-          const raw: ApiEnvelope<any> = await res.json();
+          const text = await res.data.text();
+          const raw: ApiEnvelope<any> = JSON.parse(text);
           const data: any = (raw as any)?.responseData ?? raw;
           const possible = data?.imageBase64 || data?.url || data?.imageUrl;
 
@@ -2978,20 +2955,16 @@ export default function InspectionDetail() {
         150
       );
 
-      const res = await fetch(API_ENDPOINTS.IMAGE_UPLOAD, {
-        method: "POST",
-        body: form,
+      const res = await api.post(API_ENDPOINTS.IMAGE_UPLOAD, form, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       clearInterval(prog);
-      if (!res.ok) {
-        throw new Error(`${res.status} ${res.statusText}`);
-      }
 
       // Try to read returned JSON and find a URL if backend returns one
       let uploadedUrl: string | null = null;
       try {
-        const raw: ApiEnvelope<any> = await res.json();
+        const raw: ApiEnvelope<any> = res.data;
         const data: any = (raw as any)?.responseData ?? raw;
         uploadedUrl = data?.url || data?.imageUrl || null;
       } catch (_) {
@@ -3068,8 +3041,7 @@ export default function InspectionDetail() {
       if (!window.confirm(`Delete ${type} image? This cannot be undone.`))
         return;
 
-      const res = await fetch(targetUrl, { method: "DELETE" });
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      await api.delete(targetUrl);
 
       if (type === "baseline") {
         setBaselineImage(null);
@@ -3099,12 +3071,13 @@ export default function InspectionDetail() {
     if (!inspNo) return null;
 
     try {
-      const res = await fetch(
-        API_ENDPOINTS.IMAGE_THERMAL(encodeURIComponent(inspNo))
+      const res = await api.get(
+        API_ENDPOINTS.IMAGE_THERMAL(encodeURIComponent(inspNo)),
+        { responseType: 'blob' }
       );
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
 
-      const raw: ApiEnvelope<any> = await res.json();
+      const text = await res.data.text();
+      const raw: ApiEnvelope<any> = JSON.parse(text);
       const data: any = (raw as any)?.responseData ?? raw;
 
       if (data?.status) {
@@ -3133,20 +3106,21 @@ export default function InspectionDetail() {
     if (!inspection.id) return false;
 
     try {
-      const res = await fetch(API_ENDPOINTS.ANALYSIS_RESULT(inspection.id));
-      if (!res.ok) {
-        // If 404, analysis not ready yet
-        if (res.status === 404) {
-          console.log("Analysis result not yet available (404)");
-          return false;
-        }
-        throw new Error(`${res.status} ${res.statusText}`);
+      let res;
+      try {
+        res = await api.get(API_ENDPOINTS.ANALYSIS_RESULT(inspection.id), { responseType: 'blob' });
+      } catch (error: any) {
+         if (error.response && error.response.status === 404) {
+            console.log("Analysis result not yet available (404)");
+            return false;
+         }
+         throw error;
       }
 
-      const ct = res.headers.get("content-type") || "";
+      const ct = res.headers["content-type"] || "";
 
       if (ct.startsWith("image/")) {
-        const blob = await res.blob();
+        const blob = res.data;
         const objUrl = URL.createObjectURL(blob);
         setAnalysisResult(objUrl);
         setHasAnalysisApiSuccess(true); // Mark API as successful
@@ -3163,7 +3137,8 @@ export default function InspectionDetail() {
 
       // Try JSON response
       try {
-        const raw: ApiEnvelope<any> = await res.json();
+        const text = await res.data.text();
+        const raw: ApiEnvelope<any> = JSON.parse(text);
         const data: any = (raw as any)?.responseData ?? raw;
 
         // Handle the new API response format with annotatedImageData
@@ -3405,29 +3380,8 @@ export default function InspectionDetail() {
     setAnalyzeError(null);
 
     try {
-      const res = await fetch(API_ENDPOINTS.ANALYSIS_ANALYZE(inspection.id), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        let errorMessage = `${res.status} ${res.statusText}`;
-
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage =
-            errorData.responseDescription || errorData.message || errorMessage;
-        } catch {
-          errorMessage = errorText || errorMessage;
-        }
-
-        throw new Error(errorMessage);
-      }
-
-      const result = await res.json();
+      const res = await api.post(API_ENDPOINTS.ANALYSIS_ANALYZE(inspection.id));
+      const result = res.data;
       const data = result?.responseData ?? result;
 
       toast({

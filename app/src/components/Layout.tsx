@@ -3,16 +3,44 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { useEffect, useState } from "react";
+import { api, API_ENDPOINTS } from "@/lib/api";
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
+type UserProfile = {
+  id: number;
+  username: string;
+  fullName: string;
+  email: string;
+  role: string;
+  department: string;
+};
+
 export function Layout({ children }: LayoutProps) {
+  const [user, setUser] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await api.get(API_ENDPOINTS.USER_PROFILE);
+        const data = res.data;
+        if (data && data.responseData) {
+          setUser(data.responseData);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user profile", error);
+      }
+    };
+    fetchProfile();
+  }, []);
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <AppSidebar />
+        <AppSidebar user={user} />
         
         <div className="flex-1 flex flex-col">
           {/* Header */}
@@ -40,8 +68,8 @@ export function Layout({ children }: LayoutProps) {
               </Avatar>
               
               <div className="text-sm">
-                <div className="font-medium">Hasitha Gallella</div>
-                <div className="text-muted-foreground">hasitha@gmail.com</div>
+                <div className="font-medium">{user?.fullName || user?.username || "User"}</div>
+                <div className="text-muted-foreground">{user?.email || "No email"}</div>
               </div>
             </div>
           </header>

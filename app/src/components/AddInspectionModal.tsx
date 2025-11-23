@@ -8,7 +8,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, X } from "lucide-react";
 import { format } from "date-fns";
-import { API_ENDPOINTS, type ApiEnvelope } from "@/lib/api";
+import { API_ENDPOINTS, type ApiEnvelope, api } from "@/lib/api";
 
 interface AddInspectionModalProps {
   trigger?: React.ReactNode;
@@ -50,15 +50,8 @@ export function AddInspectionModal({ trigger, onAdd, defaultTransformerNo }: Add
     };
 
     try {
-      const res = await fetch(API_ENDPOINTS.INSPECTION_CREATE, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-
-      const raw: ApiEnvelope<any> = await res.json();
+      const res = await api.post(API_ENDPOINTS.INSPECTION_CREATE, payload);
+      const raw: ApiEnvelope<any> = res.data;
       const created = (raw as any)?.responseData ?? raw;
 
       const uiItem = {
@@ -90,9 +83,8 @@ export function AddInspectionModal({ trigger, onAdd, defaultTransformerNo }: Add
   // Fetch existing transformers
   const fetchTransformers = async () => {
     try {
-      const res = await fetch(API_ENDPOINTS.TRANSFORMER_VIEW_ALL);
-      if (!res.ok) throw new Error("Failed to fetch transformers");
-      const data = await res.json();
+      const res = await api.get(API_ENDPOINTS.TRANSFORMER_VIEW_ALL);
+      const data = res.data;
       const transformers = (data?.responseData ?? data) || [];
       const transformerNos = transformers.map((t: any) => t.transformerNo).filter(Boolean);
       setExistingTransformers(transformerNos);

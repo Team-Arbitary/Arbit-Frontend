@@ -21,7 +21,15 @@ const navItems = [
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  user?: {
+    fullName?: string;
+    email?: string;
+    username?: string;
+  } | null;
+}
+
+export function AppSidebar({ user }: AppSidebarProps) {
   const { state } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
@@ -41,6 +49,20 @@ export function AppSidebar() {
     isActive(path)
       ? "bg-gradient-to-r from-orange-600/20 to-orange-500/20 text-orange-500 dark:text-orange-400 font-medium border-l-2 border-orange-500"
       : "hover:bg-white/5 dark:hover:bg-white/5 hover:bg-black/5 text-gray-700 dark:text-gray-300";
+
+  const getInitials = (name: string) => {
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
+  const displayName = user?.fullName || user?.username || "User";
+  const displayEmail = user?.email || "No email";
+  const initials = getInitials(displayName);
 
   return (
     <Sidebar
@@ -102,15 +124,15 @@ export function AppSidebar() {
       <SidebarFooter className="p-4 border-t border-gray-200 dark:border-white/10">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-gradient-to-br from-orange-600 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-sm font-semibold text-white">HG</span>
+            <span className="text-sm font-semibold text-white">{initials}</span>
           </div>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                Hasitha Gallella
+                {displayName}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                hasitha@gmail.com
+                {displayEmail}
               </div>
             </div>
           )}
