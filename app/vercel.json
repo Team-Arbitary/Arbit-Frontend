@@ -4,11 +4,9 @@
         {
             "source": "/api/(.*)",
             "destination": "/api/$1"
-        },
-        // Fallback - serve index.html for all client-side routes (SPA)
         {
-            "source": "/*",
-            "destination": "/index.html"
+            "rewrites": [
+                { "source": "/api/(.*)", "destination": "/api/$1" },
+                { "source": "/(.*)", "destination": "/index.html" }
+            ]
         }
-    ]
-}
