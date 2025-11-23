@@ -34,6 +34,9 @@ import {
   TrendingUp,
   Zap,
   ThermometerSun,
+  LayoutGrid,
+  List,
+  ImageIcon,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, API_ENDPOINTS } from "@/lib/api";
@@ -158,6 +161,7 @@ export default function Dashboard() {
 
   const [selectedRegion, setSelectedRegion] = useState<string>("all-regions");
   const [selectedType, setSelectedType] = useState<string>("all-types");
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
   const [inspectionSearchQuery, setInspectionSearchQuery] =
     useState<string>("");
@@ -867,83 +871,201 @@ export default function Dashboard() {
                   >
                     Reset Filters
                   </Button>
+                  <div className="flex items-center border border-border rounded-md overflow-hidden">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setViewMode("list")}
+                      className={`rounded-none h-9 w-9 ${
+                        viewMode === "list"
+                          ? "bg-secondary text-foreground"
+                          : "bg-transparent text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setViewMode("grid")}
+                      className={`rounded-none h-9 w-9 ${
+                        viewMode === "grid"
+                          ? "bg-secondary text-foreground"
+                          : "bg-transparent text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <LayoutGrid className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="rounded-lg border border-white/10 overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-white/10 hover:bg-secondary/50">
-                        <TableHead className="text-muted-foreground"></TableHead>
-                        <TableHead className="text-muted-foreground">
-                          Transformer No.
-                        </TableHead>
-                        <TableHead className="text-muted-foreground">
-                          Pole No.
-                        </TableHead>
-                        <TableHead className="text-muted-foreground">Region</TableHead>
-                        <TableHead className="text-muted-foreground">Type</TableHead>
-                        <TableHead className="text-right text-muted-foreground"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {transformers.map((transformer) => (
-                        <TableRow
-                          key={transformer.id}
-                          className="border-white/10 hover:bg-secondary/50"
-                        >
-                          <TableCell>
-                            <Star className="h-4 w-4 text-muted-foreground" />
-                          </TableCell>
-                          <TableCell className="font-medium text-foreground">
-                            {transformer.transformerNo}
-                          </TableCell>
-                          <TableCell className="text-gray-300">
-                            {transformer.poleNo}
-                          </TableCell>
-                          <TableCell className="text-gray-300">
-                            {transformer.region}
-                          </TableCell>
-                          <TableCell className="text-gray-300">
-                            {transformer.type}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openEdit(transformer)}
-                                className="bg-secondary/50 border-border text-foreground hover:bg-secondary"
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() =>
-                                  handleDeleteTransformer(transformer.id)
-                                }
-                                title="Delete transformer"
-                                aria-label="Delete transformer"
-                                className="text-red-400 hover:bg-red-500/20"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() =>
-                                  handleViewTransformer(transformer.id)
-                                }
-                                className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600"
-                              >
-                                View
-                              </Button>
-                            </div>
-                          </TableCell>
+                {viewMode === "list" ? (
+                  <div className="rounded-lg border border-white/10 overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-white/10 hover:bg-secondary/50">
+                          <TableHead className="text-muted-foreground"></TableHead>
+                          <TableHead className="text-muted-foreground">
+                            Transformer No.
+                          </TableHead>
+                          <TableHead className="text-muted-foreground">
+                            Pole No.
+                          </TableHead>
+                          <TableHead className="text-muted-foreground">
+                            Region
+                          </TableHead>
+                          <TableHead className="text-muted-foreground">
+                            Type
+                          </TableHead>
+                          <TableHead className="text-right text-muted-foreground"></TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {transformers.map((transformer) => (
+                          <TableRow
+                            key={transformer.id}
+                            className="border-white/10 hover:bg-secondary/50"
+                          >
+                            <TableCell>
+                              <Star className="h-4 w-4 text-muted-foreground" />
+                            </TableCell>
+                            <TableCell className="font-medium text-foreground">
+                              {transformer.transformerNo}
+                            </TableCell>
+                            <TableCell className="text-gray-300">
+                              {transformer.poleNo}
+                            </TableCell>
+                            <TableCell className="text-gray-300">
+                              {transformer.region}
+                            </TableCell>
+                            <TableCell className="text-gray-300">
+                              {transformer.type}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openEdit(transformer)}
+                                  className="bg-secondary/50 border-border text-foreground hover:bg-secondary"
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() =>
+                                    handleDeleteTransformer(transformer.id)
+                                  }
+                                  title="Delete transformer"
+                                  aria-label="Delete transformer"
+                                  className="text-red-400 hover:bg-red-500/20"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() =>
+                                    handleViewTransformer(transformer.id)
+                                  }
+                                  className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600"
+                                >
+                                  View
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {transformers.map((transformer) => (
+                      <Card
+                        key={transformer.id}
+                        className="overflow-hidden backdrop-blur-xl bg-card/50 border border-border/50 hover:border-orange-500/50 transition-all group"
+                      >
+                        <div className="aspect-video w-full bg-secondary/30 relative overflow-hidden">
+                          <img
+                            src={API_ENDPOINTS.IMAGE_BASELINE(
+                              transformer.transformerNo
+                            )}
+                            alt={`Transformer ${transformer.transformerNo}`}
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                              e.currentTarget.nextElementSibling?.classList.remove(
+                                "hidden"
+                              );
+                            }}
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-secondary/30 hidden">
+                            <div className="flex flex-col items-center text-muted-foreground">
+                              <ImageIcon className="h-10 w-10 mb-2 opacity-50" />
+                              <span className="text-xs">No Image Available</span>
+                            </div>
+                          </div>
+                          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              size="icon"
+                              variant="secondary"
+                              className="h-8 w-8 bg-black/60 hover:bg-black/80 text-white border-0"
+                              onClick={() => openEdit(transformer)}
+                            >
+                              <div className="h-3 w-3">✎</div>
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="destructive"
+                              className="h-8 w-8 bg-red-500/80 hover:bg-red-600 text-white border-0"
+                              onClick={() =>
+                                handleDeleteTransformer(transformer.id)
+                              }
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <h3 className="font-semibold text-foreground truncate">
+                                {transformer.transformerNo}
+                              </h3>
+                              <p className="text-xs text-muted-foreground">
+                                {transformer.type || "Unknown Type"}
+                              </p>
+                            </div>
+                            <StatusBadge status="operational" />
+                          </div>
+                          <div className="space-y-1 text-sm text-muted-foreground mb-4">
+                            <div className="flex justify-between">
+                              <span>Region:</span>
+                              <span className="text-foreground">
+                                {transformer.region || "N/A"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Pole No:</span>
+                              <span className="text-foreground">
+                                {transformer.poleNo || "N/A"}
+                              </span>
+                            </div>
+                          </div>
+                          <Button
+                            className="w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600"
+                            onClick={() =>
+                              handleViewTransformer(transformer.id)
+                            }
+                          >
+                            View Details
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
