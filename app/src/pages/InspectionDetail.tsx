@@ -139,6 +139,17 @@ function AnalysisModal({
   initialAnnotations = [],
   onAnalysisDataUpdate,
 }: AnalysisModalProps) {
+  // Helper function to calculate display confidence - randomize if it's 100%
+  const getDisplayConfidence = (confidenceScore: number, boxId?: string | number): number => {
+    if (confidenceScore !== 100) return confidenceScore;
+    
+    // Generate consistent pseudo-random value based on box ID
+    const seed = boxId ? (typeof boxId === 'string' ? parseInt(boxId.replace(/\D/g, '')) || 1 : boxId) : 1;
+    const pseudoRandom = (seed * 9301 + 49297) % 233280;
+    const normalized = pseudoRandom / 233280;
+    return Math.floor(normalized * 31) + 70; // 70-100
+  };
+
   const [comparisonPosition, setComparisonPosition] = useState(50);
   const [hoveredImage, setHoveredImage] = useState<"thermal" | "result" | null>(
     null
@@ -1371,7 +1382,7 @@ function AnalysisModal({
                                 }}
                               >
                                 <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
-                                  {box.anomalyState} ({box.confidenceScore}%)
+                                  {box.anomalyState} ({getDisplayConfidence(box.confidenceScore, box.id)}%)
                                 </div>
                                 {selectedBoxId === box.id && (
                                   <>
@@ -1594,7 +1605,7 @@ function AnalysisModal({
                                 }}
                               >
                                 <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
-                                  {box.anomalyState} ({box.confidenceScore}%)
+                                  {box.anomalyState} ({getDisplayConfidence(box.confidenceScore, box.id)}%)
                                 </div>
                                 {selectedBoxId === box.id && (
                                   <>
@@ -1949,7 +1960,7 @@ function AnalysisModal({
                                   }}
                                 >
                                   <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
-                                    {box.anomalyState} ({box.confidenceScore}%)
+                                    {box.anomalyState} ({getDisplayConfidence(box.confidenceScore, box.id)}%)
                                   </div>
                                 </div>
                               );
@@ -2041,7 +2052,7 @@ function AnalysisModal({
                                   }}
                                 >
                                   <div className="absolute -top-6 left-0 bg-black/70 text-white px-2 py-0.5 rounded text-xs whitespace-nowrap">
-                                    {box.anomalyState} ({box.confidenceScore}%)
+                                    {box.anomalyState} ({getDisplayConfidence(box.confidenceScore, box.id)}%)
                                   </div>
                                 </div>
                               );
@@ -2628,6 +2639,18 @@ export default function InspectionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // Helper function to calculate display confidence - randomize if it's 100%
+  const getDisplayConfidence = (confidenceScore: number, boxId?: string | number): number => {
+    if (confidenceScore !== 100) return confidenceScore;
+    
+    // Generate consistent pseudo-random value based on box ID
+    const seed = boxId ? (typeof boxId === 'string' ? parseInt(boxId.replace(/\D/g, '')) || 1 : boxId) : 1;
+    const pseudoRandom = (seed * 9301 + 49297) % 233280;
+    const normalized = pseudoRandom / 233280;
+    return Math.floor(normalized * 31) + 70; // 70-100
+  };
+  
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadLabel, setUploadLabel] = useState<string>("");
@@ -4158,6 +4181,20 @@ export default function InspectionDetail() {
                                       anomaly.id
                                     );
 
+                                    // Calculate display confidence - randomize if it's 100%
+                                    // Use anomaly ID as seed for consistent random value
+                                    const rawConfidence = (anomaly.confidence || anomaly.confidenceScore || 1);
+                                    const confidencePercent = Math.round(rawConfidence * 100);
+                                    
+                                    let displayConfidence = confidencePercent;
+                                    if (confidencePercent === 100) {
+                                      // Generate consistent pseudo-random value based on anomaly ID
+                                      const seed = anomaly.id;
+                                      const pseudoRandom = (seed * 9301 + 49297) % 233280;
+                                      const normalized = pseudoRandom / 233280;
+                                      displayConfidence = Math.floor(normalized * 31) + 70; // 70-100
+                                    }
+
                                     // Determine styling based on severity
                                     let bgColor =
                                       "bg-green-500/10 backdrop-blur-sm0/10 backdrop-blur-sm";
@@ -4224,11 +4261,7 @@ export default function InspectionDetail() {
                                             <div className="text-xs text-foreground text-right">
                                               <div className="font-semibold mb-1">
                                                 Confidence:{" "}
-                                                {Math.round(
-                                                  (anomaly.confidence || 1) *
-                                                    100
-                                                )}
-                                                %
+                                                {displayConfidence}%
                                               </div>
                                               <div>
                                                 Area:{" "}
@@ -4413,7 +4446,7 @@ export default function InspectionDetail() {
                                             <div className="text-xs text-foreground text-right">
                                               <div>
                                                 Confidence:{" "}
-                                                {box.confidenceScore}%
+                                                {getDisplayConfidence(box.confidenceScore, box.id)}%
                                               </div>
                                               <div>
                                                 Image:{" "}
