@@ -126,7 +126,7 @@
   .glass {
     @apply backdrop-blur-xl bg-white/5 border border-white/10;
   }
-  
+
   .glass-strong {
     @apply backdrop-blur-2xl bg-black/60 border border-white/20;
   }
@@ -138,6 +138,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -145,9 +146,12 @@
 }
 
 @keyframes float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0px);
   }
+
   50% {
     transform: translateY(-20px);
   }
@@ -170,20 +174,25 @@
   body * {
     visibility: hidden;
   }
-  .print-content, .print-content * {
+
+  .print-content,
+  .print-content * {
     visibility: visible;
   }
+
   .print-content {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
   }
+
   /* Hide dialog overlay/backdrop */
   [role="dialog"] {
     position: static !important;
     background: none !important;
   }
+
   /* Hide scrollbars */
   ::-webkit-scrollbar {
     display: none;
