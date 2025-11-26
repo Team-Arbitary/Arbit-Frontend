@@ -75,7 +75,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen flex bg-gradient-to-br from-background via-secondary/30 to-background dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Left Panel - Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-orange-600/20 via-orange-500/10 to-transparent" />
@@ -89,13 +89,13 @@ const Login = () => {
             <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-xl shadow-orange-500/30">
               <Zap className="w-7 h-7 text-white" />
             </div>
-            <span className="text-3xl font-bold text-white">Arbit</span>
+            <span className="text-3xl font-bold text-foreground">Arbit</span>
           </div>
           
-          <h1 className="text-4xl font-bold text-white mb-4 leading-tight">
+          <h1 className="text-4xl font-bold text-foreground mb-4 leading-tight">
             Transformer Thermal<br />Analytics Platform
           </h1>
-          <p className="text-lg text-slate-400 mb-8 max-w-md">
+          <p className="text-lg text-muted-foreground mb-8 max-w-md">
             Advanced thermal imaging analysis for predictive maintenance and anomaly detection in power transformers.
           </p>
           
@@ -110,8 +110,8 @@ const Login = () => {
                   <div className="w-2 h-2 rounded-full bg-orange-500" />
                 </div>
                 <div>
-                  <h3 className="text-white font-medium">{feature.title}</h3>
-                  <p className="text-sm text-slate-500">{feature.desc}</p>
+                  <h3 className="text-foreground font-medium">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground">{feature.desc}</p>
                 </div>
               </div>
             ))}
@@ -121,20 +121,20 @@ const Login = () => {
 
       {/* Right Panel - Login Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12">
-        <Card className="w-full max-w-md backdrop-blur-xl bg-slate-900/50 border-slate-800 shadow-2xl">
+        <Card className="w-full max-w-md backdrop-blur-xl bg-card/80 border-border/50 shadow-2xl">
           <CardHeader className="space-y-2 pb-4">
             {/* Mobile Logo */}
             <div className="flex items-center gap-3 lg:hidden mb-4">
               <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
                 <Zap className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-white">Arbit</span>
+              <span className="text-xl font-bold text-foreground">Arbit</span>
             </div>
             
-            <CardTitle className="text-2xl font-bold text-white">
+            <CardTitle className="text-2xl font-bold text-foreground">
               Welcome back
             </CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardDescription className="text-muted-foreground">
               Sign in to your account to continue
             </CardDescription>
           </CardHeader>
@@ -153,7 +153,7 @@ const Login = () => {
             <Button
               type="button"
               variant="outline"
-              className="w-full bg-white hover:bg-slate-100 text-slate-900 border-0 h-11 font-medium"
+              className="w-full bg-white hover:bg-gray-50 dark:bg-white dark:hover:bg-slate-100 text-slate-900 border-border/50 h-11 font-medium"
               onClick={handleGoogleLogin}
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -166,17 +166,17 @@ const Login = () => {
             </Button>
 
             <div className="relative">
-              <Separator className="bg-slate-700" />
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-900/50 px-3 text-xs text-slate-500">
+              <Separator className="bg-border" />
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 text-xs text-muted-foreground">
                 or continue with
               </span>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username" className="text-slate-300 text-sm">Username</Label>
+                <Label htmlFor="username" className="text-muted-foreground text-sm">Username</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="username"
                     placeholder="Enter your username"
@@ -184,20 +184,20 @@ const Login = () => {
                     onChange={(e) => setUsername(e.target.value)}
                     required
                     disabled={isLoading}
-                    className="pl-10 bg-slate-800/50 border-slate-700 focus:border-orange-500 focus:ring-orange-500/20 text-white placeholder:text-slate-500 h-11"
+                    className="pl-10 bg-secondary/50 border-border/50 focus:border-orange-500 focus:ring-orange-500/20 text-foreground placeholder:text-muted-foreground h-11"
                   />
                 </div>
               </div>
               
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-slate-300 text-sm">Password</Label>
+                  <Label htmlFor="password" className="text-muted-foreground text-sm">Password</Label>
                   <button type="button" className="text-xs text-orange-500 hover:text-orange-400 transition-colors">
                     Forgot password?
                   </button>
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
@@ -206,13 +206,13 @@ const Login = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     disabled={isLoading}
-                    className="pl-10 pr-10 bg-slate-800/50 border-slate-700 focus:border-orange-500 focus:ring-orange-500/20 text-white placeholder:text-slate-500 h-11"
+                    className="pl-10 pr-10 bg-secondary/50 border-border/50 focus:border-orange-500 focus:ring-orange-500/20 text-foreground placeholder:text-muted-foreground h-11"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent text-slate-500 hover:text-slate-300"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent text-muted-foreground hover:text-foreground"
                     onClick={() => setShowPassword(!showPassword)}
                     disabled={isLoading}
                   >
@@ -242,7 +242,7 @@ const Login = () => {
           </CardContent>
           
           <CardFooter className="pt-2">
-            <p className="text-sm text-slate-500 text-center w-full">
+            <p className="text-sm text-muted-foreground text-center w-full">
               Don't have an account?{" "}
               <Link to="/signup" className="text-orange-500 hover:text-orange-400 font-medium transition-colors">
                 Create account

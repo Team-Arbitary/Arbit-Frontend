@@ -124,11 +124,11 @@
 /* Frosted Glass Utilities */
 @layer utilities {
   .glass {
-    @apply backdrop-blur-xl bg-white/5 border border-white/10;
+    @apply backdrop-blur-xl bg-white/70 dark:bg-white/5 border border-gray-200/50 dark:border-white/10;
   }
 
   .glass-strong {
-    @apply backdrop-blur-2xl bg-black/60 border border-white/20;
+    @apply backdrop-blur-2xl bg-white/80 dark:bg-black/60 border border-gray-200/50 dark:border-white/20;
   }
 }
 

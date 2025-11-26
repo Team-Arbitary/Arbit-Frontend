@@ -20,7 +20,6 @@ import {
   Trash2,
   Search,
   ZoomIn,
-  MoreHorizontal,
   Square,
   X,
   Save,
@@ -28,6 +27,11 @@ import {
   Send,
   Bot,
   FileText,
+  Check,
+  RotateCw,
+  Circle,
+  Ellipsis,
+  Lightbulb,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -43,6 +47,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MaintenanceRecordForm } from "@/components/MaintenanceRecordForm";
+import {
+  chatWithGroq,
+  SYSTEM_PROMPTS,
+  buildInspectionContext,
+  ChatMessage,
+} from "@/lib/groq";
 
 const openInNewTab = (url?: string | null) => {
   if (!url) return;
@@ -1971,8 +1981,8 @@ function AnalysisModal({
                               />
                             )}
 
-                          <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
-                            🔍 Hover to magnify {magnifierZoom}x
+                          <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+                            <ZoomIn className="h-3 w-3" /> Hover to magnify {magnifierZoom}x
                           </div>
                         </div>
                       </div>
@@ -2063,8 +2073,8 @@ function AnalysisModal({
                               />
                             )}
 
-                          <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
-                            🔍 Hover to magnify {magnifierZoom}x
+                          <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+                            <ZoomIn className="h-3 w-3" /> Hover to magnify {magnifierZoom}x
                           </div>
                         </div>
                       </div>
@@ -2311,7 +2321,7 @@ function AnalysisModal({
                       </div>
                     </div>
                     <div className="bg-blue-500/10 border border-blue-500/30 backdrop-blur-sm rounded-lg p-3 text-sm text-blue-300">
-                      <p className="font-medium mb-1">💡 Tip:</p>
+                      <p className="font-medium mb-1 flex items-center gap-1"><Lightbulb className="h-4 w-4" /> Tip:</p>
                       <p>
                         Click and drag to pan the images. Use the slider or +/-
                         buttons to zoom in/out.
@@ -2677,6 +2687,7 @@ export default function InspectionDetail() {
   >([]);
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [chatConversationHistory, setChatConversationHistory] = useState<ChatMessage[]>([]);
 
   const [inspection, setInspection] = useState<InspectionView>({
     id: id ?? "-",
@@ -3505,7 +3516,7 @@ export default function InspectionDetail() {
     });
   };
 
-  // Chat handler
+  // Chat handler with Groq integration
   const handleSendMessage = async () => {
     if (!chatInput.trim()) return;
 
@@ -3520,26 +3531,85 @@ export default function InspectionDetail() {
     setChatInput("");
     setIsChatLoading(true);
 
+    // Build conversation history for context
+    const newHistory: ChatMessage[] = [
+      ...chatConversationHistory,
+      { role: "user" as const, content: chatInput.trim() },
+    ];
+
     try {
-      // TODO: Replace with actual RAG backend API call
-      // For now, create a mock response
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Build inspection context for the AI
+      const contextString = buildInspectionContext({
+        inspectionId: inspection.id,
+        transformerNo: inspection.transformerNo,
+        branch: inspection.branch,
+        status: inspection.status,
+        lastUpdated: inspection.lastUpdated,
+        inspectionImage: !!thermalImage,
+        baselineImage: !!baselineImage,
+        annotations: cachedAnnotations.map((ann) => ({
+          id: ann.id,
+          anomalyState: ann.anomalyState,
+          confidenceScore: ann.confidenceScore,
+          riskType: ann.riskType,
+          description: ann.description,
+        })),
+        analysisData: analysisData
+          ? {
+              anomalies: analysisData.parsedAnalysisJson?.anomalies?.map(
+                (a: any) => ({
+                  type: a.type,
+                  severity_level: a.severity_level,
+                  confidence: a.confidence,
+                  description: a.description,
+                })
+              ),
+              summary: analysisData.parsedAnalysisJson?.summary,
+              recommendations: analysisData.parsedAnalysisJson?.recommendations,
+            }
+          : undefined,
+        confirmedAnomalies: confirmedAnomalies.size,
+        totalAnomalies: analysisData?.parsedAnalysisJson?.anomalies?.length || 0,
+      });
+
+      // Call Groq API
+      const response = await chatWithGroq(
+        newHistory,
+        SYSTEM_PROMPTS.inspection,
+        contextString
+      );
 
       const assistantMessage = {
         id: `msg-${Date.now()}-assistant`,
         role: "assistant" as const,
-        content: `I'm Arbit AI Assistant. I can help you analyze thermal images and annotations. (RAG integration pending)`,
+        content: response,
         timestamp: new Date(),
       };
 
       setChatMessages((prev) => [assistantMessage, ...prev]); // Newest on top
+
+      // Update conversation history (keep last 10 exchanges)
+      setChatConversationHistory([
+        ...newHistory.slice(-18),
+        { role: "assistant" as const, content: response },
+      ].slice(-20));
     } catch (error) {
       console.error("Chat error:", error);
       toast({
         title: "Chat Error",
-        description: "Failed to send message. Please try again.",
+        description:
+          error instanceof Error ? error.message : "Failed to send message. Please try again.",
         variant: "destructive",
       });
+
+      // Add error message to chat
+      const errorMessage = {
+        id: `msg-${Date.now()}-error`,
+        role: "assistant" as const,
+        content: "I'm sorry, I encountered an error. Please try again.",
+        timestamp: new Date(),
+      };
+      setChatMessages((prev) => [errorMessage, ...prev]);
     } finally {
       setIsChatLoading(false);
     }
@@ -3639,8 +3709,8 @@ export default function InspectionDetail() {
             <StatusBadge status={inspection.status as any} />
             {/* Show "Corrected" badge only for Format 1 (array format) */}
             {analysisData?.parsedAnalysisJson?.formatType === "array" && (
-              <Badge className="bg-green-100 text-green-800 border border-green-300">
-                ✓ Corrected
+              <Badge className="bg-green-100 text-green-800 border border-green-300 flex items-center gap-1">
+                <Check className="h-3 w-3" /> Corrected
               </Badge>
             )}
             {(inspection.status === "in-progress" ||
@@ -4202,9 +4272,9 @@ export default function InspectionDetail() {
                                               {isConfirmed && (
                                                 <Badge
                                                   variant="outline"
-                                                  className="text-xs border-green-500 text-green-400"
+                                                  className="text-xs border-green-500 text-green-400 flex items-center gap-1"
                                                 >
-                                                  ✓ Confirmed
+                                                  <Check className="h-3 w-3" /> Confirmed
                                                 </Badge>
                                               )}
                                             </div>
@@ -4620,8 +4690,8 @@ export default function InspectionDetail() {
                           </Button>
                         </div>
 
-                        <p className="text-xs text-muted-foreground mt-2">
-                          💡 The AI can analyze your annotations and provide
+                        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                          <Lightbulb className="h-3 w-3" /> The AI can analyze your annotations and provide
                           insights about thermal anomalies
                         </p>
                       </CardContent>
@@ -4707,26 +4777,26 @@ export default function InspectionDetail() {
                       switch (status) {
                         case "completed":
                           return {
-                            icon: "✓",
+                            icon: <Check className="h-4 w-4" />,
                             bgColor:
                               "bg-green-500/10 backdrop-blur-sm0/10 backdrop-blur-sm0",
                             textColor: "text-white",
                           };
                         case "in-progress":
                           return {
-                            icon: "↻",
+                            icon: <RotateCw className="h-4 w-4 animate-spin" />,
                             bgColor: "bg-blue-500",
                             textColor: "text-white",
                           };
                         case "ready":
                           return {
-                            icon: "✓",
+                            icon: <Check className="h-4 w-4" />,
                             bgColor: "bg-green-100",
                             textColor: "text-green-400",
                           };
                         case "waiting":
                           return {
-                            icon: "⋯",
+                            icon: <Ellipsis className="h-4 w-4" />,
                             bgColor:
                               "bg-yellow-500/10 backdrop-blur-sm0/10 backdrop-blur-sm0",
                             textColor: "text-white",
@@ -4734,7 +4804,7 @@ export default function InspectionDetail() {
                         case "not-ready":
                         default:
                           return {
-                            icon: "○",
+                            icon: <Circle className="h-4 w-4" />,
                             bgColor: "bg-gray-300",
                             textColor: "text-foreground",
                           };
@@ -4765,11 +4835,9 @@ export default function InspectionDetail() {
                     return (
                       <div key={index} className="flex items-center gap-3">
                         <div
-                          className={`w-8 h-8 ${bgColor} rounded-full flex items-center justify-center flex-shrink-0`}
+                          className={`w-8 h-8 ${bgColor} rounded-full flex items-center justify-center flex-shrink-0 ${textColor}`}
                         >
-                          <span className={`text-sm font-medium ${textColor}`}>
-                            {icon}
-                          </span>
+                          {icon}
                         </div>
                         <div className="flex-1">
                           <div className="font-medium text-sm">

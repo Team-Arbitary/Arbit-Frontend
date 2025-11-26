@@ -37,6 +37,7 @@ import {
   LayoutGrid,
   List,
   ImageIcon,
+  Pencil,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, API_ENDPOINTS } from "@/lib/api";
@@ -477,7 +478,7 @@ export default function Dashboard() {
           className="w-full"
         >
           <div className="flex items-center justify-between backdrop-blur-xl bg-card/50 border border-border/50 rounded-2xl p-4">
-            <TabsList className="grid w-fit grid-cols-3 bg-black/40 backdrop-blur-sm border border-white/10">
+            <TabsList className="grid w-fit grid-cols-3 bg-secondary/80 backdrop-blur-sm border border-border/50">
               <TabsTrigger
                 value="overview"
                 className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-orange-500 data-[state=active]:text-white"
@@ -608,7 +609,7 @@ export default function Dashboard() {
               {/* Inspection Trend */}
               <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
                 <CardHeader>
-                  <CardTitle className="text-white">
+                  <CardTitle className="text-foreground">
                     Inspection Trends
                   </CardTitle>
                 </CardHeader>
@@ -687,7 +688,7 @@ export default function Dashboard() {
               {/* Anomaly Distribution */}
               <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
                 <CardHeader>
-                  <CardTitle className="text-white">
+                  <CardTitle className="text-foreground">
                     Anomaly Distribution
                   </CardTitle>
                 </CardHeader>
@@ -728,7 +729,7 @@ export default function Dashboard() {
               {/* Transformer Status */}
               <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
                 <CardHeader>
-                  <CardTitle className="text-white">
+                  <CardTitle className="text-foreground">
                     Transformer Status
                   </CardTitle>
                 </CardHeader>
@@ -759,7 +760,7 @@ export default function Dashboard() {
               {/* Recent Activity */}
               <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
                 <CardHeader>
-                  <CardTitle className="text-white">Recent Activity</CardTitle>
+                  <CardTitle className="text-foreground">Recent Activity</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -782,7 +783,7 @@ export default function Dashboard() {
                               }`}
                             />
                             <div>
-                              <p className="text-white font-medium">
+                              <p className="text-foreground font-medium">
                                 {activity.transformer}
                               </p>
                               <p className="text-muted-foreground text-sm">
@@ -1013,7 +1014,7 @@ export default function Dashboard() {
                               className="h-8 w-8 bg-black/60 hover:bg-black/80 text-white border-0"
                               onClick={() => openEdit(transformer)}
                             >
-                              <div className="h-3 w-3">✎</div>
+                              <Pencil className="h-3 w-3" />
                             </Button>
                             <Button
                               size="icon"
@@ -1377,8 +1378,19 @@ export default function Dashboard() {
         </Tabs>
       </div>
 
-      {/* Chatbot */}
-      <Chatbot />
+      {/* Chatbot with context */}
+      <Chatbot
+        context={{
+          transformerCount: transformers.length,
+          inspectionCount: inspections.length,
+          activeInspections: activeInspectionsCount,
+          completedInspections: completedInspectionsCount,
+          anomaliesDetected: totalAnomalies,
+          healthScore: healthScore,
+          currentTab: activeTab,
+          recentActivity: recentActivity,
+        }}
+      />
 
       {/* Edit Transformer Modal */}
       {editingTransformer && (

@@ -100,7 +100,7 @@ const Signup = () => {
   );
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen flex bg-gradient-to-br from-background via-secondary/30 to-background dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Left Panel - Branding */}
       <div className="hidden lg:flex lg:w-2/5 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-orange-600/20 via-orange-500/10 to-transparent" />
@@ -114,13 +114,13 @@ const Signup = () => {
             <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-xl shadow-orange-500/30">
               <Zap className="w-7 h-7 text-white" />
             </div>
-            <span className="text-3xl font-bold text-white">Arbit</span>
+            <span className="text-3xl font-bold text-foreground">Arbit</span>
           </div>
           
-          <h1 className="text-3xl font-bold text-white mb-4 leading-tight">
+          <h1 className="text-3xl font-bold text-foreground mb-4 leading-tight">
             Join the Future of<br />Thermal Analytics
           </h1>
-          <p className="text-base text-slate-400 mb-8 max-w-sm">
+          <p className="text-base text-muted-foreground mb-8 max-w-sm">
             Create your account to access advanced transformer monitoring and predictive maintenance tools.
           </p>
           
@@ -135,8 +135,8 @@ const Signup = () => {
                   <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
                 </div>
                 <div>
-                  <h3 className="text-white font-medium text-sm">{feature.title}</h3>
-                  <p className="text-xs text-slate-500">{feature.desc}</p>
+                  <h3 className="text-foreground font-medium text-sm">{feature.title}</h3>
+                  <p className="text-xs text-muted-foreground">{feature.desc}</p>
                 </div>
               </div>
             ))}
@@ -146,20 +146,20 @@ const Signup = () => {
 
       {/* Right Panel - Signup Form */}
       <div className="w-full lg:w-3/5 flex items-center justify-center p-6 lg:p-8 overflow-y-auto">
-        <Card className="w-full max-w-lg backdrop-blur-xl bg-slate-900/50 border-slate-800 shadow-2xl">
+        <Card className="w-full max-w-lg backdrop-blur-xl bg-card/80 border-border/50 shadow-2xl">
           <CardHeader className="space-y-2 pb-4">
             {/* Mobile Logo */}
             <div className="flex items-center gap-3 lg:hidden mb-4">
               <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
                 <Zap className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-white">Arbit</span>
+              <span className="text-xl font-bold text-foreground">Arbit</span>
             </div>
             
-            <CardTitle className="text-2xl font-bold text-white">
+            <CardTitle className="text-2xl font-bold text-foreground">
               Create your account
             </CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardDescription className="text-muted-foreground">
               Fill in your details to get started
             </CardDescription>
           </CardHeader>
@@ -169,7 +169,7 @@ const Signup = () => {
             <Button
               type="button"
               variant="outline"
-              className="w-full bg-white hover:bg-slate-100 text-slate-900 border-0 h-11 font-medium"
+              className="w-full bg-white hover:bg-gray-50 dark:bg-white dark:hover:bg-slate-100 text-slate-900 border-border/50 h-11 font-medium"
               onClick={handleGoogleSignup}
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -182,8 +182,8 @@ const Signup = () => {
             </Button>
 
             <div className="relative">
-              <Separator className="bg-slate-700" />
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-900/50 px-3 text-xs text-slate-500">
+              <Separator className="bg-border" />
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 text-xs text-muted-foreground">
                 or fill in your details
               </span>
             </div>
@@ -192,9 +192,9 @@ const Signup = () => {
               {/* Personal Information */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="username" className="text-slate-300 text-sm">Username</Label>
+                  <Label htmlFor="username" className="text-muted-foreground text-sm">Username</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="username"
                       placeholder="johndoe"
@@ -202,14 +202,14 @@ const Signup = () => {
                       onChange={(e) => updateField("username", e.target.value)}
                       required
                       disabled={isLoading}
-                      className="pl-10 bg-slate-800/50 border-slate-700 focus:border-orange-500 text-white placeholder:text-slate-500 h-10"
+                      className="pl-10 bg-secondary/50 border-border/50 focus:border-orange-500 text-foreground placeholder:text-muted-foreground h-10"
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="fullName" className="text-slate-300 text-sm">Full Name</Label>
+                  <Label htmlFor="fullName" className="text-muted-foreground text-sm">Full Name</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="fullName"
                       placeholder="John Doe"
@@ -217,16 +217,16 @@ const Signup = () => {
                       onChange={(e) => updateField("fullName", e.target.value)}
                       required
                       disabled={isLoading}
-                      className="pl-10 bg-slate-800/50 border-slate-700 focus:border-orange-500 text-white placeholder:text-slate-500 h-10"
+                      className="pl-10 bg-secondary/50 border-border/50 focus:border-orange-500 text-foreground placeholder:text-muted-foreground h-10"
                     />
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-slate-300 text-sm">Email Address</Label>
+                <Label htmlFor="email" className="text-muted-foreground text-sm">Email Address</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="email"
                     type="email"
@@ -235,36 +235,36 @@ const Signup = () => {
                     onChange={(e) => updateField("email", e.target.value)}
                     required
                     disabled={isLoading}
-                    className="pl-10 bg-slate-800/50 border-slate-700 focus:border-orange-500 text-white placeholder:text-slate-500 h-10"
+                    className="pl-10 bg-secondary/50 border-border/50 focus:border-orange-500 text-foreground placeholder:text-muted-foreground h-10"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="department" className="text-slate-300 text-sm">Department</Label>
+                  <Label htmlFor="department" className="text-muted-foreground text-sm">Department</Label>
                   <div className="relative">
-                    <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                    <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="department"
                       placeholder="Engineering"
                       value={formData.department}
                       onChange={(e) => updateField("department", e.target.value)}
                       disabled={isLoading}
-                      className="pl-10 bg-slate-800/50 border-slate-700 focus:border-orange-500 text-white placeholder:text-slate-500 h-10"
+                      className="pl-10 bg-secondary/50 border-border/50 focus:border-orange-500 text-foreground placeholder:text-muted-foreground h-10"
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="role" className="text-slate-300 text-sm">Role</Label>
+                  <Label htmlFor="role" className="text-muted-foreground text-sm">Role</Label>
                   <Select value={formData.role} onValueChange={(val) => updateField("role", val)} disabled={isLoading}>
-                    <SelectTrigger className="bg-slate-800/50 border-slate-700 focus:border-orange-500 text-white h-10">
+                    <SelectTrigger className="bg-secondary/50 border-border/50 focus:border-orange-500 text-foreground h-10">
                       <div className="flex items-center gap-2">
-                        <Shield className="h-4 w-4 text-slate-500" />
+                        <Shield className="h-4 w-4 text-muted-foreground" />
                         <SelectValue />
                       </div>
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-slate-700">
+                    <SelectContent className="bg-card border-border">
                       <SelectItem value="ROLE_USER">User</SelectItem>
                       <SelectItem value="ROLE_ENGINEER">Engineer</SelectItem>
                       <SelectItem value="ROLE_ADMIN">Administrator</SelectItem>
@@ -275,9 +275,9 @@ const Signup = () => {
 
               {/* Password Section */}
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-slate-300 text-sm">Password</Label>
+                <Label htmlFor="password" className="text-muted-foreground text-sm">Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
@@ -286,13 +286,13 @@ const Signup = () => {
                     onChange={(e) => updateField("password", e.target.value)}
                     required
                     disabled={isLoading}
-                    className="pl-10 pr-10 bg-slate-800/50 border-slate-700 focus:border-orange-500 text-white placeholder:text-slate-500 h-10"
+                    className="pl-10 pr-10 bg-secondary/50 border-border/50 focus:border-orange-500 text-foreground placeholder:text-muted-foreground h-10"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent text-slate-500 hover:text-slate-300"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent text-muted-foreground hover:text-foreground"
                     onClick={() => setShowPassword(!showPassword)}
                     disabled={isLoading}
                   >
@@ -301,7 +301,7 @@ const Signup = () => {
                 </div>
                 
                 {formData.password && (
-                  <div className="grid grid-cols-2 gap-2 mt-2 p-3 rounded-lg bg-slate-800/30 border border-slate-700/50">
+                  <div className="grid grid-cols-2 gap-2 mt-2 p-3 rounded-lg bg-secondary/30 border border-border/50">
                     <ValidationItem valid={passwordValidation.minLength} text="8+ characters" />
                     <ValidationItem valid={passwordValidation.hasUppercase} text="Uppercase letter" />
                     <ValidationItem valid={passwordValidation.hasNumber} text="Contains number" />
@@ -311,9 +311,9 @@ const Signup = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-slate-300 text-sm">Confirm Password</Label>
+                <Label htmlFor="confirmPassword" className="text-muted-foreground text-sm">Confirm Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
@@ -322,13 +322,13 @@ const Signup = () => {
                     onChange={(e) => updateField("confirmPassword", e.target.value)}
                     required
                     disabled={isLoading}
-                    className="pl-10 pr-10 bg-slate-800/50 border-slate-700 focus:border-orange-500 text-white placeholder:text-slate-500 h-10"
+                    className="pl-10 pr-10 bg-secondary/50 border-border/50 focus:border-orange-500 text-foreground placeholder:text-muted-foreground h-10"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent text-slate-500 hover:text-slate-300"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent text-muted-foreground hover:text-foreground"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     disabled={isLoading}
                   >
@@ -358,7 +358,7 @@ const Signup = () => {
           </CardContent>
 
           <CardFooter className="pt-2">
-            <p className="text-sm text-slate-500 text-center w-full">
+            <p className="text-sm text-muted-foreground text-center w-full">
               Already have an account?{" "}
               <Link to="/login" className="text-orange-500 hover:text-orange-400 font-medium transition-colors">
                 Sign in
