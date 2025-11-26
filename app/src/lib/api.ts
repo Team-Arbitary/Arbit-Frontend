@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getGlobalLogout } from "./auth";
 
 /**
  * API Configuration
@@ -10,8 +11,10 @@ export const API_BASE_URL =
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 30000, // 30 second timeout
 });
 
+// Request interceptor - Add auth token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
@@ -19,6 +22,32 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Response interceptor - Handle auth errors globally
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    
+    // Handle authentication errors
+    if (status === 401 || status === 403) {
+      const logout = getGlobalLogout();
+      if (logout) {
+        const message = status === 401 
+          ? "Your session has expired. Please login again."
+          : "You don't have permission to access this resource. Please login again.";
+        logout(message);
+      }
+    }
+    
+    // Handle network errors
+    if (!error.response) {
+      console.error("Network error:", error.message);
+    }
+    
+    return Promise.reject(error);
+  }
+);
 
 export const API_ENDPOINTS = {
   // Transformer Management
