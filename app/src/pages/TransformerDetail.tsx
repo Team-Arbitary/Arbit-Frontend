@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AddInspectionModal } from "@/components/AddInspectionModal";
+import { AIOverview } from "@/components/AIOverview";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Star, Eye, Trash2, Upload, Search, Filter } from "lucide-react";
 import { api, API_ENDPOINTS, type ApiEnvelope } from "@/lib/api";
@@ -453,6 +454,27 @@ export default function TransformerDetail() {
     }
   };
 
+  // Build context for AI Overview
+  const transformerContext = useMemo(() => {
+    const completedCount = inspections.filter(i => i.status?.toLowerCase() === 'completed').length;
+    const pendingCount = inspections.filter(i => ['pending', 'in-progress', 'in progress', 'not started'].includes(i.status?.toLowerCase() || '')).length;
+    const recentInspections = inspections.slice(0, 3);
+    
+    return `Transformer Detail Analysis:
+- Transformer No: ${transformer.transformerNo || 'N/A'}
+- Pole No: ${transformer.poleNo || 'N/A'}
+- Location: ${transformer.location || 'N/A'}
+- Region: ${transformer.regions || 'N/A'}
+- Type: ${transformer.type || 'N/A'}
+- Current Status: ${transformer.status || 'N/A'}
+- Last Inspected: ${transformer.lastInspected || 'N/A'}
+- Has Baseline Image: ${hasBaseline ? 'Yes' : 'No'}
+- Total Inspections: ${inspections.length}
+- Completed Inspections: ${completedCount}
+- Pending/In-Progress: ${pendingCount}
+- Recent Inspections: ${recentInspections.map(i => `ID ${i.inspectionNo}: ${i.status} (${i.inspectedDate})`).join('; ') || 'None'}`;
+  }, [transformer, inspections, hasBaseline]);
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -509,6 +531,9 @@ export default function TransformerDetail() {
             </CardContent>
           </Card>
         </div>
+
+        {/* AI Overview for Transformer */}
+        <AIOverview context={transformerContext} pageType="transformer-detail" />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>

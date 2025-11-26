@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
+import { AIOverview } from "@/components/AIOverview";
 import {
   ArrowLeft,
   Upload,
@@ -3684,6 +3685,30 @@ export default function InspectionDetail() {
     setShowAnalysisModal(true);
   };
 
+  // Build context for AI Overview
+  const inspectionOverviewContext = useMemo(() => {
+    const anomalies = analysisData?.parsedAnalysisJson?.anomalies || [];
+    const faultyCount = anomalies.filter((a: any) => a.anomalyState === 'Faulty').length;
+    const potentiallyFaultyCount = anomalies.filter((a: any) => a.anomalyState === 'Potentially Faulty').length;
+    const normalCount = anomalies.filter((a: any) => a.anomalyState === 'Normal').length;
+    
+    return `Inspection Detail Analysis:
+- Inspection ID: ${inspection.id}
+- Transformer No: ${inspection.transformerNo || 'N/A'}
+- Branch: ${inspection.branch || 'N/A'}
+- Status: ${inspection.status}
+- Last Updated: ${inspection.lastUpdated || 'N/A'}
+- Has Thermal Image: ${thermalImage ? 'Yes' : 'No'}
+- Has Baseline Image: ${baselineImageExists ? 'Yes' : 'No'}
+- Analysis Status: ${analysisData?.analysisStatus || 'Not analyzed'}
+- Total Anomalies Detected: ${anomalies.length}
+- Faulty: ${faultyCount}
+- Potentially Faulty: ${potentiallyFaultyCount}
+- Normal: ${normalCount}
+- Analysis Summary: ${analysisData?.parsedAnalysisJson?.summary || 'No summary available'}
+- High Risk Areas: ${anomalies.filter((a: any) => a.riskType === 'Full wire overload' || a.riskType === 'Transformer overload').length}`;
+  }, [inspection, thermalImage, baselineImageExists, analysisData]);
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -3834,6 +3859,9 @@ export default function InspectionDetail() {
             </CardContent>
           </Card>
         </div>
+
+        {/* AI Overview for Inspection */}
+        <AIOverview context={inspectionOverviewContext} pageType="inspection-detail" />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Side - Details and Thermal Upload */}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import { AddTransformerModal } from "@/components/AddTransformerModal";
 import { AddInspectionModal } from "@/components/AddInspectionModal";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Chatbot } from "@/components/Chatbot";
+import { AIOverview } from "@/components/AIOverview";
 import {
   Search,
   Filter,
@@ -151,6 +152,21 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "overview";
+
+  // Track regeneration keys for AI Overview - updates when tab becomes active
+  const [aiRegenerateKeys, setAiRegenerateKeys] = useState({
+    overview: Date.now(),
+    transformers: Date.now(),
+    inspections: Date.now(),
+  });
+
+  // Update regenerate key when tab changes
+  useEffect(() => {
+    setAiRegenerateKeys(prev => ({
+      ...prev,
+      [activeTab]: Date.now(),
+    }));
+  }, [activeTab]);
 
   const [transformers, setTransformers] = useState<Transformer[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
@@ -468,6 +484,50 @@ export default function Dashboard() {
         ).toFixed(1)
       : "N/A";
 
+  // AI Overview context builders for each tab
+  const overviewContext = useMemo(() => {
+    return `Dashboard Overview Data:
+- Total Transformers: ${transformers.length}
+- Total Inspections: ${inspections.length}
+- Active Inspections: ${activeInspectionsCount}
+- Completed Inspections: ${completedInspectionsCount}
+- Anomalies Detected: ${totalAnomalies} (Faulty: ${anomalyStats.faulty}, Potentially Faulty: ${anomalyStats.potentiallyFaulty})
+- Health Score: ${healthScore}${healthScore !== "N/A" ? "%" : ""}
+- Regions covered: ${regionOptions.join(", ") || "N/A"}
+- Transformer types: ${typeOptions.join(", ") || "N/A"}
+- Recent activity: ${recentActivity.map(a => `${a.transformer}: ${a.status}`).join("; ") || "No recent activity"}`;
+  }, [transformers.length, inspections.length, activeInspectionsCount, completedInspectionsCount, totalAnomalies, anomalyStats, healthScore, regionOptions, typeOptions, recentActivity]);
+
+  const transformersContext = useMemo(() => {
+    const regionDistribution: Record<string, number> = {};
+    const typeDistribution: Record<string, number> = {};
+    transformers.forEach(t => {
+      if (t.region) regionDistribution[t.region] = (regionDistribution[t.region] || 0) + 1;
+      if (t.type) typeDistribution[t.type] = (typeDistribution[t.type] || 0) + 1;
+    });
+    return `Transformer Fleet Data:
+- Total Transformers: ${transformers.length}
+- Distribution by Region: ${Object.entries(regionDistribution).map(([r, c]) => `${r}: ${c}`).join(", ") || "N/A"}
+- Distribution by Type: ${Object.entries(typeDistribution).map(([t, c]) => `${t}: ${c}`).join(", ") || "N/A"}
+- Status: ${transformersByStatus.operational} operational, ${transformersByStatus.underInspection} under inspection
+- Sample transformers: ${transformers.slice(0, 5).map(t => `${t.transformerNo} (${t.region || "Unknown region"})`).join(", ")}`;
+  }, [transformers, transformersByStatus]);
+
+  const inspectionsContext = useMemo(() => {
+    const statusCounts: Record<string, number> = {};
+    inspections.forEach(i => {
+      const status = i.status || "Unknown";
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+    const recentInspections = inspections.slice(0, 5);
+    return `Inspection Overview Data:
+- Total Inspections: ${inspections.length}
+- Status Distribution: ${Object.entries(statusCounts).map(([s, c]) => `${s}: ${c}`).join(", ")}
+- Active/Pending: ${activeInspectionsCount}
+- Completed: ${completedInspectionsCount}
+- Recent inspections: ${recentInspections.map(i => `${i.transformerNo || "Unknown"} (${i.status || "Unknown"}, ${i.inspectedDate || "No date"})`).join("; ")}`;
+  }, [inspections, activeInspectionsCount, completedInspectionsCount]);
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -525,6 +585,9 @@ export default function Dashboard() {
                 Real-time insights into transformer health and inspection status
               </p>
             </div>
+
+            {/* AI Overview */}
+            <AIOverview context={overviewContext} pageType="overview" regenerateKey={aiRegenerateKeys.overview} />
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -809,6 +872,9 @@ export default function Dashboard() {
 
           {/* TRANSFORMERS TAB */}
           <TabsContent value="transformers" className="space-y-4 mt-6">
+            {/* AI Overview for Transformers */}
+            <AIOverview context={transformersContext} pageType="transformers" regenerateKey={aiRegenerateKeys.transformers} />
+
             <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -1073,6 +1139,9 @@ export default function Dashboard() {
 
           {/* INSPECTIONS TAB */}
           <TabsContent value="inspections" className="space-y-4 mt-6">
+            {/* AI Overview for Inspections */}
+            <AIOverview context={inspectionsContext} pageType="inspections" regenerateKey={aiRegenerateKeys.inspections} />
+
             <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
