@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/components/ThemeProvider";
 import { Badge } from "@/components/ui/badge";
+import DarkVeil from "@/components/ui/DarkVeil";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -85,10 +86,24 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full relative">
+        {/* Dark Veil Background */}
+        <div className="fixed inset-0 z-0">
+          <DarkVeil
+            hueShift={theme === 'dark' ? 20 : 30}
+            speed={0.3}
+            noiseIntensity={0.05}
+            warpAmount={0.3}
+            resolutionScale={0.8}
+          />
+        </div>
+        
+        {/* Overlay for better content visibility */}
+        <div className={`fixed inset-0 z-[1] pointer-events-none ${theme === 'dark' ? 'bg-black/70' : 'bg-white/80'}`} />
+        
         <AppSidebar user={user} />
         
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col relative z-10">
           {/* Header */}
           <header className="bg-card/80 backdrop-blur-xl border-b border-border/50 h-16 flex items-center px-6 sticky top-0 z-40">
             <div className="flex items-center gap-4 flex-1">
@@ -168,7 +183,7 @@ export function Layout({ children }: LayoutProps) {
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 p-6 bg-background">
+          <main className="flex-1 p-6 bg-transparent">
             {children}
           </main>
         </div>

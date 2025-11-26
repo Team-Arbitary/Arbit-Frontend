@@ -3699,7 +3699,7 @@ export default function InspectionDetail() {
 - Status: ${inspection.status}
 - Last Updated: ${inspection.lastUpdated || 'N/A'}
 - Has Thermal Image: ${thermalImage ? 'Yes' : 'No'}
-- Has Baseline Image: ${baselineImageExists ? 'Yes' : 'No'}
+- Has Baseline Image: ${baselineImage ? 'Yes' : 'No'}
 - Analysis Status: ${analysisData?.analysisStatus || 'Not analyzed'}
 - Total Anomalies Detected: ${anomalies.length}
 - Faulty: ${faultyCount}
@@ -3707,7 +3707,7 @@ export default function InspectionDetail() {
 - Normal: ${normalCount}
 - Analysis Summary: ${analysisData?.parsedAnalysisJson?.summary || 'No summary available'}
 - High Risk Areas: ${anomalies.filter((a: any) => a.riskType === 'Full wire overload' || a.riskType === 'Transformer overload').length}`;
-  }, [inspection, thermalImage, baselineImageExists, analysisData]);
+  }, [inspection, thermalImage, baselineImage, analysisData]);
 
   return (
     <Layout>

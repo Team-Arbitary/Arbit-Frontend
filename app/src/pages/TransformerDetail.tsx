@@ -352,6 +352,29 @@ export default function TransformerDetail() {
     }
   };
 
+  // Build context for AI Overview - must be called before any early returns to follow Rules of Hooks
+  const transformerContext = useMemo(() => {
+    if (!transformer) return '';
+    
+    const completedCount = inspections.filter(i => i.status?.toLowerCase() === 'completed').length;
+    const pendingCount = inspections.filter(i => ['pending', 'in-progress', 'in progress', 'not started'].includes(i.status?.toLowerCase() || '')).length;
+    const recentInspections = inspections.slice(0, 3);
+    
+    return `Transformer Detail Analysis:
+- Transformer No: ${transformer.transformerNo || 'N/A'}
+- Pole No: ${transformer.poleNo || 'N/A'}
+- Location: ${transformer.location || 'N/A'}
+- Region: ${transformer.regions || 'N/A'}
+- Type: ${transformer.type || 'N/A'}
+- Current Status: ${transformer.status || 'N/A'}
+- Last Inspected: ${transformer.lastInspected || 'N/A'}
+- Has Baseline Image: ${hasBaseline ? 'Yes' : 'No'}
+- Total Inspections: ${inspections.length}
+- Completed Inspections: ${completedCount}
+- Pending/In-Progress: ${pendingCount}
+- Recent Inspections: ${recentInspections.map(i => `ID ${i.inspectionNo}: ${i.status} (${i.inspectedDate})`).join('; ') || 'None'}`;
+  }, [transformer, inspections, hasBaseline]);
+
   if (loading) {
     return (
       <Layout>
@@ -453,27 +476,6 @@ export default function TransformerDetail() {
       // Keep the optimistically added inspection if refresh fails
     }
   };
-
-  // Build context for AI Overview
-  const transformerContext = useMemo(() => {
-    const completedCount = inspections.filter(i => i.status?.toLowerCase() === 'completed').length;
-    const pendingCount = inspections.filter(i => ['pending', 'in-progress', 'in progress', 'not started'].includes(i.status?.toLowerCase() || '')).length;
-    const recentInspections = inspections.slice(0, 3);
-    
-    return `Transformer Detail Analysis:
-- Transformer No: ${transformer.transformerNo || 'N/A'}
-- Pole No: ${transformer.poleNo || 'N/A'}
-- Location: ${transformer.location || 'N/A'}
-- Region: ${transformer.regions || 'N/A'}
-- Type: ${transformer.type || 'N/A'}
-- Current Status: ${transformer.status || 'N/A'}
-- Last Inspected: ${transformer.lastInspected || 'N/A'}
-- Has Baseline Image: ${hasBaseline ? 'Yes' : 'No'}
-- Total Inspections: ${inspections.length}
-- Completed Inspections: ${completedCount}
-- Pending/In-Progress: ${pendingCount}
-- Recent Inspections: ${recentInspections.map(i => `ID ${i.inspectionNo}: ${i.status} (${i.inspectedDate})`).join('; ') || 'None'}`;
-  }, [transformer, inspections, hasBaseline]);
 
   return (
     <Layout>
