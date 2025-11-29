@@ -171,26 +171,75 @@
 
 /* Print Styles */
 @media print {
+  /* Hide everything by default */
   body * {
     visibility: hidden;
   }
 
+  /* Show print container and its children */
+  .print-container,
+  .print-container *,
   .print-content,
   .print-content * {
-    visibility: visible;
+    visibility: visible !important;
   }
 
-  .print-content {
+  .print-container {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
+    background: white !important;
   }
 
-  /* Hide dialog overlay/backdrop */
-  [role="dialog"] {
-    position: static !important;
-    background: none !important;
+  .print-content {
+    position: relative;
+    width: 100%;
+    background: white !important;
+    color: black !important;
+    padding: 15mm !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Hide non-printable elements */
+  .no-print,
+  .print-container .no-print,
+  button,
+  [role="dialog"]:not(.print-container),
+  nav,
+  aside,
+  header {
+    display: none !important;
+  }
+
+  /* Force black text on white background for all print content */
+  .print-content * {
+    color: black !important;
+    background-color: transparent !important;
+  }
+
+  .print-content h1,
+  .print-content h2,
+  .print-content h3 {
+    color: black !important;
+  }
+
+  /* Ensure borders show */
+  .print-content .border,
+  .print-content [class*="border-"] {
+    border-color: #ccc !important;
+  }
+
+  /* Page setup */
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  /* Prevent page breaks inside sections */
+  .print-content > div {
+    page-break-inside: avoid;
   }
 
   /* Hide scrollbars */

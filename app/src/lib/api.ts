@@ -96,6 +96,10 @@ export const API_ENDPOINTS = {
     `${API_BASE_URL}/transformer-thermal-inspection/api/maintenance-records/inspection/${inspectionId}`,
   MAINTENANCE_GET_BY_TRANSFORMER: (transformerNo: string) =>
     `${API_BASE_URL}/transformer-thermal-inspection/api/maintenance-records/transformer/${transformerNo}`,
+  MAINTENANCE_GET_HISTORY: (inspectionId: string) =>
+    `${API_BASE_URL}/transformer-thermal-inspection/api/maintenance-records/inspection/${inspectionId}/history`,
+  MAINTENANCE_RESTORE_VERSION: (inspectionId: string, version: number) =>
+    `${API_BASE_URL}/transformer-thermal-inspection/api/maintenance-records/inspection/${inspectionId}/restore/${version}`,
 } as const;
 
 /**
