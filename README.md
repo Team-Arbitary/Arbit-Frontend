@@ -1,115 +1,417 @@
-# Transformer Thermal Inspection - Frontend
+<p align="center">
+  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
+  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/shadcn/ui-000000?style=for-the-badge&logo=shadcnui&logoColor=white" alt="shadcn/ui" />
+</p>
 
-This repository contains the frontend for managing transformer thermal inspections, built with **React**, **TypeScript**, **Vite**, and **Tailwind CSS**. It provides a modern, responsive user interface for interacting with the backend API.
+<h1 align="center">Arbit Frontend</h1>
 
------
+<p align="center">
+  <strong>Transformer Thermal Inspection Management System - Web Application</strong>
+</p>
 
-## Prerequisites
+<p align="center">
+  A modern, responsive React application for managing transformer thermal inspections, viewing AI-powered analysis results, and generating comprehensive maintenance reports.
+</p>
 
-Ensure the following are installed on your system before proceeding with the setup:
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#form-generation-system">Form System</a> •
+  <a href="#architecture">Architecture</a> •
+  <a href="#team">Team</a>
+</p>
 
-* **Node.js 18+**
-* **npm 9+** (or **yarn**)
-* **VS Code** or **IntelliJ IDEA**
+---
 
------
+## Team Arbitary
 
-## Setup Instructions
+| Name | Role |
+|------|------|
+| **Yasiru Basnayake** | Full Stack Developer |
+| **Kumal Loneth** | Backend Developer |
+| **Dasuni Dissanayake** | Frontend Developer |
+| **Hasitha Gallella** | ML/AI Engineer |
 
-### Setup Using npm
+---
 
-1. Open the project folder in VS Code or your preferred editor.
-2. In the integrated terminal, run:
-    ```powershell
-    npm install
-    ```
+## Features
 
-### How to Run
+- **Interactive Dashboard** - Overview of all transformers, inspections, and analytics
+- **Transformer Management** - Add, edit, delete, and filter transformer records
+- **Inspection Tracking** - Complete inspection lifecycle management
+- **Image Management** - Upload and compare baseline vs thermal images
+- **AI Analysis View** - Visualize ML-detected anomalies with annotated images
+- **Report Generation** - Dynamic form generation for maintenance records
+- **Version History** - View and restore previous report versions
+- **PDF Export** - Generate printable reports
+- **Dark/Light Mode** - Customizable theme support
+- **Responsive Design** - Works on desktop, tablet, and mobile
 
-1. Start the development server:
-    ```powershell
-    npm run dev
-    ```
-2. Access the application at:
-    * **Frontend Port**: `http://localhost:8080`
-    * **Backend API Port**: `https://arbit-backend-1.onrender.com` (for data)
+---
 
+## Quick Start
 
-## Configuration Details
+### Prerequisites
 
-Core configurations for the frontend are found in:
+- **Node.js 18+**
+- **npm 9+** or **yarn** or **bun**
 
-* **`vite.config.ts`**: Vite build and dev server settings.
-* **`tailwind.config.ts`**: Tailwind CSS customization.
-* **`tsconfig.json`**: TypeScript configuration.
-* **`src/index.css`**: Global styles.
+### Installation
 
-API endpoints for backend communication should be configured in your service or environment files as needed.
+```bash
+# Clone the repository
+git clone https://github.com/Team-Arbitary/Arbit-Frontend.git
+cd Arbit-Frontend/app
 
------
+# Install dependencies
+npm install
 
-### Features
-
-- **Dashboard:** View summaries and statistics of all transformer inspections, including recent activity and status highlights.
-- **Transformer Management:** Add, view, update, delete, and filter transformer records by criteria such as location, status, or type.
-- **Inspection Management:** Log new inspections, review inspection history, update results, and filter by date, transformer, or outcome.
-- **Image Management:** Upload, view, update, delete, and compare baseline and maintenance (thermal) images for transformers and inspections to monitor health and detect anomalies.
-- **Settings:** Adjust application preferences such as theme and notifications.
-
------
-
-## Limitations and Known Issues
-
-* **No Authentication/Authorization**: The frontend currently does not implement user authentication or authorization.
-* **API Endpoint Configuration**: Ensure the backend API URL is correctly set for production and development environments.
-* **Port Conflicts**: The app runs on port `5173` by default. Change the port in `vite.config.ts` if needed.
-* **Error Handling**: Error handling for API failures is basic.
-* **Backend Dependency**: The frontend requires the backend API to be running and accessible for full functionality.
-
------
-
-## Folder Structure
-
-```
-├── public/
-│   ├── favicon.ico
-│   ├── placeholder.svg
-│   ├── robots.txt
-│   └── user.png
-├── src/
-│   ├── App.tsx
-│   ├── index.css
-│   ├── main.tsx
-│   ├── vite-env.d.ts
-│   ├── components/
-│   │   ├── AddInspectionModal.tsx
-│   │   ├── AddTransformerModal.tsx
-│   │   ├── AppSidebar.tsx
-│   │   ├── Layout.tsx
-│   │   ├── StatusBadge.tsx
-│   │   ├── ThemeProvider.tsx
-│   │   └── ui/
-│   │       ├── accordion.tsx
-│   │       ├── alert-dialog.tsx
-│   │       ├── ... (other UI components)
-│   ├── hooks/
-│   │   ├── use-mobile.tsx
-│   │   └── use-toast.ts
-│   ├── lib/
-│   │   └── utils.ts
-│   └── pages/
-│       ├── Dashboard.tsx
-│       ├── InspectionDetail.tsx
-│       ├── NotFound.tsx
-│       ├── Settings.tsx
-│       └── TransformerDetail.tsx
-├── index.html
-├── package.json
-├── vite.config.ts
-├── tailwind.config.ts
-├── tsconfig.json
-└── ... (other config and lock files)
+# Start development server
+npm run dev
 ```
 
------
+**Access the application at:** `http://localhost:8080`
 
+### Build for Production
+
+```bash
+npm run build
+npm run preview
+```
+
+---
+
+## Form Generation System
+
+### Overview
+
+The application features a sophisticated **dynamic form generation system** for creating and managing inspection reports. Forms are designed to match official CEB (Ceylon Electricity Board) formats.
+
+### Form Types
+
+#### 1. Maintenance Record Form
+
+Comprehensive maintenance documentation including:
+
+| Section | Fields |
+|---------|--------|
+| **Header Info** | Start/Completion time, Supervised by |
+| **Gang Composition** | Tech I, II, III, Helpers |
+| **Work Data Sheet** | KVA, Make, Tap Position, Earth Resistance |
+| **Transformer Inspection** | Bushing condition, Oil level, Connections |
+| **Checklist** | 50+ inspection items with checkboxes |
+| **Signatures** | Inspected by, Rectified by, CSS approval |
+
+#### 2. Thermal Image Inspection Form
+
+Thermal analysis documentation including:
+
+| Section | Fields |
+|---------|--------|
+| **Inspection Details** | Date, Time, Weather conditions |
+| **Thermal Findings** | Hotspot locations, Temperature readings |
+| **Analysis Results** | ML detection results, Severity levels |
+| **Recommendations** | Suggested actions, Priority level |
+
+### How Form Saving Works
+
+```
++------------------+     +------------------+     +------------------+
+|  User fills      |---->|  Form validates  |---->|  JSON payload    |
+|  form fields     |     |  all sections    |     |  generated       |
++------------------+     +------------------+     +------------------+
+                                                         |
+                                                         v
++------------------+     +------------------+     +------------------+
+|  Version saved   |<----|  Backend saves   |<----|  API POST with   |
+|  in history      |     |  new version     |     |  report_data     |
++------------------+     +------------------+     +------------------+
+```
+
+### Form Data Structure
+
+Forms are stored as structured JSON:
+
+```typescript
+interface MaintenanceReportData {
+  // Timing & Supervision
+  startTime: string;
+  completionTime: string;
+  supervisedBy: string;
+  
+  // Gang Composition
+  gangComposition: {
+    tech1: string;
+    tech2: string;
+    tech3: string;
+    helpers: string;
+  };
+  
+  // Work Data Sheet
+  workDataSheet: {
+    gangLeader: string;
+    serialNo: string;
+    kva: string;
+    make: string;
+    tapPosition: string;
+    earthResistance: string;
+    // ... more fields
+  };
+  
+  // Checklist Items
+  checklist: {
+    [key: string]: boolean;
+  };
+  
+  // Signatures
+  signatures: {
+    inspectedBy: string;
+    inspectedDate: string;
+    rectifiedBy: string;
+    rectifiedDate: string;
+    // ... more signatures
+  };
+}
+```
+
+### Version History
+
+- **Auto-versioning**: Each save creates a new version automatically
+- **History View**: Browse all previous versions in a table
+- **Restore**: Click to restore any previous version as current
+- **Compare**: View differences between versions
+
+---
+
+## Architecture
+
+### Tech Stack
+
+| Technology | Purpose |
+|------------|---------|
+| **React 18** | UI framework with hooks |
+| **TypeScript** | Type-safe development |
+| **Vite** | Fast build tool and dev server |
+| **Tailwind CSS** | Utility-first styling |
+| **shadcn/ui** | Accessible component library |
+| **React Router** | Client-side routing |
+| **Axios** | HTTP client for API calls |
+| **Lucide React** | Icon library |
+| **GSAP** | Animations |
+
+### Project Structure
+
+```
+Arbit-Frontend/
+└── app/
+    ├── public/
+    │   └── robots.txt
+    ├── src/
+    │   ├── components/
+    │   │   ├── ui/                    # shadcn/ui components
+    │   │   │   ├── button.tsx
+    │   │   │   ├── card.tsx
+    │   │   │   ├── dialog.tsx
+    │   │   │   └── ...
+    │   │   ├── AddTransformerModal.tsx
+    │   │   ├── AddInspectionModal.tsx
+    │   │   ├── MaintenanceRecordForm.tsx    # Main report form
+    │   │   ├── ThermalImageInspectionForm.tsx
+    │   │   ├── AppSidebar.tsx
+    │   │   ├── Layout.tsx
+    │   │   └── ThemeProvider.tsx
+    │   ├── pages/
+    │   │   ├── Dashboard.tsx          # Main dashboard
+    │   │   ├── TransformerDetail.tsx  # Transformer view
+    │   │   ├── InspectionDetail.tsx   # Inspection + analysis
+    │   │   ├── Reports.tsx            # Report management
+    │   │   ├── Settings.tsx
+    │   │   ├── Login.tsx
+    │   │   └── Signup.tsx
+    │   ├── hooks/
+    │   │   ├── use-mobile.tsx
+    │   │   └── use-toast.ts
+    │   ├── lib/
+    │   │   ├── api.ts                 # API client and endpoints
+    │   │   ├── auth.ts                # Authentication context
+    │   │   └── utils.ts
+    │   ├── App.tsx
+    │   ├── main.tsx
+    │   └── index.css
+    ├── index.html
+    ├── vite.config.ts
+    ├── tailwind.config.ts
+    ├── tsconfig.json
+    └── package.json
+```
+
+---
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env` file in the `app/` directory:
+
+```env
+VITE_API_BASE_URL=http://localhost:5509/transformer-thermal-inspection
+VITE_ML_API_URL=http://localhost:8000
+```
+
+### API Configuration (`src/lib/api.ts`)
+
+```typescript
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL 
+  || 'http://localhost:5509/transformer-thermal-inspection';
+
+export const API_ENDPOINTS = {
+  // Transformers
+  TRANSFORMER_CREATE: '/transformer-management/create',
+  TRANSFORMER_VIEW_ALL: '/transformer-management/view-all',
+  TRANSFORMER_VIEW: (id: string) => `/transformer-management/view/${id}`,
+  
+  // Inspections
+  INSPECTION_CREATE: '/inspection-management/create',
+  INSPECTION_VIEW_ALL: '/inspection-management/view-all',
+  
+  // Reports
+  MAINTENANCE_RECORDS: '/api/maintenance-records',
+  THERMAL_REPORTS: '/api/thermal-inspection-reports',
+  
+  // ... more endpoints
+};
+```
+
+---
+
+## UI Components
+
+### Key Components
+
+| Component | Description |
+|-----------|-------------|
+| `Dashboard` | Main overview with stats, lists, and filters |
+| `TransformerDetail` | Transformer info with inspection history |
+| `InspectionDetail` | Full inspection view with images and analysis |
+| `MaintenanceRecordForm` | Multi-tab form for maintenance records |
+| `ThermalImageInspectionForm` | Thermal inspection documentation |
+| `AppSidebar` | Navigation sidebar with user info |
+
+### Theme Support
+
+The application supports both light and dark modes:
+
+```tsx
+import { useTheme } from "@/components/ThemeProvider";
+
+const { theme, setTheme } = useTheme();
+setTheme("dark"); // or "light" or "system"
+```
+
+---
+
+## API Integration
+
+### Authentication
+
+```typescript
+// Login
+const response = await api.post(API_ENDPOINTS.USER_LOGIN, {
+  username: "user",
+  password: "password"
+});
+const token = response.data.jwt;
+localStorage.setItem("token", token);
+
+// Authenticated requests (automatic via interceptor)
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+```
+
+### Data Fetching Example
+
+```typescript
+// Fetch inspections
+const fetchInspections = async () => {
+  const response = await api.get(API_ENDPOINTS.INSPECTION_VIEW_ALL);
+  return response.data.responseData;
+};
+
+// Save maintenance record
+const saveRecord = async (data: MaintenanceRecordRequest) => {
+  const response = await api.post(API_ENDPOINTS.MAINTENANCE_RECORDS, data);
+  return response.data;
+};
+```
+
+---
+
+## Responsive Design
+
+The application is fully responsive:
+
+| Breakpoint | Layout |
+|------------|--------|
+| Mobile (<768px) | Collapsible sidebar, stacked cards |
+| Tablet (768-1024px) | Side-by-side with compact sidebar |
+| Desktop (>1024px) | Full sidebar, multi-column layouts |
+
+---
+
+## Development
+
+### Available Scripts
+
+```bash
+npm run dev      # Start development server
+npm run build    # Build for production
+npm run preview  # Preview production build
+npm run lint     # Run ESLint
+```
+
+### Code Quality
+
+- **ESLint** - Code linting
+- **TypeScript** - Type checking
+- **Prettier** - Code formatting (recommended)
+
+---
+
+## Deployment
+
+### Vercel (Recommended)
+
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy
+vercel
+```
+
+### Manual Deployment
+
+```bash
+npm run build
+# Deploy dist/ folder to your hosting provider
+```
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<p align="center">
+  Made by <strong>Team Arbitary</strong>
+</p>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { Layout } from "@/components/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import { AddTransformerModal } from "@/components/AddTransformerModal";
 import { AddInspectionModal } from "@/components/AddInspectionModal";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Chatbot } from "@/components/Chatbot";
+import { AIOverview } from "@/components/AIOverview";
 import {
   Search,
   Filter,
@@ -34,9 +35,16 @@ import {
   TrendingUp,
   Zap,
   ThermometerSun,
+  LayoutGrid,
+  List,
+  ImageIcon,
+  Pencil,
+  Thermometer,
+  Calendar,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { API_ENDPOINTS } from "@/lib/api";
+import axios from "axios";
+import { api, API_ENDPOINTS } from "@/lib/api";
 import {
   AreaChart,
   Area,
@@ -74,9 +82,8 @@ type Inspection = {
 
 // Helper to safely unwrap ApiResponse<T> or return the raw payload if it's already a list
 async function fetchUnwrap<T>(url: string): Promise<T> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  const body = await res.json();
+  const res = await api.get(url);
+  const body = res.data;
   if (body && Array.isArray(body.responseData)) return body.responseData as T;
   if (body && Array.isArray(body)) return body as T;
   if (body && typeof body === "object" && Array.isArray(body.data))
@@ -144,10 +151,108 @@ const toTransformer = (x: ApiItem): Transformer => ({
   location: x.location,
 });
 
+// Component for loading authenticated images (API returns JSON with imageBase64 field)
+function AuthenticatedImage({ 
+  src, 
+  alt, 
+  fallbackIcon: FallbackIcon,
+  fallbackText,
+  className 
+}: { 
+  src: string; 
+  alt: string; 
+  fallbackIcon: React.ComponentType<{ className?: string }>;
+  fallbackText: string;
+  className?: string;
+}) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    
+    setLoading(true);
+    setError(false);
+    setImageUrl(null);
+
+    (async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get(src, { 
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        if (cancelled) return;
+        
+        // API returns JSON with responseData.imageBase64
+        const data = res.data;
+        if (data?.responseCode === "2000" && data?.responseData?.imageBase64) {
+          setImageUrl(data.responseData.imageBase64);
+        } else {
+          setError(true);
+        }
+      } catch (e) {
+        if (!cancelled) setError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [src]);
+
+  if (loading) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-secondary/30">
+        <div className="animate-pulse flex flex-col items-center text-muted-foreground">
+          <FallbackIcon className="h-10 w-10 mb-2 opacity-50" />
+          <span className="text-xs">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !imageUrl) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-secondary/30">
+        <div className="flex flex-col items-center text-muted-foreground">
+          <FallbackIcon className="h-10 w-10 mb-2 opacity-50" />
+          <span className="text-xs">{fallbackText}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imageUrl}
+      alt={alt}
+      className={className}
+    />
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "overview";
+
+  // Track regeneration keys for AI Overview - updates when tab becomes active
+  const [aiRegenerateKeys, setAiRegenerateKeys] = useState({
+    overview: Date.now(),
+    transformers: Date.now(),
+    inspections: Date.now(),
+  });
+
+  // Update regenerate key when tab changes
+  useEffect(() => {
+    setAiRegenerateKeys(prev => ({
+      ...prev,
+      [activeTab]: Date.now(),
+    }));
+  }, [activeTab]);
 
   const [transformers, setTransformers] = useState<Transformer[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
@@ -159,6 +264,23 @@ export default function Dashboard() {
 
   const [selectedRegion, setSelectedRegion] = useState<string>("all-regions");
   const [selectedType, setSelectedType] = useState<string>("all-types");
+  const [viewMode, setViewMode] = useState<"list" | "grid">(() => {
+    const saved = localStorage.getItem("transformerViewMode");
+    return (saved === "grid" || saved === "list") ? saved : "list";
+  });
+  const [inspectionViewMode, setInspectionViewMode] = useState<"list" | "grid">(() => {
+    const saved = localStorage.getItem("inspectionViewMode");
+    return (saved === "grid" || saved === "list") ? saved : "list";
+  });
+
+  // Persist view modes to localStorage
+  useEffect(() => {
+    localStorage.setItem("transformerViewMode", viewMode);
+  }, [viewMode]);
+
+  useEffect(() => {
+    localStorage.setItem("inspectionViewMode", inspectionViewMode);
+  }, [inspectionViewMode]);
 
   const [inspectionSearchQuery, setInspectionSearchQuery] =
     useState<string>("");
@@ -212,13 +334,8 @@ export default function Dashboard() {
       offset: 0,
     };
 
-    const res = await fetch(API_ENDPOINTS.TRANSFORMER_FILTER, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    const body = await res.json();
+    const res = await api.post(API_ENDPOINTS.TRANSFORMER_FILTER, payload);
+    const body = res.data;
     const data: ApiItem[] = Array.isArray(body?.responseData)
       ? body.responseData
       : Array.isArray(body)
@@ -290,15 +407,7 @@ export default function Dashboard() {
     );
     if (!ok) return;
     try {
-      let res = await fetch(API_ENDPOINTS.TRANSFORMER_DELETE(transformerId), {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        res = await fetch(API_ENDPOINTS.TRANSFORMER_DELETE(transformerId), {
-          method: "GET",
-        });
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      }
+      await api.delete(API_ENDPOINTS.TRANSFORMER_DELETE(transformerId));
       setTransformers((prev) => prev.filter((t) => t.id !== transformerId));
     } catch (e: any) {
       alert(`Failed to delete transformer: ${e?.message || "Unknown error"}`);
@@ -315,15 +424,7 @@ export default function Dashboard() {
     );
     if (!ok) return;
     try {
-      let res = await fetch(API_ENDPOINTS.INSPECTION_DELETE(inspectionId), {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        res = await fetch(API_ENDPOINTS.INSPECTION_DELETE(inspectionId), {
-          method: "GET",
-        });
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      }
+      await api.delete(API_ENDPOINTS.INSPECTION_DELETE(inspectionId));
       setInspections((prev) => prev.filter((i) => i.id !== inspectionId));
     } catch (e: any) {
       alert(`Failed to delete inspection: ${e?.message || "Unknown error"}`);
@@ -366,15 +467,7 @@ export default function Dashboard() {
         location: editLocation,
       };
 
-      const res = await fetch(API_ENDPOINTS.TRANSFORMER_UPDATE, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        throw new Error(`${res.status} ${res.statusText}`);
-      }
+      await api.put(API_ENDPOINTS.TRANSFORMER_UPDATE, payload);
 
       await refresh();
       closeEdit();
@@ -493,6 +586,50 @@ export default function Dashboard() {
         ).toFixed(1)
       : "N/A";
 
+  // AI Overview context builders for each tab
+  const overviewContext = useMemo(() => {
+    return `Dashboard Overview Data:
+- Total Transformers: ${transformers.length}
+- Total Inspections: ${inspections.length}
+- Active Inspections: ${activeInspectionsCount}
+- Completed Inspections: ${completedInspectionsCount}
+- Anomalies Detected: ${totalAnomalies} (Faulty: ${anomalyStats.faulty}, Potentially Faulty: ${anomalyStats.potentiallyFaulty})
+- Health Score: ${healthScore}${healthScore !== "N/A" ? "%" : ""}
+- Regions covered: ${regionOptions.join(", ") || "N/A"}
+- Transformer types: ${typeOptions.join(", ") || "N/A"}
+- Recent activity: ${recentActivity.map(a => `${a.transformer}: ${a.status}`).join("; ") || "No recent activity"}`;
+  }, [transformers.length, inspections.length, activeInspectionsCount, completedInspectionsCount, totalAnomalies, anomalyStats, healthScore, regionOptions, typeOptions, recentActivity]);
+
+  const transformersContext = useMemo(() => {
+    const regionDistribution: Record<string, number> = {};
+    const typeDistribution: Record<string, number> = {};
+    transformers.forEach(t => {
+      if (t.region) regionDistribution[t.region] = (regionDistribution[t.region] || 0) + 1;
+      if (t.type) typeDistribution[t.type] = (typeDistribution[t.type] || 0) + 1;
+    });
+    return `Transformer Fleet Data:
+- Total Transformers: ${transformers.length}
+- Distribution by Region: ${Object.entries(regionDistribution).map(([r, c]) => `${r}: ${c}`).join(", ") || "N/A"}
+- Distribution by Type: ${Object.entries(typeDistribution).map(([t, c]) => `${t}: ${c}`).join(", ") || "N/A"}
+- Status: ${transformersByStatus.operational} operational, ${transformersByStatus.underInspection} under inspection
+- Sample transformers: ${transformers.slice(0, 5).map(t => `${t.transformerNo} (${t.region || "Unknown region"})`).join(", ")}`;
+  }, [transformers, transformersByStatus]);
+
+  const inspectionsContext = useMemo(() => {
+    const statusCounts: Record<string, number> = {};
+    inspections.forEach(i => {
+      const status = i.status || "Unknown";
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+    const recentInspections = inspections.slice(0, 5);
+    return `Inspection Overview Data:
+- Total Inspections: ${inspections.length}
+- Status Distribution: ${Object.entries(statusCounts).map(([s, c]) => `${s}: ${c}`).join(", ")}
+- Active/Pending: ${activeInspectionsCount}
+- Completed: ${completedInspectionsCount}
+- Recent inspections: ${recentInspections.map(i => `${i.transformerNo || "Unknown"} (${i.status || "Unknown"}, ${i.inspectedDate || "No date"})`).join("; ")}`;
+  }, [inspections, activeInspectionsCount, completedInspectionsCount]);
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -504,8 +641,7 @@ export default function Dashboard() {
         >
 
           <div className="flex items-center justify-between backdrop-blur-xl bg-card/50 border border-border/50 rounded-2xl p-4">
-
-            <TabsList className="grid w-fit grid-cols-3 bg-black/40 backdrop-blur-sm border border-white/10">
+            <TabsList className="grid w-fit grid-cols-3 bg-secondary/80 backdrop-blur-sm border border-border/50">
               <TabsTrigger
                 value="overview"
                 className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-600 data-[state=active]:to-orange-500 data-[state=active]:text-white"
@@ -558,6 +694,9 @@ export default function Dashboard() {
                 Real-time insights into transformer health and inspection status
               </p>
             </div>
+
+            {/* AI Overview */}
+            <AIOverview context={overviewContext} pageType="overview" regenerateKey={aiRegenerateKeys.overview} />
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -658,7 +797,7 @@ export default function Dashboard() {
               <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
 
                 <CardHeader>
-                  <CardTitle className="text-white">
+                  <CardTitle className="text-foreground">
                     Inspection Trends
                   </CardTitle>
                 </CardHeader>
@@ -737,7 +876,7 @@ export default function Dashboard() {
               {/* Anomaly Distribution */}
               <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
                 <CardHeader>
-                  <CardTitle className="text-white">
+                  <CardTitle className="text-foreground">
                     Anomaly Distribution
                   </CardTitle>
                 </CardHeader>
@@ -780,7 +919,7 @@ export default function Dashboard() {
               <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
 
                 <CardHeader>
-                  <CardTitle className="text-white">
+                  <CardTitle className="text-foreground">
                     Transformer Status
                   </CardTitle>
                 </CardHeader>
@@ -813,7 +952,7 @@ export default function Dashboard() {
               <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
 
                 <CardHeader>
-                  <CardTitle className="text-white">Recent Activity</CardTitle>
+                  <CardTitle className="text-foreground">Recent Activity</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -838,7 +977,7 @@ export default function Dashboard() {
                               }`}
                             />
                             <div>
-                              <p className="text-white font-medium">
+                              <p className="text-foreground font-medium">
                                 {activity.transformer}
                               </p>
 
@@ -866,6 +1005,9 @@ export default function Dashboard() {
 
           {/* TRANSFORMERS TAB */}
           <TabsContent value="transformers" className="space-y-4 mt-6">
+            {/* AI Overview for Transformers */}
+            <AIOverview context={transformersContext} pageType="transformers" regenerateKey={aiRegenerateKeys.transformers} />
+
             <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -929,89 +1071,198 @@ export default function Dashboard() {
                   >
                     Reset Filters
                   </Button>
+                  <div className="flex items-center border border-border rounded-md overflow-hidden">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setViewMode("list")}
+                      className={`rounded-none h-9 w-9 ${
+                        viewMode === "list"
+                          ? "bg-secondary text-foreground"
+                          : "bg-transparent text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setViewMode("grid")}
+                      className={`rounded-none h-9 w-9 ${
+                        viewMode === "grid"
+                          ? "bg-secondary text-foreground"
+                          : "bg-transparent text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <LayoutGrid className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="rounded-lg border border-white/10 overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-white/10 hover:bg-secondary/50">
-                        <TableHead className="text-muted-foreground"></TableHead>
-                        <TableHead className="text-muted-foreground">
-                          Transformer No.
-                        </TableHead>
-                        <TableHead className="text-muted-foreground">
-                          Pole No.
-                        </TableHead>
-                        <TableHead className="text-muted-foreground">Region</TableHead>
-                        <TableHead className="text-muted-foreground">Type</TableHead>
-                        <TableHead className="text-right text-muted-foreground"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {transformers.map((transformer) => (
-                        <TableRow
-                          key={transformer.id}
-                          className="border-white/10 hover:bg-secondary/50"
-                        >
-                          <TableCell>
-                            <Star className="h-4 w-4 text-muted-foreground" />
-                          </TableCell>
-                          <TableCell className="font-medium text-foreground">
-                            {transformer.transformerNo}
-                          </TableCell>
-                          <TableCell className="text-gray-300">
-                            {transformer.poleNo}
-                          </TableCell>
-                          <TableCell className="text-gray-300">
-                            {transformer.region}
-                          </TableCell>
-                          <TableCell className="text-gray-300">
-                            {transformer.type}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openEdit(transformer)}
-                                className="bg-secondary/50 border-border text-foreground hover:bg-secondary"
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() =>
-                                  handleDeleteTransformer(transformer.id)
-                                }
-                                title="Delete transformer"
-                                aria-label="Delete transformer"
-                                className="text-red-400 hover:bg-red-500/20"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() =>
-                                  handleViewTransformer(transformer.id)
-                                }
-                                className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600"
-                              >
-                                View
-                              </Button>
-                            </div>
-                          </TableCell>
+                {viewMode === "list" ? (
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-border hover:bg-secondary/50">
+                          <TableHead className="text-muted-foreground"></TableHead>
+                          <TableHead className="text-muted-foreground">
+                            Transformer No.
+                          </TableHead>
+                          <TableHead className="text-muted-foreground">
+                            Pole No.
+                          </TableHead>
+                          <TableHead className="text-muted-foreground">
+                            Region
+                          </TableHead>
+                          <TableHead className="text-muted-foreground">
+                            Type
+                          </TableHead>
+                          <TableHead className="text-right text-muted-foreground"></TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {transformers.map((transformer) => (
+                          <TableRow
+                            key={transformer.id}
+                            className="border-border hover:bg-secondary/50"
+                          >
+                            <TableCell>
+                              <Star className="h-4 w-4 text-muted-foreground" />
+                            </TableCell>
+                            <TableCell className="font-medium text-foreground">
+                              {transformer.transformerNo}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {transformer.poleNo}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {transformer.region}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {transformer.type}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openEdit(transformer)}
+                                  className="bg-secondary/50 border-border text-foreground hover:bg-secondary"
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() =>
+                                    handleDeleteTransformer(transformer.id)
+                                  }
+                                  title="Delete transformer"
+                                  aria-label="Delete transformer"
+                                  className="text-red-400 hover:bg-red-500/20"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() =>
+                                    handleViewTransformer(transformer.id)
+                                  }
+                                  className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600"
+                                >
+                                  View
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {transformers.map((transformer) => (
+                      <Card
+                        key={transformer.id}
+                        className="overflow-hidden backdrop-blur-xl bg-card/50 border border-border/50 hover:border-orange-500/50 transition-all group"
+                      >
+                        <div className="aspect-video w-full bg-secondary/30 relative overflow-hidden">
+                          <AuthenticatedImage
+                            src={API_ENDPOINTS.IMAGE_BASELINE(transformer.transformerNo)}
+                            alt={`Transformer ${transformer.transformerNo}`}
+                            fallbackIcon={ImageIcon}
+                            fallbackText="No Baseline Image"
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              size="icon"
+                              variant="secondary"
+                              className="h-8 w-8 bg-black/60 hover:bg-black/80 text-white border-0"
+                              onClick={() => openEdit(transformer)}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="destructive"
+                              className="h-8 w-8 bg-red-500/80 hover:bg-red-600 text-white border-0"
+                              onClick={() =>
+                                handleDeleteTransformer(transformer.id)
+                              }
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <h3 className="font-semibold text-foreground truncate">
+                                {transformer.transformerNo}
+                              </h3>
+                              <p className="text-xs text-muted-foreground">
+                                {transformer.type || "Unknown Type"}
+                              </p>
+                            </div>
+                            <StatusBadge status="operational" />
+                          </div>
+                          <div className="space-y-1 text-sm text-muted-foreground mb-4">
+                            <div className="flex justify-between">
+                              <span>Region:</span>
+                              <span className="text-foreground">
+                                {transformer.region || "N/A"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Pole No:</span>
+                              <span className="text-foreground">
+                                {transformer.poleNo || "N/A"}
+                              </span>
+                            </div>
+                          </div>
+                          <Button
+                            className="w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600"
+                            onClick={() =>
+                              handleViewTransformer(transformer.id)
+                            }
+                          >
+                            View Details
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
           {/* INSPECTIONS TAB */}
           <TabsContent value="inspections" className="space-y-4 mt-6">
+            {/* AI Overview for Inspections */}
+            <AIOverview context={inspectionsContext} pageType="inspections" regenerateKey={aiRegenerateKeys.inspections} />
+
             <Card className="backdrop-blur-xl bg-card/80 border border-border/50">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -1060,12 +1311,39 @@ export default function Dashboard() {
                       <SelectItem value="pending">Pending</SelectItem>
                     </SelectContent>
                   </Select>
+                  <div className="flex border border-border rounded-lg overflow-hidden">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setInspectionViewMode("list")}
+                      className={`rounded-none h-9 w-9 ${
+                        inspectionViewMode === "list"
+                          ? "bg-secondary text-foreground"
+                          : "bg-transparent text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setInspectionViewMode("grid")}
+                      className={`rounded-none h-9 w-9 ${
+                        inspectionViewMode === "grid"
+                          ? "bg-secondary text-foreground"
+                          : "bg-transparent text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <LayoutGrid className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="rounded-lg border border-white/10 overflow-hidden">
+                {inspectionViewMode === "list" ? (
+                <div className="rounded-lg border border-border overflow-hidden">
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-white/10 hover:bg-secondary/50">
+                      <TableRow className="border-border hover:bg-secondary/50">
                         <TableHead className="text-muted-foreground">
                           Inspection No
                         </TableHead>
@@ -1132,18 +1410,18 @@ export default function Dashboard() {
                         return paginatedInspections.map((inspection) => (
                           <TableRow
                             key={inspection.id}
-                            className="border-white/10 hover:bg-secondary/50"
+                            className="border-border hover:bg-secondary/50"
                           >
                             <TableCell className="font-medium text-foreground">
                               {inspection.inspectionNo || inspection.id}
                             </TableCell>
-                            <TableCell className="text-gray-300">
+                            <TableCell className="text-muted-foreground">
                               {inspection.transformerNo}
                             </TableCell>
-                            <TableCell className="text-gray-300">
+                            <TableCell className="text-muted-foreground">
                               {inspection.inspectedDate}
                             </TableCell>
-                            <TableCell className="text-gray-300">
+                            <TableCell className="text-muted-foreground">
                               {inspection.maintenanceDate || "-"}
                             </TableCell>
                             <TableCell>
@@ -1180,6 +1458,108 @@ export default function Dashboard() {
                     </TableBody>
                   </Table>
                 </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {(() => {
+                      let filtered = inspections.filter((inspection) => {
+                        const searchLower = inspectionSearchQuery.toLowerCase();
+                        const matchesSearch =
+                          !inspectionSearchQuery ||
+                          (inspection.inspectionNo || inspection.id)
+                            .toLowerCase()
+                            .includes(searchLower) ||
+                          inspection.transformerNo
+                            .toLowerCase()
+                            .includes(searchLower);
+
+                        const matchesStatus =
+                          inspectionStatusFilter === "all-statuses" ||
+                          inspection.status?.toLowerCase() ===
+                            inspectionStatusFilter.toLowerCase() ||
+                          (inspectionStatusFilter === "in-progress" &&
+                            inspection.status?.toLowerCase().includes("progress"));
+
+                        return matchesSearch && matchesStatus;
+                      });
+
+                      const startIndex = (currentInspectionPage - 1) * inspectionsPerPage;
+                      const endIndex = startIndex + inspectionsPerPage;
+                      const paginatedInspections = filtered.slice(startIndex, endIndex);
+
+                      if (paginatedInspections.length === 0) {
+                        return (
+                          <div className="col-span-full text-center text-muted-foreground py-8">
+                            No inspections found matching your criteria.
+                          </div>
+                        );
+                      }
+
+                      return paginatedInspections.map((inspection) => (
+                        <Card
+                          key={inspection.id}
+                          className="overflow-hidden backdrop-blur-xl bg-card/50 border border-border/50 hover:border-orange-500/50 transition-all group"
+                        >
+                          <div className="aspect-video w-full bg-secondary/30 relative overflow-hidden">
+                            <AuthenticatedImage
+                              src={API_ENDPOINTS.IMAGE_THERMAL(inspection.id)}
+                              alt={`Inspection ${inspection.inspectionNo || inspection.id}`}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              fallbackIcon={Thermometer}
+                              fallbackText="No Thermal Image"
+                            />
+                            <div className="absolute top-2 left-2">
+                              <StatusBadge status={inspection.status as any} />
+                            </div>
+                            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                size="icon"
+                                variant="destructive"
+                                className="h-8 w-8 bg-red-500/80 hover:bg-red-600 text-white border-0"
+                                onClick={() => handleDeleteInspection(inspection.id)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <h3 className="font-semibold text-foreground truncate">
+                                  {inspection.inspectionNo || `INS-${inspection.id}`}
+                                </h3>
+                                <p className="text-xs text-muted-foreground">
+                                  {inspection.transformerNo}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="space-y-1 text-sm text-muted-foreground mb-4">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-3 w-3" />
+                                <span className="text-foreground text-xs">
+                                  {inspection.inspectedDate || "No date"}
+                                </span>
+                              </div>
+                              {inspection.maintenanceDate && (
+                                <div className="flex justify-between">
+                                  <span>Maintenance:</span>
+                                  <span className="text-foreground text-xs">
+                                    {inspection.maintenanceDate}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <Button
+                              className="w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600"
+                              onClick={() => handleViewInspection(inspection.id)}
+                            >
+                              View Details
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      ));
+                    })()}
+                  </div>
+                )}
 
                 {/* Pagination Controls */}
                 {(() => {
@@ -1209,7 +1589,7 @@ export default function Dashboard() {
                   if (totalPages <= 1) return null;
 
                   return (
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
                       <div className="text-sm text-muted-foreground">
                         Showing{" "}
                         {(currentInspectionPage - 1) * inspectionsPerPage + 1}{" "}
@@ -1317,13 +1697,24 @@ export default function Dashboard() {
         </Tabs>
       </div>
 
-      {/* Chatbot */}
-      <Chatbot />
+      {/* Chatbot with context */}
+      <Chatbot
+        context={{
+          transformerCount: transformers.length,
+          inspectionCount: inspections.length,
+          activeInspections: activeInspectionsCount,
+          completedInspections: completedInspectionsCount,
+          anomaliesDetected: totalAnomalies,
+          healthScore: healthScore,
+          currentTab: activeTab,
+          recentActivity: recentActivity,
+        }}
+      />
 
       {/* Edit Transformer Modal */}
       {editingTransformer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
-          <div className="backdrop-blur-xl bg-black/80 border border-border rounded-2xl shadow-2xl w-full max-w-lg p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/60 backdrop-blur-md">
+          <div className="backdrop-blur-xl bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg p-6">
             <h3 className="text-lg font-semibold mb-4 text-foreground">
               Edit Transformer
             </h3>
