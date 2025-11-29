@@ -6,7 +6,7 @@
   <img src="https://img.shields.io/badge/shadcn/ui-000000?style=for-the-badge&logo=shadcnui&logoColor=white" alt="shadcn/ui" />
 </p>
 
-<h1 align="center">🌡️ Arbit Frontend</h1>
+<h1 align="center">Arbit Frontend</h1>
 
 <p align="center">
   <strong>Transformer Thermal Inspection Management System - Web Application</strong>
@@ -17,16 +17,16 @@
 </p>
 
 <p align="center">
-  <a href="#-features">Features</a> •
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-form-generation-system">Form System</a> •
-  <a href="#-screenshots">Screenshots</a> •
-  <a href="#-team">Team</a>
+  <a href="#features">Features</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#form-generation-system">Form System</a> •
+  <a href="#architecture">Architecture</a> •
+  <a href="#team">Team</a>
 </p>
 
 ---
 
-## 👥 Team Arbitary
+## Team Arbitary
 
 | Name | Role |
 |------|------|
@@ -37,22 +37,22 @@
 
 ---
 
-## ✨ Features
+## Features
 
-- **📊 Interactive Dashboard** - Overview of all transformers, inspections, and analytics
-- **🔧 Transformer Management** - Add, edit, delete, and filter transformer records
-- **🔍 Inspection Tracking** - Complete inspection lifecycle management
-- **📷 Image Management** - Upload and compare baseline vs thermal images
-- **🤖 AI Analysis View** - Visualize ML-detected anomalies with annotated images
-- **📋 Report Generation** - Dynamic form generation for maintenance records
-- **📜 Version History** - View and restore previous report versions
-- **🖨️ PDF Export** - Generate printable reports
-- **🌓 Dark/Light Mode** - Customizable theme support
-- **📱 Responsive Design** - Works on desktop, tablet, and mobile
+- **Interactive Dashboard** - Overview of all transformers, inspections, and analytics
+- **Transformer Management** - Add, edit, delete, and filter transformer records
+- **Inspection Tracking** - Complete inspection lifecycle management
+- **Image Management** - Upload and compare baseline vs thermal images
+- **AI Analysis View** - Visualize ML-detected anomalies with annotated images
+- **Report Generation** - Dynamic form generation for maintenance records
+- **Version History** - View and restore previous report versions
+- **PDF Export** - Generate printable reports
+- **Dark/Light Mode** - Customizable theme support
+- **Responsive Design** - Works on desktop, tablet, and mobile
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -84,7 +84,7 @@ npm run preview
 
 ---
 
-## 📋 Form Generation System
+## Form Generation System
 
 ### Overview
 
@@ -119,16 +119,16 @@ Thermal analysis documentation including:
 ### How Form Saving Works
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  User fills     │────▶│  Form validates │────▶│  JSON payload   │
-│  form fields    │     │  all sections   │     │  generated      │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                                                        │
-                                                        ▼
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Version saved  │◀────│  Backend saves  │◀────│  API POST with  │
-│  in history     │     │  new version    │     │  report_data    │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
++------------------+     +------------------+     +------------------+
+|  User fills      |---->|  Form validates  |---->|  JSON payload    |
+|  form fields     |     |  all sections    |     |  generated       |
++------------------+     +------------------+     +------------------+
+                                                         |
+                                                         v
++------------------+     +------------------+     +------------------+
+|  Version saved   |<----|  Backend saves   |<----|  API POST with   |
+|  in history      |     |  new version     |     |  report_data     |
++------------------+     +------------------+     +------------------+
 ```
 
 ### Form Data Structure
@@ -186,7 +186,7 @@ interface MaintenanceReportData {
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ### Tech Stack
 
@@ -194,7 +194,7 @@ interface MaintenanceReportData {
 |------------|---------|
 | **React 18** | UI framework with hooks |
 | **TypeScript** | Type-safe development |
-| **Vite** | Fast build tool & dev server |
+| **Vite** | Fast build tool and dev server |
 | **Tailwind CSS** | Utility-first styling |
 | **shadcn/ui** | Accessible component library |
 | **React Router** | Client-side routing |
@@ -235,7 +235,7 @@ Arbit-Frontend/
     │   │   ├── use-mobile.tsx
     │   │   └── use-toast.ts
     │   ├── lib/
-    │   │   ├── api.ts                 # API client & endpoints
+    │   │   ├── api.ts                 # API client and endpoints
     │   │   ├── auth.ts                # Authentication context
     │   │   └── utils.ts
     │   ├── App.tsx
@@ -250,7 +250,7 @@ Arbit-Frontend/
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -287,7 +287,7 @@ export const API_ENDPOINTS = {
 
 ---
 
-## 🎨 UI Components
+## UI Components
 
 ### Key Components
 
@@ -295,7 +295,7 @@ export const API_ENDPOINTS = {
 |-----------|-------------|
 | `Dashboard` | Main overview with stats, lists, and filters |
 | `TransformerDetail` | Transformer info with inspection history |
-| `InspectionDetail` | Full inspection view with images & analysis |
+| `InspectionDetail` | Full inspection view with images and analysis |
 | `MaintenanceRecordForm` | Multi-tab form for maintenance records |
 | `ThermalImageInspectionForm` | Thermal inspection documentation |
 | `AppSidebar` | Navigation sidebar with user info |
@@ -313,7 +313,7 @@ setTheme("dark"); // or "light" or "system"
 
 ---
 
-## 🔌 API Integration
+## API Integration
 
 ### Authentication
 
@@ -354,7 +354,7 @@ const saveRecord = async (data: MaintenanceRecordRequest) => {
 
 ---
 
-## 📱 Responsive Design
+## Responsive Design
 
 The application is fully responsive:
 
@@ -366,7 +366,7 @@ The application is fully responsive:
 
 ---
 
-## 🧪 Development
+## Development
 
 ### Available Scripts
 
@@ -385,7 +385,7 @@ npm run lint     # Run ESLint
 
 ---
 
-## 🚀 Deployment
+## Deployment
 
 ### Vercel (Recommended)
 
@@ -406,12 +406,12 @@ npm run build
 
 ---
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
 <p align="center">
-  Made with ❤️ by <strong>Team Arbitary</strong>
+  Made by <strong>Team Arbitary</strong>
 </p>
