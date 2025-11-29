@@ -16,6 +16,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
   const statusConfig = {
     "Not started": {
       label: "Not Started",
+
       className:
         "bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-500/20 dark:text-gray-300 dark:border-gray-500/30",
     },
@@ -43,6 +44,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       label: "Completed",
       className:
         "bg-green-100 text-green-800 border-green-300 dark:bg-green-500/20 dark:text-green-300 dark:border-green-500/30",
+
     },
   };
 
@@ -53,7 +55,9 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
     return (
       <Badge
         className={cn(
+
           "bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-500/20 dark:text-gray-300 dark:border-gray-500/30",
+
           className
         )}
       >

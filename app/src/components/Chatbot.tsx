@@ -128,9 +128,11 @@ export function Chatbot({ context }: ChatbotProps) {
     <>
       {/* Chat Window */}
       {isOpen && (
+
         <div className="fixed bottom-24 right-6 w-96 h-[500px] backdrop-blur-xl bg-card/90 border border-border rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-orange-600/20 to-orange-500/10">
+
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
                 <MessageCircle className="h-5 w-5 text-white" />
@@ -138,13 +140,16 @@ export function Chatbot({ context }: ChatbotProps) {
               <div>
                 <h3 className="font-semibold text-foreground">Arbit AI</h3>
                 <p className="text-xs text-muted-foreground">Always here to help</p>
+
               </div>
             </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setIsOpen(false)}
+
               className="hover:bg-secondary text-foreground"
+
             >
               <X className="h-5 w-5" />
             </Button>
@@ -172,7 +177,9 @@ export function Chatbot({ context }: ChatbotProps) {
                     className={`max-w-[85%] rounded-2xl px-4 py-2 ${
                       message.sender === "user"
                         ? "bg-gradient-to-br from-orange-600 to-orange-500 text-white"
+
                         : "backdrop-blur-sm bg-secondary text-foreground border border-border"
+
                     }`}
                   >
                     <p className="text-sm whitespace-pre-wrap">{message.text}</p>
@@ -187,7 +194,9 @@ export function Chatbot({ context }: ChatbotProps) {
               ))}
               {isTyping && (
                 <div className="flex justify-start">
+
                   <div className="backdrop-blur-sm bg-secondary text-foreground border border-border rounded-2xl px-4 py-2">
+
                     <div className="flex gap-1">
                       <div
                         className="w-2 h-2 bg-orange-500 rounded-full animate-bounce"
@@ -209,7 +218,9 @@ export function Chatbot({ context }: ChatbotProps) {
           </ScrollArea>
 
           {/* Input */}
+
           <div className="p-4 border-t border-border bg-secondary/50">
+
             <div className="flex gap-2">
               <Input
                 value={inputValue}
@@ -218,6 +229,7 @@ export function Chatbot({ context }: ChatbotProps) {
                 placeholder="Ask about transformers, inspections..."
                 disabled={isTyping}
                 className="flex-1 bg-input border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-orange-500"
+
               />
               <Button
                 onClick={handleSend}
