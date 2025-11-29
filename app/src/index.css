@@ -171,6 +171,7 @@
 
 /* Print Styles */
 @media print {
+
   /* Hide everything by default */
   body * {
     visibility: hidden;
@@ -238,7 +239,7 @@
   }
 
   /* Prevent page breaks inside sections */
-  .print-content > div {
+  .print-content>div {
     page-break-inside: avoid;
   }
 
