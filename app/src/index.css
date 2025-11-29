@@ -171,8 +171,10 @@
 
 /* Print Styles */
 @media print {
+
   /* Reset everything */
-  html, body {
+  html,
+  body {
     visibility: visible !important;
     background: white !important;
     margin: 0 !important;
@@ -183,7 +185,7 @@
   }
 
   /* Hide everything initially */
-  body > * {
+  body>* {
     display: none !important;
   }
 
@@ -254,7 +256,7 @@
   }
 
   /* Prevent page breaks inside sections */
-  #print-area > div,
+  #print-area>div,
   #print-area section {
     page-break-inside: avoid;
   }
