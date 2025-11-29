@@ -291,7 +291,7 @@ const DotGrid: React.FC<DotGridProps> = ({
 
   return (
     <section 
-      className={`flex items-center justify-center h-full w-full relative ${className}`} 
+      className={`flex items-center justify-center h-full w-full relative pointer-events-none ${className}`} 
       style={style}
     >
       <div ref={wrapperRef} className="w-full h-full relative">

@@ -80,15 +80,16 @@ const Login = () => {
       {/* DotGrid Background Effect */}
       <div className="absolute inset-0 z-0" style={{ width: '100%', height: '100%' }}>
         <DotGrid
-          dotSize={4}
-          gap={15}
+          dotSize={3}
+          gap={18}
           baseColor="#3d2c1a"
           activeColor="#f97316"
           proximity={80}
-          shockRadius={100}
-          shockStrength={5}
-          resistance={1000}
+          shockRadius={150}
+          shockStrength={2}
+          resistance={600}
           returnDuration={1.0}
+          speedTrigger={30}
         />
       </div>
       

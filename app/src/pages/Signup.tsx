@@ -251,7 +251,7 @@ const Signup = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              {/* <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="department" className="text-white/70 text-sm">Department</Label>
                   <div className="relative">
@@ -282,7 +282,7 @@ const Signup = () => {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
+              </div> */}
 
               {/* Password Section */}
               <div className="space-y-2">
