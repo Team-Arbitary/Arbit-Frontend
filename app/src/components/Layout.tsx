@@ -87,19 +87,21 @@ export function Layout({ children }: LayoutProps) {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full relative">
-        {/* Dark Veil Background */}
-        <div className="fixed inset-0 z-0">
-          <DarkVeil
-            hueShift={theme === 'dark' ? 20 : 30}
-            speed={0.3}
-            noiseIntensity={0.05}
-            warpAmount={0.3}
-            resolutionScale={0.8}
-          />
-        </div>
+        {/* Dark Veil Background - only show in dark mode */}
+        {theme === 'dark' && (
+          <div className="fixed inset-0 z-0">
+            <DarkVeil
+              hueShift={20}
+              speed={0.3}
+              noiseIntensity={0.05}
+              warpAmount={0.3}
+              resolutionScale={0.8}
+            />
+          </div>
+        )}
         
         {/* Overlay for better content visibility */}
-        <div className={`fixed inset-0 z-[1] pointer-events-none ${theme === 'dark' ? 'bg-black/70' : 'bg-white/80'}`} />
+        <div className={`fixed inset-0 z-[1] pointer-events-none ${theme === 'dark' ? 'bg-black/70' : 'bg-gradient-to-br from-orange-50/80 via-white/90 to-orange-100/80'}`} />
         
         <AppSidebar user={user} />
         

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { Layout } from "@/components/Layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -39,8 +39,11 @@ import {
   List,
   ImageIcon,
   Pencil,
+  Thermometer,
+  Calendar,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import axios from "axios";
 import { api, API_ENDPOINTS } from "@/lib/api";
 import {
   AreaChart,
@@ -148,6 +151,89 @@ const toTransformer = (x: ApiItem): Transformer => ({
   location: x.location,
 });
 
+// Component for loading authenticated images (API returns JSON with imageBase64 field)
+function AuthenticatedImage({ 
+  src, 
+  alt, 
+  fallbackIcon: FallbackIcon,
+  fallbackText,
+  className 
+}: { 
+  src: string; 
+  alt: string; 
+  fallbackIcon: React.ComponentType<{ className?: string }>;
+  fallbackText: string;
+  className?: string;
+}) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    
+    setLoading(true);
+    setError(false);
+    setImageUrl(null);
+
+    (async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get(src, { 
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        if (cancelled) return;
+        
+        // API returns JSON with responseData.imageBase64
+        const data = res.data;
+        if (data?.responseCode === "2000" && data?.responseData?.imageBase64) {
+          setImageUrl(data.responseData.imageBase64);
+        } else {
+          setError(true);
+        }
+      } catch (e) {
+        if (!cancelled) setError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [src]);
+
+  if (loading) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-secondary/30">
+        <div className="animate-pulse flex flex-col items-center text-muted-foreground">
+          <FallbackIcon className="h-10 w-10 mb-2 opacity-50" />
+          <span className="text-xs">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !imageUrl) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-secondary/30">
+        <div className="flex flex-col items-center text-muted-foreground">
+          <FallbackIcon className="h-10 w-10 mb-2 opacity-50" />
+          <span className="text-xs">{fallbackText}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imageUrl}
+      alt={alt}
+      className={className}
+    />
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -178,7 +264,23 @@ export default function Dashboard() {
 
   const [selectedRegion, setSelectedRegion] = useState<string>("all-regions");
   const [selectedType, setSelectedType] = useState<string>("all-types");
-  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [viewMode, setViewMode] = useState<"list" | "grid">(() => {
+    const saved = localStorage.getItem("transformerViewMode");
+    return (saved === "grid" || saved === "list") ? saved : "list";
+  });
+  const [inspectionViewMode, setInspectionViewMode] = useState<"list" | "grid">(() => {
+    const saved = localStorage.getItem("inspectionViewMode");
+    return (saved === "grid" || saved === "list") ? saved : "list";
+  });
+
+  // Persist view modes to localStorage
+  useEffect(() => {
+    localStorage.setItem("transformerViewMode", viewMode);
+  }, [viewMode]);
+
+  useEffect(() => {
+    localStorage.setItem("inspectionViewMode", inspectionViewMode);
+  }, [inspectionViewMode]);
 
   const [inspectionSearchQuery, setInspectionSearchQuery] =
     useState<string>("");
@@ -967,10 +1069,10 @@ export default function Dashboard() {
                 </div>
 
                 {viewMode === "list" ? (
-                  <div className="rounded-lg border border-white/10 overflow-hidden">
+                  <div className="rounded-lg border border-border overflow-hidden">
                     <Table>
                       <TableHeader>
-                        <TableRow className="border-white/10 hover:bg-secondary/50">
+                        <TableRow className="border-border hover:bg-secondary/50">
                           <TableHead className="text-muted-foreground"></TableHead>
                           <TableHead className="text-muted-foreground">
                             Transformer No.
@@ -991,7 +1093,7 @@ export default function Dashboard() {
                         {transformers.map((transformer) => (
                           <TableRow
                             key={transformer.id}
-                            className="border-white/10 hover:bg-secondary/50"
+                            className="border-border hover:bg-secondary/50"
                           >
                             <TableCell>
                               <Star className="h-4 w-4 text-muted-foreground" />
@@ -999,13 +1101,13 @@ export default function Dashboard() {
                             <TableCell className="font-medium text-foreground">
                               {transformer.transformerNo}
                             </TableCell>
-                            <TableCell className="text-gray-300">
+                            <TableCell className="text-muted-foreground">
                               {transformer.poleNo}
                             </TableCell>
-                            <TableCell className="text-gray-300">
+                            <TableCell className="text-muted-foreground">
                               {transformer.region}
                             </TableCell>
-                            <TableCell className="text-gray-300">
+                            <TableCell className="text-muted-foreground">
                               {transformer.type}
                             </TableCell>
                             <TableCell className="text-right">
@@ -1054,25 +1156,13 @@ export default function Dashboard() {
                         className="overflow-hidden backdrop-blur-xl bg-card/50 border border-border/50 hover:border-orange-500/50 transition-all group"
                       >
                         <div className="aspect-video w-full bg-secondary/30 relative overflow-hidden">
-                          <img
-                            src={API_ENDPOINTS.IMAGE_BASELINE(
-                              transformer.transformerNo
-                            )}
+                          <AuthenticatedImage
+                            src={API_ENDPOINTS.IMAGE_BASELINE(transformer.transformerNo)}
                             alt={`Transformer ${transformer.transformerNo}`}
+                            fallbackIcon={ImageIcon}
+                            fallbackText="No Baseline Image"
                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            onError={(e) => {
-                              e.currentTarget.style.display = "none";
-                              e.currentTarget.nextElementSibling?.classList.remove(
-                                "hidden"
-                              );
-                            }}
                           />
-                          <div className="absolute inset-0 flex items-center justify-center bg-secondary/30 hidden">
-                            <div className="flex flex-col items-center text-muted-foreground">
-                              <ImageIcon className="h-10 w-10 mb-2 opacity-50" />
-                              <span className="text-xs">No Image Available</span>
-                            </div>
-                          </div>
                           <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button
                               size="icon"
@@ -1190,12 +1280,39 @@ export default function Dashboard() {
                       <SelectItem value="pending">Pending</SelectItem>
                     </SelectContent>
                   </Select>
+                  <div className="flex border border-border rounded-lg overflow-hidden">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setInspectionViewMode("list")}
+                      className={`rounded-none h-9 w-9 ${
+                        inspectionViewMode === "list"
+                          ? "bg-secondary text-foreground"
+                          : "bg-transparent text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setInspectionViewMode("grid")}
+                      className={`rounded-none h-9 w-9 ${
+                        inspectionViewMode === "grid"
+                          ? "bg-secondary text-foreground"
+                          : "bg-transparent text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <LayoutGrid className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="rounded-lg border border-white/10 overflow-hidden">
+                {inspectionViewMode === "list" ? (
+                <div className="rounded-lg border border-border overflow-hidden">
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-white/10 hover:bg-secondary/50">
+                      <TableRow className="border-border hover:bg-secondary/50">
                         <TableHead className="text-muted-foreground">
                           Inspection No
                         </TableHead>
@@ -1262,18 +1379,18 @@ export default function Dashboard() {
                         return paginatedInspections.map((inspection) => (
                           <TableRow
                             key={inspection.id}
-                            className="border-white/10 hover:bg-secondary/50"
+                            className="border-border hover:bg-secondary/50"
                           >
                             <TableCell className="font-medium text-foreground">
                               {inspection.inspectionNo || inspection.id}
                             </TableCell>
-                            <TableCell className="text-gray-300">
+                            <TableCell className="text-muted-foreground">
                               {inspection.transformerNo}
                             </TableCell>
-                            <TableCell className="text-gray-300">
+                            <TableCell className="text-muted-foreground">
                               {inspection.inspectedDate}
                             </TableCell>
-                            <TableCell className="text-gray-300">
+                            <TableCell className="text-muted-foreground">
                               {inspection.maintenanceDate || "-"}
                             </TableCell>
                             <TableCell>
@@ -1310,6 +1427,108 @@ export default function Dashboard() {
                     </TableBody>
                   </Table>
                 </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {(() => {
+                      let filtered = inspections.filter((inspection) => {
+                        const searchLower = inspectionSearchQuery.toLowerCase();
+                        const matchesSearch =
+                          !inspectionSearchQuery ||
+                          (inspection.inspectionNo || inspection.id)
+                            .toLowerCase()
+                            .includes(searchLower) ||
+                          inspection.transformerNo
+                            .toLowerCase()
+                            .includes(searchLower);
+
+                        const matchesStatus =
+                          inspectionStatusFilter === "all-statuses" ||
+                          inspection.status?.toLowerCase() ===
+                            inspectionStatusFilter.toLowerCase() ||
+                          (inspectionStatusFilter === "in-progress" &&
+                            inspection.status?.toLowerCase().includes("progress"));
+
+                        return matchesSearch && matchesStatus;
+                      });
+
+                      const startIndex = (currentInspectionPage - 1) * inspectionsPerPage;
+                      const endIndex = startIndex + inspectionsPerPage;
+                      const paginatedInspections = filtered.slice(startIndex, endIndex);
+
+                      if (paginatedInspections.length === 0) {
+                        return (
+                          <div className="col-span-full text-center text-muted-foreground py-8">
+                            No inspections found matching your criteria.
+                          </div>
+                        );
+                      }
+
+                      return paginatedInspections.map((inspection) => (
+                        <Card
+                          key={inspection.id}
+                          className="overflow-hidden backdrop-blur-xl bg-card/50 border border-border/50 hover:border-orange-500/50 transition-all group"
+                        >
+                          <div className="aspect-video w-full bg-secondary/30 relative overflow-hidden">
+                            <AuthenticatedImage
+                              src={API_ENDPOINTS.IMAGE_THERMAL(inspection.id)}
+                              alt={`Inspection ${inspection.inspectionNo || inspection.id}`}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              fallbackIcon={Thermometer}
+                              fallbackText="No Thermal Image"
+                            />
+                            <div className="absolute top-2 left-2">
+                              <StatusBadge status={inspection.status as any} />
+                            </div>
+                            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                size="icon"
+                                variant="destructive"
+                                className="h-8 w-8 bg-red-500/80 hover:bg-red-600 text-white border-0"
+                                onClick={() => handleDeleteInspection(inspection.id)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <h3 className="font-semibold text-foreground truncate">
+                                  {inspection.inspectionNo || `INS-${inspection.id}`}
+                                </h3>
+                                <p className="text-xs text-muted-foreground">
+                                  {inspection.transformerNo}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="space-y-1 text-sm text-muted-foreground mb-4">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-3 w-3" />
+                                <span className="text-foreground text-xs">
+                                  {inspection.inspectedDate || "No date"}
+                                </span>
+                              </div>
+                              {inspection.maintenanceDate && (
+                                <div className="flex justify-between">
+                                  <span>Maintenance:</span>
+                                  <span className="text-foreground text-xs">
+                                    {inspection.maintenanceDate}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <Button
+                              className="w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600"
+                              onClick={() => handleViewInspection(inspection.id)}
+                            >
+                              View Details
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      ));
+                    })()}
+                  </div>
+                )}
 
                 {/* Pagination Controls */}
                 {(() => {
@@ -1339,7 +1558,7 @@ export default function Dashboard() {
                   if (totalPages <= 1) return null;
 
                   return (
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
                       <div className="text-sm text-muted-foreground">
                         Showing{" "}
                         {(currentInspectionPage - 1) * inspectionsPerPage + 1}{" "}
@@ -1463,8 +1682,8 @@ export default function Dashboard() {
 
       {/* Edit Transformer Modal */}
       {editingTransformer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
-          <div className="backdrop-blur-xl bg-black/80 border border-border rounded-2xl shadow-2xl w-full max-w-lg p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/60 backdrop-blur-md">
+          <div className="backdrop-blur-xl bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg p-6">
             <h3 className="text-lg font-semibold mb-4 text-foreground">
               Edit Transformer
             </h3>

@@ -346,10 +346,220 @@ export function MaintenanceRecordForm({
   };
 
   const handlePrint = () => {
-    setIsPreviewMode(true);
-    setTimeout(() => {
-      window.print();
-    }, 100);
+    // Create print content dynamically
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) {
+      toast({
+        title: "Error",
+        description: "Please allow popups to print",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Maintenance Record - ${transformerNo}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            color: #000;
+            background: #fff;
+          }
+          .header { 
+            text-align: center; 
+            margin-bottom: 20px; 
+            padding-bottom: 10px;
+            border-bottom: 2px solid #000;
+          }
+          .header h1 { font-size: 18px; margin-bottom: 5px; }
+          .header p { font-size: 12px; color: #666; }
+          .section { margin-bottom: 15px; }
+          .section-title { 
+            font-size: 14px; 
+            font-weight: bold; 
+            margin-bottom: 8px; 
+            background: #f0f0f0;
+            padding: 5px 10px;
+            border-left: 3px solid #333;
+          }
+          .grid { display: grid; gap: 8px; margin-bottom: 10px; }
+          .grid-3 { grid-template-columns: repeat(3, 1fr); }
+          .grid-2 { grid-template-columns: repeat(2, 1fr); }
+          .field { font-size: 11px; }
+          .field-label { color: #666; display: block; margin-bottom: 2px; }
+          .field-value { font-weight: 500; padding: 4px 0; border-bottom: 1px dotted #ccc; }
+          .gang-box { 
+            background: #f9f9f9; 
+            padding: 10px; 
+            border-radius: 4px;
+            margin-top: 8px;
+          }
+          .notes-box { 
+            background: #f9f9f9; 
+            padding: 10px; 
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-size: 11px;
+            min-height: 60px;
+          }
+          .checklist { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
+          .checklist-item { 
+            font-size: 10px; 
+            display: flex; 
+            align-items: center; 
+            gap: 5px; 
+          }
+          .checkbox { 
+            width: 12px; 
+            height: 12px; 
+            border: 1px solid #333; 
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+          }
+          .checkbox.checked::after { content: "✓"; }
+          @media print {
+            body { padding: 10mm; }
+            @page { size: A4; margin: 10mm; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>MAINTENANCE RECORD</h1>
+          <p>Transformer: ${transformerNo} | Date: ${reportData.jobDate || new Date().toLocaleDateString()}</p>
+        </div>
+
+        <div class="section">
+          <div class="section-title">1. MAINTENANCE RECORD</div>
+          <div class="grid grid-3">
+            <div class="field">
+              <span class="field-label">Start Time</span>
+              <div class="field-value">${reportData.startTime || '-'}</div>
+            </div>
+            <div class="field">
+              <span class="field-label">Completion Time</span>
+              <div class="field-value">${reportData.completionTime || '-'}</div>
+            </div>
+            <div class="field">
+              <span class="field-label">Supervised By</span>
+              <div class="field-value">${reportData.supervisedBy || '-'}</div>
+            </div>
+          </div>
+          
+          <div class="gang-box">
+            <strong style="font-size: 11px;">Gang Composition:</strong>
+            <div class="grid grid-2" style="margin-top: 5px;">
+              <div class="field">
+                <span class="field-label">Tech I</span>
+                <div class="field-value">${reportData.gangComposition.tech1 || '-'}</div>
+              </div>
+              <div class="field">
+                <span class="field-label">Tech II</span>
+                <div class="field-value">${reportData.gangComposition.tech2 || '-'}</div>
+              </div>
+              <div class="field">
+                <span class="field-label">Tech III</span>
+                <div class="field-value">${reportData.gangComposition.tech3 || '-'}</div>
+              </div>
+              <div class="field">
+                <span class="field-label">Helpers</span>
+                <div class="field-value">${reportData.gangComposition.helpers || '-'}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-2" style="margin-top: 10px;">
+            <div class="field">
+              <span class="field-label">Inspected By</span>
+              <div class="field-value">${reportData.inspectedBy || '-'} (${reportData.inspectedDate || '-'})</div>
+            </div>
+            <div class="field">
+              <span class="field-label">Rectified By</span>
+              <div class="field-value">${reportData.rectifiedBy || '-'} (${reportData.rectifiedDate || '-'})</div>
+            </div>
+            <div class="field">
+              <span class="field-label">Re-Inspected By</span>
+              <div class="field-value">${reportData.reInspectedBy || '-'} (${reportData.reInspectedDate || '-'})</div>
+            </div>
+            <div class="field">
+              <span class="field-label">CSS</span>
+              <div class="field-value">${reportData.css || '-'} (${reportData.cssDate || '-'})</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">2. WORK DATA SHEET</div>
+          <div class="grid grid-3">
+            <div class="field">
+              <span class="field-label">Gang Leader</span>
+              <div class="field-value">${reportData.gangLeader || '-'}</div>
+            </div>
+            <div class="field">
+              <span class="field-label">Date</span>
+              <div class="field-value">${reportData.jobDate || '-'}</div>
+            </div>
+            <div class="field">
+              <span class="field-label">Job Started</span>
+              <div class="field-value">${reportData.jobStartedTime || '-'}</div>
+            </div>
+            <div class="field">
+              <span class="field-label">Serial No.</span>
+              <div class="field-value">${reportData.serialNo || '-'}</div>
+            </div>
+            <div class="field">
+              <span class="field-label">kVA</span>
+              <div class="field-value">${reportData.kva || '-'}</div>
+            </div>
+            <div class="field">
+              <span class="field-label">Make</span>
+              <div class="field-value">${reportData.make || '-'}</div>
+            </div>
+          </div>
+
+          ${reportData.notes ? `
+          <div style="margin-top: 10px;">
+            <span class="field-label">Notes / Anomalies</span>
+            <div class="notes-box">${reportData.notes}</div>
+          </div>
+          ` : ''}
+
+          <div style="margin-top: 10px;">
+            <span class="field-label" style="margin-bottom: 8px; display: block;">Work Checklist</span>
+            <div class="checklist">
+              ${Object.entries(reportData.checklist).map(([key, value]) => `
+                <div class="checklist-item">
+                  <span class="checkbox ${value ? 'checked' : ''}"></span>
+                  <span>${key}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 30px; font-size: 10px; color: #666; text-align: center; border-top: 1px solid #eee; padding-top: 10px;">
+          Generated on ${new Date().toLocaleString()}
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+    // Wait for content to load then print
+    printWindow.onload = () => {
+      printWindow.focus();
+      printWindow.print();
+      // Don't close automatically to allow user to see preview
+    };
   };
 
   const updateReport = (field: keyof FullReportData, value: any) => {

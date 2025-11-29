@@ -100,6 +100,15 @@ export const API_ENDPOINTS = {
     `${API_BASE_URL}/transformer-thermal-inspection/api/maintenance-records/inspection/${inspectionId}/history`,
   MAINTENANCE_RESTORE_VERSION: (inspectionId: string, version: number) =>
     `${API_BASE_URL}/transformer-thermal-inspection/api/maintenance-records/inspection/${inspectionId}/restore/${version}`,
+
+  // Thermal Inspection Reports
+  THERMAL_INSPECTION_SAVE: `${API_BASE_URL}/transformer-thermal-inspection/api/thermal-inspection-reports`,
+  THERMAL_INSPECTION_GET: (inspectionId: string) =>
+    `${API_BASE_URL}/transformer-thermal-inspection/api/thermal-inspection-reports/inspection/${inspectionId}`,
+  THERMAL_INSPECTION_HISTORY: (inspectionId: string) =>
+    `${API_BASE_URL}/transformer-thermal-inspection/api/thermal-inspection-reports/inspection/${inspectionId}/history`,
+  THERMAL_INSPECTION_RESTORE: (inspectionId: string, version: number) =>
+    `${API_BASE_URL}/transformer-thermal-inspection/api/thermal-inspection-reports/inspection/${inspectionId}/restore/${version}`,
 } as const;
 
 /**

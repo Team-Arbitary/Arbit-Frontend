@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { Eye, EyeOff, Loader2, AlertCircle, Zap, User, Lock, ArrowRight } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import Ballpit from "@/components/ui/Ballpit";
+import DotGrid from "@/components/ui/DotGrid";
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -77,33 +77,23 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex bg-black relative overflow-hidden">
-      {/* Ballpit Background Effect */}
+      {/* DotGrid Background Effect */}
       <div className="absolute inset-0 z-0" style={{ width: '100%', height: '100%' }}>
-        <Ballpit
-          count={100}
-          gravity={0}
-          friction={0.99}
-          wallBounce={0.95}
-          followCursor={true}
-          colors={[0xf97316, 0xea580c, 0xfb923c, 0xfdba74, 0xfed7aa]}
-          ambientColor={0x222222}
-          ambientIntensity={0.8}
-          lightIntensity={200}
-          minSize={0.5}
-          maxSize={1.0}
-          size0={1.5}
-          maxVelocity={0.15}
-          materialParams={{
-            metalness: 0.7,
-            roughness: 0.2,
-            clearcoat: 1,
-            clearcoatRoughness: 0.1
-          }}
+        <DotGrid
+          dotSize={4}
+          gap={15}
+          baseColor="#3d2c1a"
+          activeColor="#f97316"
+          proximity={80}
+          shockRadius={100}
+          shockStrength={5}
+          resistance={1000}
+          returnDuration={1.0}
         />
       </div>
       
       {/* Dark overlay for better readability */}
-      <div className="absolute inset-0 bg-black/40 z-[1]" />
+      <div className="absolute inset-0 bg-black/50 z-[1]" />
 
       {/* Left Panel - Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative z-10">

@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import TransformerDetail from "./pages/TransformerDetail";
 import InspectionDetail from "./pages/InspectionDetail";
 import Settings from "./pages/Settings";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -42,6 +43,7 @@ const App = () => (
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/transformer/:id" element={<TransformerDetail />} />
                 <Route path="/inspection/:id" element={<InspectionDetail />} />
+                <Route path="/reports" element={<Reports />} />
                 <Route path="/settings" element={<Settings />} />
               </Route>
 

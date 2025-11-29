@@ -33,6 +33,8 @@ import {
   Circle,
   Ellipsis,
   Lightbulb,
+  ChevronDown,
+  Thermometer,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -41,6 +43,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { API_ENDPOINTS, api } from "@/lib/api";
@@ -48,6 +56,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MaintenanceRecordForm } from "@/components/MaintenanceRecordForm";
+import { ThermalImageInspectionForm } from "@/components/ThermalImageInspectionForm";
 import {
   chatWithGroq,
   SYSTEM_PROMPTS,
@@ -2332,7 +2341,7 @@ function AnalysisModal({
                 </TabsContent>
 
                 {/* Usage Instructions */}
-                <div className="bg-blue-500/10 border border-blue-500/30 backdrop-blur-sm rounded-lg p-3 text-sm text-blue-300 mt-4">
+                {/* <div className="bg-blue-500/10 border border-blue-500/30 backdrop-blur-sm rounded-lg p-3 text-sm text-blue-300 mt-4">
                   <div className="flex items-center gap-2 mb-1">
                     <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
                       <span className="text-white text-xs">i</span>
@@ -2361,7 +2370,7 @@ function AnalysisModal({
                       Click "View Full Size" buttons to open images in new tabs
                     </li>
                   </ul>
-                </div>
+                </div> */}
 
                 {/* Analysis Summary */}
                 {analysisData && (
@@ -2657,6 +2666,7 @@ export default function InspectionDetail() {
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
+  const [showThermalInspectionModal, setShowThermalInspectionModal] = useState(false);
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [hasAnalysisApiSuccess, setHasAnalysisApiSuccess] = useState(false); // Track if analysis API returned 200
   const [statusPolling, setStatusPolling] = useState<boolean>(false);
@@ -3769,10 +3779,25 @@ export default function InspectionDetail() {
               <Search className="h-4 w-4 mr-2" />
               View Analysis
             </Button> */}
-            <Button onClick={() => setShowMaintenanceModal(true)} variant="outline">
-              <FileText className="h-4 w-4 mr-2" />
-              Maintenance Record
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Reports
+                  <ChevronDown className="h-4 w-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setShowMaintenanceModal(true)}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Maintenance Record
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowThermalInspectionModal(true)}>
+                  <Thermometer className="h-4 w-4 mr-2" />
+                  Thermal Inspection Form
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button onClick={() => handleUpload("baseline")}>
               <Upload className="h-4 w-4 mr-2" />
               Baseline Image
@@ -4905,6 +4930,20 @@ export default function InspectionDetail() {
             transformerNo={inspection.transformerNo || ""}
             inspectionDate={inspection.lastUpdated}
             imageUrl={thermalImage || undefined}
+            anomalies={cachedAnnotations}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Thermal Image Inspection Form Modal */}
+      <Dialog open={showThermalInspectionModal} onOpenChange={setShowThermalInspectionModal}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <ThermalImageInspectionForm
+            inspectionId={inspection.id}
+            transformerNo={inspection.transformerNo || ""}
+            inspectionDate={inspection.lastUpdated}
+            analysisImageUrl={analysisResult || undefined}
+            thermalImageUrl={thermalImage || undefined}
             anomalies={cachedAnnotations}
           />
         </DialogContent>

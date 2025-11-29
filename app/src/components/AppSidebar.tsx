@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { Settings, BarChart3, FileBox, Zap } from "lucide-react";
+import { Settings, BarChart3, FileBox, Zap, FileText } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -18,6 +18,7 @@ const navItems = [
   { title: "Overview", url: "/dashboard", icon: BarChart3 },
   { title: "Transformers", url: "/dashboard?tab=transformers", icon: Zap },
   { title: "Inspections", url: "/dashboard?tab=inspections", icon: FileBox },
+  { title: "Reports", url: "/reports", icon: FileText },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
