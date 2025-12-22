@@ -32,7 +32,7 @@
 |------|
 | **Yasiru Basnayake** |
 | **Kumal Loneth** |
-| **Dasuni Dissanayake** |
+| **Dasuni Herath** |
 | **Hasitha Gallella** |
 
 ---
